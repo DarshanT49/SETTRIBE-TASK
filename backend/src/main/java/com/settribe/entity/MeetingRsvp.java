@@ -24,17 +24,20 @@ public class MeetingRsvp {
     private String reason;
     @Column(columnDefinition = "TEXT")
     private String timestamp;
+    @Column(columnDefinition = "TEXT")
+    private String notes;
 
     public MeetingRsvp() {
     }
 
-    public MeetingRsvp(String id, String meetingId, String userId, String status, String reason, String timestamp) {
+    public MeetingRsvp(String id, String meetingId, String userId, String status, String reason, String timestamp, String notes) {
         this.id = id;
         this.meetingId = meetingId;
         this.userId = userId;
         this.status = status;
         this.reason = reason;
         this.timestamp = timestamp;
+        this.notes = notes;
     }
 
     public String getId() {
@@ -83,6 +86,14 @@ public class MeetingRsvp {
 
     public void setTimestamp(String timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 }
 

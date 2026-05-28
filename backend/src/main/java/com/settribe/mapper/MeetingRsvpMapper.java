@@ -13,6 +13,7 @@ public class MeetingRsvpMapper {
         dto.setStatus(entity.getStatus());
         dto.setReason(entity.getReason());
         dto.setTimestamp(entity.getTimestamp());
+        dto.setNotes(entity.getNotes());
         return dto;
     }
 
@@ -25,6 +26,7 @@ public class MeetingRsvpMapper {
         entity.setStatus(dto.getStatus());
         entity.setReason(dto.getReason());
         entity.setTimestamp(dto.getTimestamp());
+        entity.setNotes(dto.getNotes());
         return entity;
     }
 }

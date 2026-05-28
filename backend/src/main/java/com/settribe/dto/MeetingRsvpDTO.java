@@ -7,16 +7,18 @@ public class MeetingRsvpDTO {
     private String status;
     private String reason;
     private String timestamp;
+    private String notes;
 
     public MeetingRsvpDTO() {}
 
-    public MeetingRsvpDTO(String id, String meetingId, String userId, String status, String reason, String timestamp) {
+    public MeetingRsvpDTO(String id, String meetingId, String userId, String status, String reason, String timestamp, String notes) {
         this.id = id;
         this.meetingId = meetingId;
         this.userId = userId;
         this.status = status;
         this.reason = reason;
         this.timestamp = timestamp;
+        this.notes = notes;
     }
 
     public String getId() {
@@ -65,5 +67,13 @@ public class MeetingRsvpDTO {
 
     public void setTimestamp(String timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 }
