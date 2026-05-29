@@ -6,9 +6,7 @@ import { createNotification } from '../services/notifications';
 import { Avatar, Button, Modal, Skeleton } from '../components/ui';
 import { formatRelativeTime } from '../utils/dates';
 import toast from 'react-hot-toast';
-import axios from 'axios';
-
-const api = axios.create({ baseURL: `http://${window.location.hostname}:8080/api` });
+import api from '../services/api';
 
 export default function PendingApprovals() {
   const { currentUser } = useAuth();

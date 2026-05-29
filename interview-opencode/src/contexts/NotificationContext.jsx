@@ -2,9 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { KEYS, asyncGet } from '../services/storage';
 import { markNotificationRead, markAllRead as markAllReadService, deleteNotification } from '../services/notifications';
 import { useAuth } from './AuthContext';
-import axios from 'axios';
-
-const api = axios.create({ baseURL: `http://${window.location.hostname}:8080/api` });
+import api from '../services/api';
 
 const NotificationContext = createContext(null);
 
