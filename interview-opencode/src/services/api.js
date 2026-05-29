@@ -38,7 +38,7 @@ const queryBaseUrl = getQueryBaseUrl();
 const storedBaseUrl = getStoredBaseUrl();
 const rawBaseUrl = import.meta.env.VITE_API_BASE_URL;
 const resolvedBaseUrl = normalizeBaseUrl(queryBaseUrl || storedBaseUrl || rawBaseUrl);
-const fallbackBaseUrl = `http://${window.location.hostname}:8080/api`;
+const fallbackBaseUrl = `http://192.168.1.45:8080/api`;
 
 const baseURL = resolvedBaseUrl || fallbackBaseUrl;
 const shouldSkipNgrokWarning = /ngrok(-free)?\.dev|ngrok\.io/i.test(baseURL);
