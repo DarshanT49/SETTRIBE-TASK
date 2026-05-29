@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 public class MeetingRsvp {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 36)
     private String id;
     @Column(columnDefinition = "TEXT")
     private String meetingId;
