@@ -39,6 +39,16 @@ public class Meeting {
     private String createdAt;
     @Column(columnDefinition = "TEXT")
     private String participantIds; // stored as JSON array string
+    @Column(columnDefinition = "TEXT")
+    private String joinRequests; // stored as JSON array string
+    @Column(columnDefinition = "TEXT")
+    private String chatLogs; // stored as JSON array string
+    @Column(columnDefinition = "TEXT")
+    private String standupLogs; // stored as JSON array string
+    @Column(columnDefinition = "TEXT")
+    private String taskAssignedInMeeting; // stored as JSON array string
+    @Column(columnDefinition = "TEXT")
+    private String attendanceLogs; // stored as JSON array string
 
     public Meeting() {
     }
@@ -178,6 +188,46 @@ public class Meeting {
 
     public void setParticipantIds(String participantIds) {
         this.participantIds = participantIds;
+    }
+
+    public String getJoinRequests() {
+        return joinRequests;
+    }
+
+    public void setJoinRequests(String joinRequests) {
+        this.joinRequests = joinRequests;
+    }
+
+    public String getChatLogs() {
+        return chatLogs;
+    }
+
+    public void setChatLogs(String chatLogs) {
+        this.chatLogs = chatLogs;
+    }
+
+    public String getStandupLogs() {
+        return standupLogs;
+    }
+
+    public void setStandupLogs(String standupLogs) {
+        this.standupLogs = standupLogs;
+    }
+
+    public String getTaskAssignedInMeeting() {
+        return taskAssignedInMeeting;
+    }
+
+    public void setTaskAssignedInMeeting(String taskAssignedInMeeting) {
+        this.taskAssignedInMeeting = taskAssignedInMeeting;
+    }
+
+    public String getAttendanceLogs() {
+        return attendanceLogs;
+    }
+
+    public void setAttendanceLogs(String attendanceLogs) {
+        this.attendanceLogs = attendanceLogs;
     }
 }
 

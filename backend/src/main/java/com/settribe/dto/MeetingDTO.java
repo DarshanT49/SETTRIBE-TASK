@@ -1,6 +1,7 @@
 package com.settribe.dto;
 
 import java.util.List;
+import java.util.Map;
 
 public class MeetingDTO {
     private String id;
@@ -18,6 +19,11 @@ public class MeetingDTO {
     private Boolean allowJoinRequests;
     private String createdAt;
     private List<String> participantIds;
+    private List<Map<String, Object>> joinRequests;
+    private List<Map<String, Object>> chatLogs;
+    private List<Map<String, Object>> standupLogs;
+    private List<String> taskAssignedInMeeting;
+    private List<Map<String, Object>> attendanceLogs;
 
     public MeetingDTO() {}
 
@@ -156,5 +162,45 @@ public class MeetingDTO {
 
     public void setParticipantIds(List<String> participantIds) {
         this.participantIds = participantIds;
+    }
+
+    public List<Map<String, Object>> getJoinRequests() {
+        return joinRequests;
+    }
+
+    public void setJoinRequests(List<Map<String, Object>> joinRequests) {
+        this.joinRequests = joinRequests;
+    }
+
+    public List<Map<String, Object>> getChatLogs() {
+        return chatLogs;
+    }
+
+    public void setChatLogs(List<Map<String, Object>> chatLogs) {
+        this.chatLogs = chatLogs;
+    }
+
+    public List<Map<String, Object>> getStandupLogs() {
+        return standupLogs;
+    }
+
+    public void setStandupLogs(List<Map<String, Object>> standupLogs) {
+        this.standupLogs = standupLogs;
+    }
+
+    public List<String> getTaskAssignedInMeeting() {
+        return taskAssignedInMeeting;
+    }
+
+    public void setTaskAssignedInMeeting(List<String> taskAssignedInMeeting) {
+        this.taskAssignedInMeeting = taskAssignedInMeeting;
+    }
+
+    public List<Map<String, Object>> getAttendanceLogs() {
+        return attendanceLogs;
+    }
+
+    public void setAttendanceLogs(List<Map<String, Object>> attendanceLogs) {
+        this.attendanceLogs = attendanceLogs;
     }
 }

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class MeetingMapper {
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -27,8 +28,12 @@ public class MeetingMapper {
         dto.setStatus(entity.getStatus());
         dto.setAllowJoinRequests(entity.getAllowJoinRequests());
         dto.setCreatedAt(entity.getCreatedAt());
-        // Deserialize participantIds from JSON string
         dto.setParticipantIds(parseJsonArray(entity.getParticipantIds()));
+        dto.setJoinRequests(parseObjectArray(entity.getJoinRequests()));
+        dto.setChatLogs(parseObjectArray(entity.getChatLogs()));
+        dto.setStandupLogs(parseObjectArray(entity.getStandupLogs()));
+        dto.setTaskAssignedInMeeting(parseJsonArray(entity.getTaskAssignedInMeeting()));
+        dto.setAttendanceLogs(parseObjectArray(entity.getAttendanceLogs()));
         return dto;
     }
 
@@ -49,8 +54,12 @@ public class MeetingMapper {
         entity.setStatus(dto.getStatus());
         entity.setAllowJoinRequests(dto.getAllowJoinRequests());
         entity.setCreatedAt(dto.getCreatedAt());
-        // Serialize participantIds to JSON string
         entity.setParticipantIds(toJsonArray(dto.getParticipantIds()));
+        entity.setJoinRequests(toJsonArray(dto.getJoinRequests()));
+        entity.setChatLogs(toJsonArray(dto.getChatLogs()));
+        entity.setStandupLogs(toJsonArray(dto.getStandupLogs()));
+        entity.setTaskAssignedInMeeting(toJsonArray(dto.getTaskAssignedInMeeting()));
+        entity.setAttendanceLogs(toJsonArray(dto.getAttendanceLogs()));
         return entity;
     }
 
@@ -67,6 +76,24 @@ public class MeetingMapper {
         if (list == null) return "[]";
         try {
             return objectMapper.writeValueAsString(list);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
+    private static List<Map<String, Object>> parseObjectArray(String json) {
+        if (json == null || json.isBlank()) return new ArrayList<>();
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    private static String toJsonArray(Object value) {
+        if (value == null) return "[]";
+        try {
+            return objectMapper.writeValueAsString(value);
         } catch (Exception e) {
             return "[]";
         }
