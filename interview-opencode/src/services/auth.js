@@ -1,10 +1,6 @@
 import { KEYS } from './storage';
 import { v4 as uuidv4 } from 'uuid';
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: `http://${window.location.hostname}:8080/api`
-});
+import api from './api';
 
 export async function login(emailOrId, password) {
   try {

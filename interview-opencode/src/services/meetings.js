@@ -1,8 +1,4 @@
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: `http://${window.location.hostname}:8080/api`
-});
+import api from './api';
 
 export async function getMeetingJoinToken(meetingId, user) {
   const { data } = await api.post(`/meetings/${meetingId}/join-token`, {

@@ -1,8 +1,4 @@
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: `http://${window.location.hostname}:8080/api`
-});
+import api from './api';
 
 // Map frontend KEYS to backend API endpoint paths
 const KEY_TO_ENDPOINT = {
