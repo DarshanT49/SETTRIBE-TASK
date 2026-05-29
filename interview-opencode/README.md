@@ -31,3 +31,5 @@ https://settribe-task.onrender.com/?apiBase=https://<public-tunnel-host>/api
 ```
 
 The value is saved in localStorage under `settribe_api_base_url`, so you only need to set it once per device.
+
+If you're using ngrok, the app automatically adds the `ngrok-skip-browser-warning` header so requests bypass ngrok's browser warning page.

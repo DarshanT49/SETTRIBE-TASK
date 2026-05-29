@@ -40,8 +40,14 @@ const rawBaseUrl = import.meta.env.VITE_API_BASE_URL;
 const resolvedBaseUrl = normalizeBaseUrl(queryBaseUrl || storedBaseUrl || rawBaseUrl);
 const fallbackBaseUrl = `http://${window.location.hostname}:8080/api`;
 
+const baseURL = resolvedBaseUrl || fallbackBaseUrl;
+const shouldSkipNgrokWarning = /ngrok(-free)?\.dev|ngrok\.io/i.test(baseURL);
+
 const api = axios.create({
-  baseURL: resolvedBaseUrl || fallbackBaseUrl
+  baseURL,
+  headers: shouldSkipNgrokWarning
+    ? { 'ngrok-skip-browser-warning': 'true' }
+    : undefined
 });
 
 export default api;
