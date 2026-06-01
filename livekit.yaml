@@ -7,6 +7,6 @@ rtc:
   port_range_end: 7882
   use_external_ip: false
 keys:
-  devkey: secret
+  devkey: super_secret_livekit_key_that_is_at_least_32_chars_long
 room:
   auto_create: true

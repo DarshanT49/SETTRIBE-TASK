@@ -2,142 +2,118 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { asyncGet, KEYS } from '../services/storage';
 import { getMeetingDateTime, formatDateTime } from '../utils/dates';
-import { Bell, X } from 'lucide-react';
+import { Bell, Volume2 } from 'lucide-react';
+
+const ALERT_AUDIO_SRC = '/bbmusic-friendly-melody-14015.mp3';
+const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
 export function MeetingAlert() {
   const { currentUser } = useAuth();
   const [activeAlert, setActiveAlert] = useState(null);
-  const audioCtxRef = useRef(null);
-  const oscillatorRef = useRef(null);
-  const intervalRef = useRef(null);
+  const [isAudioBlocked, setIsAudioBlocked] = useState(false);
+  const audioRef = useRef(null);
+  const activeAlertRef = useRef(null);
 
-  // Unlock audio context on first user interaction to bypass autoplay policy
+  useEffect(() => {
+    activeAlertRef.current = activeAlert;
+  }, [activeAlert]);
+
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
+    
+    if (!audioRef.current) {
+      audioRef.current = new Audio(ALERT_AUDIO_SRC);
+      audioRef.current.loop = true;
+    }
 
-    const unlockAudio = () => {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume();
-      }
-      window.removeEventListener('click', unlockAudio);
-      window.removeEventListener('keydown', unlockAudio);
-    };
-    window.addEventListener('click', unlockAudio);
-    window.addEventListener('keydown', unlockAudio);
     return () => {
-      window.removeEventListener('click', unlockAudio);
-      window.removeEventListener('keydown', unlockAudio);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
     };
   }, []);
 
   const startBeep = useCallback(() => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.warn("Autoplay prevented by browser:", error);
+          setIsAudioBlocked(true);
+        });
+      }
     }
-    if (audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume();
-    }
-    
-    // Stop existing if any
-    if (oscillatorRef.current) {
-      try { oscillatorRef.current.stop(); } catch(e){}
-    }
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-
-    // Play a repeating beep
-    const playSingleBeep = () => {
-      const ctx = audioCtxRef.current;
-      if (!ctx || ctx.state === 'closed') return;
-      
-      const osc = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
-      
-      gainNode.gain.setValueAtTime(0, ctx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
-      gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
-      
-      osc.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.5);
-      oscillatorRef.current = osc;
-    };
-
-    playSingleBeep();
-    intervalRef.current = setInterval(playSingleBeep, 1000); // Beep every second
   }, []);
 
   const stopBeep = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    if (oscillatorRef.current) {
-      try { oscillatorRef.current.stop(); } catch(e){}
-      oscillatorRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
   }, []);
 
   const acknowledgeAlert = () => {
-    if (activeAlert) {
-      const acknowledged = JSON.parse(localStorage.getItem('acknowledgedMeetings') || '[]');
+    if (activeAlert && currentUser) {
+      const storageKey = `acknowledgedMeetingAlerts:${currentUser.id}`;
+      const acknowledged = JSON.parse(localStorage.getItem(storageKey) || '[]');
       if (!acknowledged.includes(activeAlert.id)) {
         acknowledged.push(activeAlert.id);
-        localStorage.setItem('acknowledgedMeetings', JSON.stringify(acknowledged));
+        localStorage.setItem(storageKey, JSON.stringify(acknowledged));
       }
     }
     stopBeep();
     setActiveAlert(null);
+    setIsAudioBlocked(false);
+  };
+
+  const manuallyPlayAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.play().then(() => {
+        setIsAudioBlocked(false);
+      }).catch(e => console.error("Still blocked:", e));
+    }
   };
 
   useEffect(() => {
     if (!currentUser) return;
 
     const checkMeetings = async () => {
-      // If there's already an active alert, don't interrupt it
-      if (activeAlert) return;
+      if (activeAlertRef.current) return;
 
       try {
         const meetings = await asyncGet(KEYS.MEETINGS) || [];
-        const acknowledged = JSON.parse(localStorage.getItem('acknowledgedMeetings') || '[]');
-        
+        const storageKey = `acknowledgedMeetingAlerts:${currentUser.id}`;
+        const acknowledged = JSON.parse(localStorage.getItem(storageKey) || '[]');
         const now = Date.now();
-        const FIVE_MINUTES = 5 * 60 * 1000;
 
-        for (const meeting of meetings) {
-          if (!meeting.participantIds?.includes(currentUser.id)) continue;
-          if (acknowledged.includes(meeting.id)) continue;
+        const nextMeeting = meetings
+          .filter(meeting => {
+            if (!meeting.participantIds?.includes(currentUser.id)) return false;
+            if (acknowledged.includes(meeting.id)) return false;
+            if (meeting.status === 'completed' || meeting.status === 'cancelled') return false;
 
-          const meetingTime = getMeetingDateTime(meeting).getTime();
-          const timeUntilMeeting = meetingTime - now;
+            const meetingTime = getMeetingDateTime(meeting).getTime();
+            const timeUntilMeeting = meetingTime - now;
+            return timeUntilMeeting > 0 && timeUntilMeeting <= FIVE_MINUTES_MS;
+          })
+          .sort((a, b) => getMeetingDateTime(a).getTime() - getMeetingDateTime(b).getTime())[0];
 
-          // If the meeting is within the next 5 minutes (and not already started)
-          if (timeUntilMeeting > 0 && timeUntilMeeting <= FIVE_MINUTES) {
-            setActiveAlert(meeting);
-            startBeep();
-            
-            if ('Notification' in window && Notification.permission === 'granted') {
-              const notification = new Notification('Meeting Starting Soon', {
-                body: `${meeting.title} at ${formatDateTime(getMeetingDateTime(meeting).toISOString())}`,
-              });
-              notification.onclick = () => {
-                window.focus();
-                notification.close();
-              };
-            }
-
-            break; // Only alert for one meeting at a time
+        if (nextMeeting) {
+          setActiveAlert(nextMeeting);
+          startBeep();
+          
+          if ('Notification' in window && Notification.permission === 'granted') {
+            const notification = new Notification('Meeting Starting Soon', {
+              body: `${nextMeeting.title} at ${formatDateTime(getMeetingDateTime(nextMeeting).toISOString())}`,
+            });
+            notification.onclick = () => {
+              window.focus();
+              notification.close();
+            };
           }
         }
       } catch (error) {
@@ -145,16 +121,14 @@ export function MeetingAlert() {
       }
     };
 
-    // Initial check
     checkMeetings();
 
-    // Check every 10 seconds
     const interval = setInterval(checkMeetings, 10000);
     return () => {
       clearInterval(interval);
       stopBeep();
     };
-  }, [currentUser, activeAlert, startBeep, stopBeep]);
+  }, [currentUser, startBeep, stopBeep]);
 
   if (!activeAlert) return null;
 
@@ -179,6 +153,16 @@ export function MeetingAlert() {
             {formatDateTime(getMeetingDateTime(activeAlert).toISOString())}
           </p>
         </div>
+
+        {isAudioBlocked && (
+          <button
+            onClick={manuallyPlayAudio}
+            className="w-full py-3 px-4 mb-3 bg-yellow-600 hover:bg-yellow-500 text-white rounded-xl font-medium transition-colors shadow-lg shadow-yellow-500/20 flex items-center justify-center gap-2"
+          >
+            <Volume2 className="w-5 h-5" />
+            Click to Unmute Alert
+          </button>
+        )}
 
         <button
           onClick={acknowledgeAlert}
