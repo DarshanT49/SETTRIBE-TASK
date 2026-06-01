@@ -136,7 +136,9 @@ export default function InterviewDetail() {
                 ['Date', `${interview.date} at ${interview.time}`],
                 ['Duration', `${interview.duration} minutes`],
                 ['Mode', interview.mode],
-                interview.mode === 'online' && ['Meeting Link', <a href={interview.meetingLink} target="_blank" rel="noreferrer" className="text-primary-400 hover:text-primary-300">Join Meeting</a>],
+                interview.mode === 'online' && ['Meeting Link', interview.meetingId ? 
+                  <Link to={`/meetings/${interview.meetingId}/room`} className="text-primary-400 hover:text-primary-300">Join Meeting Room</Link> 
+                  : <a href={interview.link || interview.meetingLink} target="_blank" rel="noreferrer" className="text-primary-400 hover:text-primary-300">Join External Meeting</a>],
                 interview.mode === 'in_person' && ['Location', interview.location],
                 ['Scheduled By', getUser(interview.scheduledById)?.name],
                 ['Interviewer', interviewer?.name],

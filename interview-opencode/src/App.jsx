@@ -28,6 +28,7 @@ import InterviewDetail from './pages/InterviewDetail';
 import NewInterview from './pages/NewInterview';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
+import JoinInterview from './pages/JoinInterview';
 
 // Simple pending / denied pages
 function PendingApprovalPage() {
@@ -91,6 +92,7 @@ export default function App() {
 
               {/* Meeting Room (Full Screen, no layout) */}
               <Route path="/meetings/:id/room" element={<AuthGuard><MeetingRoom /></AuthGuard>} />
+              <Route path="/join-interview/:token" element={<JoinInterview />} />
 
               {/* Protected Routes with Layout */}
               <Route path="/*" element={

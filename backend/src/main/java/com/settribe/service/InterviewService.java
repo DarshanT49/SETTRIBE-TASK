@@ -42,4 +42,24 @@ public class InterviewService {
     public void deleteById(String id) {
         repository.deleteById(id);
     }
+
+    public Optional<InterviewDTO> findByToken(String token) {
+        return repository.findByToken(token).map(InterviewMapper::toDTO);
+    }
+
+    public InterviewDTO validateToken(String token) {
+        Interview interview = repository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid token"));
+
+        if (interview.getExpiryTimestamp() != null) {
+            long expiry = Long.parseLong(interview.getExpiryTimestamp());
+            if (System.currentTimeMillis() > expiry) {
+                interview.setJoinStatus("EXPIRED");
+                repository.save(interview);
+                throw new RuntimeException("Interview session has expired");
+            }
+        }
+        
+        return InterviewMapper.toDTO(interview);
+    }
 }

@@ -18,6 +18,8 @@ public class InterviewDTO {
     private String resumeFileName;
     private String candidatePortalStatus;
     private String createdAt;
+    private String expiryTimestamp;
+    private String joinStatus;
 
     public InterviewDTO() {}
 
@@ -39,6 +41,28 @@ public class InterviewDTO {
         this.resumeFileName = resumeFileName;
         this.candidatePortalStatus = candidatePortalStatus;
         this.createdAt = createdAt;
+    }
+
+    public InterviewDTO(String id, String candidateName, String mobile, String email, String referredBy, String position, String interviewType, String date, String time, String link, String interviewerId, String status, String token, String notes, String resumeFileName, String candidatePortalStatus, String createdAt, String expiryTimestamp, String joinStatus) {
+        this.id = id;
+        this.candidateName = candidateName;
+        this.mobile = mobile;
+        this.email = email;
+        this.referredBy = referredBy;
+        this.position = position;
+        this.interviewType = interviewType;
+        this.date = date;
+        this.time = time;
+        this.link = link;
+        this.interviewerId = interviewerId;
+        this.status = status;
+        this.token = token;
+        this.notes = notes;
+        this.resumeFileName = resumeFileName;
+        this.candidatePortalStatus = candidatePortalStatus;
+        this.createdAt = createdAt;
+        this.expiryTimestamp = expiryTimestamp;
+        this.joinStatus = joinStatus;
     }
 
     public String getId() {
@@ -175,5 +199,21 @@ public class InterviewDTO {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getExpiryTimestamp() {
+        return expiryTimestamp;
+    }
+
+    public void setExpiryTimestamp(String expiryTimestamp) {
+        this.expiryTimestamp = expiryTimestamp;
+    }
+
+    public String getJoinStatus() {
+        return joinStatus;
+    }
+
+    public void setJoinStatus(String joinStatus) {
+        this.joinStatus = joinStatus;
     }
 }
