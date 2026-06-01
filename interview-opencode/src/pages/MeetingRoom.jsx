@@ -176,26 +176,95 @@ export default function MeetingRoom() {
     toast.success('Task assigned');
   };
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950 text-gray-200">
-        <Loader2 className="mr-3 animate-spin" size={22} />
-        Joining meeting...
-      </div>
-    );
-  }
+  const sendSignal = async (receiverId, type, data) => {
+    const signal = {
+      id: uuidv4(),
+      meetingId: id,
+      senderId: currentUser.id,
+      receiverId,
+      type,
+      data,
+      createdAt: new Date().toISOString()
+    };
+    await asyncSet(KEYS.MEETING_SIGNALS, [signal]); // using array for smart diff/add
+  };
 
-  if (error || !meeting || !roomConfig) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950 p-6">
-        <div className="w-full max-w-md rounded-lg border border-gray-800 bg-gray-900 p-6 text-center">
-          <h1 className="mb-2 text-lg font-semibold text-gray-100">Cannot join meeting</h1>
-          <p className="mb-5 text-sm text-gray-400">{error || 'Room configuration is unavailable.'}</p>
-          <Button onClick={() => navigate(`/meetings/${id}`)}>Back to Details</Button>
-        </div>
-      </div>
-    );
-  }
+  const createPeerConnection = (remoteUserId) => {
+    if (peerConnections.current[remoteUserId]) return peerConnections.current[remoteUserId];
+
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+
+    peerConnections.current[remoteUserId] = pc;
+    iceCandidatesQueue.current[remoteUserId] = iceCandidatesQueue.current[remoteUserId] || [];
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
+    }
+
+    pc.onicecandidate = event => {
+      if (event.candidate) {
+        sendSignal(remoteUserId, 'ice-candidate', event.candidate);
+      }
+    };
+
+    pc.ontrack = event => {
+      setRemoteStreams(prev => ({
+        ...prev,
+        [remoteUserId]: event.streams[0]
+      }));
+    };
+
+    return pc;
+  };
+
+  const handleSignal = async (signal) => {
+    const remoteUserId = signal.senderId;
+    const pc = createPeerConnection(remoteUserId);
+
+    if (signal.type === 'offer') {
+      await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await sendSignal(remoteUserId, 'answer', answer);
+
+      if (iceCandidatesQueue.current[remoteUserId]) {
+        for (const candidate of iceCandidatesQueue.current[remoteUserId]) {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+        iceCandidatesQueue.current[remoteUserId] = [];
+      }
+    } else if (signal.type === 'answer') {
+      await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+    } else if (signal.type === 'ice-candidate') {
+      if (pc.remoteDescription) {
+        await pc.addIceCandidate(new RTCIceCandidate(signal.data));
+      } else {
+        iceCandidatesQueue.current[remoteUserId].push(signal.data);
+      }
+    }
+  };
+
+  const initiateCall = async (remoteUserId) => {
+    const pc = createPeerConnection(remoteUserId);
+    if (pc.signalingState !== 'stable') return;
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await sendSignal(remoteUserId, 'offer', offer);
+  };
+
+  useEffect(() => {
+    if (!meeting || !users.length || !streamReady) return;
+    const participantsList = meeting.participantIds.map(uid => users.find(u => u.id === uid)).filter(Boolean);
+    participantsList.forEach(p => {
+      if (p.id !== currentUser.id && currentUser.id < p.id) {
+        initiateCall(p.id);
+      }
+    });
+  }, [meeting, users, streamReady]);
+  
+  const bgStyle = background === 'blur' ? { filter: 'blur(8px)' } : {};
 
   return (
     <div className="fixed inset-0 z-[100] bg-gray-950">
@@ -403,3 +472,14 @@ function toArray(value) {
   }
   return [];
 }
+
+
+const RemoteVideo = ({ stream, isMuted, ...props }) => {
+  const videoRef = useRef(null);
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+  return <video ref={videoRef} autoPlay playsInline muted={isMuted} {...props} />;
+};

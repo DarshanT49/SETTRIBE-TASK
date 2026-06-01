@@ -24,6 +24,8 @@ public class InterviewMapper {
         dto.setResumeFileName(entity.getResumeFileName());
         dto.setCandidatePortalStatus(entity.getCandidatePortalStatus());
         dto.setCreatedAt(entity.getCreatedAt());
+        dto.setExpiryTimestamp(entity.getExpiryTimestamp());
+        dto.setJoinStatus(entity.getJoinStatus());
         return dto;
     }
 
@@ -47,6 +49,8 @@ public class InterviewMapper {
         entity.setResumeFileName(dto.getResumeFileName());
         entity.setCandidatePortalStatus(dto.getCandidatePortalStatus());
         entity.setCreatedAt(dto.getCreatedAt());
+        entity.setExpiryTimestamp(dto.getExpiryTimestamp());
+        entity.setJoinStatus(dto.getJoinStatus());
         return entity;
     }
 }

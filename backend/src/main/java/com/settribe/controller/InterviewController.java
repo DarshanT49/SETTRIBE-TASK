@@ -49,4 +49,14 @@ public class InterviewController {
         service.deleteById(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/validate")
+    public ResponseEntity<?> validate(@RequestParam String token) {
+        try {
+            InterviewDTO dto = service.validateToken(token);
+            return ResponseEntity.ok(dto);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(401).body(e.getMessage());
+        }
+    }
 }

@@ -7,6 +7,7 @@ import { createNotification, createBulkNotifications } from '../services/notific
 import { Button, Input, Select, Textarea, Avatar } from '../components/ui';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
+import emailjs from '@emailjs/browser';
 
 const ROUNDS = ['screening', 'technical', 'hr', 'final'];
 const MODES = ['online', 'in_person', 'phone'];
@@ -41,11 +42,12 @@ export default function NewInterview() {
     const interviewId = uuidv4();
     let meetingLink = form.meetingLink;
     
+    let finalMeetingId = '';
     // Auto-create meeting room for online interviews
     if (form.mode === 'online' && !meetingLink) {
-      const meetingId = uuidv4();
+      finalMeetingId = uuidv4();
       const meeting = {
-        id: meetingId, title: `Interview: ${form.candidateName} — ${form.position}`,
+        id: finalMeetingId, title: `Interview: ${form.candidateName} — ${form.position}`,
         agenda: `Interview for ${form.position} position — ${form.round} round`,
         date: form.date, time: form.time, duration: String(form.duration),
         type: 'interview', hostId: currentUser.id,
@@ -54,8 +56,17 @@ export default function NewInterview() {
         status: 'upcoming',
         createdAt: new Date().toISOString() };
       await apiPost(KEYS.MEETINGS, meeting);
-      meetingLink = `/meetings/${meetingId}/room`;
     }
+    
+    // Generate secure token and expiry
+    const secureToken = uuidv4();
+    let tokenLink = form.meetingLink;
+    if (form.mode === 'online' && (!form.meetingLink || form.meetingLink === '')) {
+        tokenLink = `/join-interview/${secureToken}?meetingId=${finalMeetingId}`;
+    }
+    
+    const interviewDateTime = new Date(`${form.date}T${form.time}`);
+    const expiryTimestamp = interviewDateTime.getTime() + (parseInt(form.duration) * 60000);
 
     // Map form to backend Interview schema
     const interview = {
@@ -69,6 +80,7 @@ export default function NewInterview() {
       date: form.date,
       time: form.time,
       link: meetingLink,
+      meetingId: finalMeetingId,
       interviewerId: form.interviewerId,
       status: 'scheduled',
       token: `token-${interviewId}`,
@@ -76,6 +88,8 @@ export default function NewInterview() {
       resumeFileName: form.resumeLink,
       candidatePortalStatus: 'waiting',
       createdAt: new Date().toISOString(),
+      expiryTimestamp: String(expiryTimestamp),
+      joinStatus: 'WAITING'
     };
     await apiPost(KEYS.INTERVIEWS, interview);
 
@@ -93,7 +107,37 @@ export default function NewInterview() {
         relatedId: interviewId, relatedType: 'interview' });
     }
 
-    toast.success('Interview scheduled!');
+    // Send candidate email via EmailJS
+    const templateParams = {
+      candidate_name: form.candidateName,
+      candidate_email: form.candidateEmail, // The user MUST put {{candidate_email}} in the "To Email" field in the dashboard!
+      interview_date: `${form.date} at ${form.time}`, // Combining date and time since template only has interview_date
+      role: form.position,
+      join_link: form.mode === 'online' ? `${window.location.origin}${tokenLink}` : form.location || 'In Person',
+      title: `Interview Invitation - ${form.position}`, // For Subject
+      name: 'SetTribe HR Team', // For "From Name"
+      email: currentUser?.email || 'noreply@settribe.com', // For "Reply To"
+    };
+
+    try {
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_goc9w1j';
+      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_drkqxne';
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'V07dNeUiCodm5y05d';
+      
+      console.log('Sending email with variables:', { serviceId, templateId, publicKey });
+      
+      await emailjs.send(
+        serviceId,
+        templateId,
+        templateParams,
+        publicKey
+      );
+      toast.success('Interview scheduled and invitation sent!');
+    } catch (err) {
+      console.error('EmailJS error:', err);
+      toast.error('Scheduled, but failed to send email.');
+    }
+
     navigate(`/interviews/${interviewId}`);
     setLoading(false);
   };

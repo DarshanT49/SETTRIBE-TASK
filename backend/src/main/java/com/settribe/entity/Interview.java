@@ -44,6 +44,10 @@ public class Interview {
     private String candidatePortalStatus;
     @Column(columnDefinition = "TEXT")
     private String createdAt;
+    @Column(columnDefinition = "TEXT")
+    private String expiryTimestamp;
+    @Column(columnDefinition = "TEXT")
+    private String joinStatus;
 
     public Interview() {
     }
@@ -66,6 +70,28 @@ public class Interview {
         this.resumeFileName = resumeFileName;
         this.candidatePortalStatus = candidatePortalStatus;
         this.createdAt = createdAt;
+    }
+
+    public Interview(String id, String candidateName, String mobile, String email, String referredBy, String position, String interviewType, String date, String time, String link, String interviewerId, String status, String token, String notes, String resumeFileName, String candidatePortalStatus, String createdAt, String expiryTimestamp, String joinStatus) {
+        this.id = id;
+        this.candidateName = candidateName;
+        this.mobile = mobile;
+        this.email = email;
+        this.referredBy = referredBy;
+        this.position = position;
+        this.interviewType = interviewType;
+        this.date = date;
+        this.time = time;
+        this.link = link;
+        this.interviewerId = interviewerId;
+        this.status = status;
+        this.token = token;
+        this.notes = notes;
+        this.resumeFileName = resumeFileName;
+        this.candidatePortalStatus = candidatePortalStatus;
+        this.createdAt = createdAt;
+        this.expiryTimestamp = expiryTimestamp;
+        this.joinStatus = joinStatus;
     }
 
     public String getId() {
@@ -202,6 +228,22 @@ public class Interview {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getExpiryTimestamp() {
+        return expiryTimestamp;
+    }
+
+    public void setExpiryTimestamp(String expiryTimestamp) {
+        this.expiryTimestamp = expiryTimestamp;
+    }
+
+    public String getJoinStatus() {
+        return joinStatus;
+    }
+
+    public void setJoinStatus(String joinStatus) {
+        this.joinStatus = joinStatus;
     }
 }
 
