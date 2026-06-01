@@ -49,6 +49,7 @@ public class Meeting {
     private String taskAssignedInMeeting; // stored as JSON array string
     @Column(columnDefinition = "TEXT")
     private String attendanceLogs; // stored as JSON array string
+    private String waitingRoom; // stored as JSON array string
 
     public Meeting() {
     }
@@ -228,6 +229,14 @@ public class Meeting {
 
     public void setAttendanceLogs(String attendanceLogs) {
         this.attendanceLogs = attendanceLogs;
+    }
+
+    public String getWaitingRoom() {
+        return waitingRoom;
+    }
+
+    public void setWaitingRoom(String waitingRoom) {
+        this.waitingRoom = waitingRoom;
     }
 }
 

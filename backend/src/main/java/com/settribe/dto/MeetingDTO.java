@@ -24,6 +24,7 @@ public class MeetingDTO {
     private List<Map<String, Object>> standupLogs;
     private List<String> taskAssignedInMeeting;
     private List<Map<String, Object>> attendanceLogs;
+    private List<Map<String, Object>> waitingRoom;
 
     public MeetingDTO() {}
 
@@ -202,5 +203,13 @@ public class MeetingDTO {
 
     public void setAttendanceLogs(List<Map<String, Object>> attendanceLogs) {
         this.attendanceLogs = attendanceLogs;
+    }
+
+    public List<Map<String, Object>> getWaitingRoom() {
+        return waitingRoom;
+    }
+
+    public void setWaitingRoom(List<Map<String, Object>> waitingRoom) {
+        this.waitingRoom = waitingRoom;
     }
 }

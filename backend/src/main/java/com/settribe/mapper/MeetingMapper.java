@@ -34,6 +34,7 @@ public class MeetingMapper {
         dto.setStandupLogs(parseObjectArray(entity.getStandupLogs()));
         dto.setTaskAssignedInMeeting(parseJsonArray(entity.getTaskAssignedInMeeting()));
         dto.setAttendanceLogs(parseObjectArray(entity.getAttendanceLogs()));
+        dto.setWaitingRoom(parseObjectArray(entity.getWaitingRoom()));
         return dto;
     }
 
@@ -60,6 +61,7 @@ public class MeetingMapper {
         entity.setStandupLogs(toJsonArray(dto.getStandupLogs()));
         entity.setTaskAssignedInMeeting(toJsonArray(dto.getTaskAssignedInMeeting()));
         entity.setAttendanceLogs(toJsonArray(dto.getAttendanceLogs()));
+        entity.setWaitingRoom(toJsonArray(dto.getWaitingRoom()));
         return entity;
     }
 
