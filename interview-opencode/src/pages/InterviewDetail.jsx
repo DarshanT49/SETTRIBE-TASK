@@ -89,6 +89,54 @@ export default function InterviewDetail() {
 
   const recColor = REC_COLORS[interview.evaluation?.recommendation] || 'text-gray-400';
 
+  const handleJoinMeeting = async () => {
+    if (interview.link || interview.meetingLink) {
+      window.open(interview.link || interview.meetingLink, '_blank');
+      return;
+    }
+    if (interview.meetingId) {
+      navigate(`/meetings/${interview.meetingId}/room`);
+      return;
+    }
+    
+    // Auto-repair: If it's an old interview missing a meetingId, create one on the fly!
+    toast.loading('Preparing meeting room...', { id: 'prep_meeting' });
+    const finalMeetingId = uuidv4();
+    const meeting = {
+      id: finalMeetingId, 
+      title: `Interview: ${interview.candidateName} — ${interview.position}`,
+      agenda: `Interview for ${interview.position} position — ${interview.round || 'screening'} round`,
+      date: interview.date, 
+      time: interview.time, 
+      duration: interview.duration || '60',
+      type: 'interview', 
+      hostId: currentUser.id,
+      participantIds: [...new Set([currentUser.id, interview.interviewerId])],
+      meetingMode: 'internal', 
+      projectId: '', 
+      allowJoinRequests: false,
+      status: 'upcoming',
+      createdAt: new Date().toISOString() 
+    };
+    
+    try {
+      const { apiPost } = await import('../services/storage');
+      await apiPost(KEYS.MEETINGS, meeting);
+      
+      const ivs = await asyncGet(KEYS.INTERVIEWS) || [];
+      const idx = ivs.findIndex(i => i.id === interview.id);
+      if (idx !== -1) {
+        ivs[idx].meetingId = finalMeetingId;
+        await asyncSet(KEYS.INTERVIEWS, ivs);
+      }
+      toast.success('Meeting room ready!', { id: 'prep_meeting' });
+      navigate(`/meetings/${finalMeetingId}/room`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to create meeting room.', { id: 'prep_meeting' });
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
       <div>
@@ -111,12 +159,19 @@ export default function InterviewDetail() {
                 </div>
               </div>
             </div>
-            {(isHRAdmin || isInterviewer) && interview.status === 'scheduled' && (
-              <div className="flex gap-2">
-                <Button variant="secondary" size="sm" onClick={() => setStatusModal('cancel')}>Cancel</Button>
-                <Button size="sm" onClick={() => handleStatusUpdate('completed')}>Mark Completed</Button>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {isInterviewer && interview.status === 'scheduled' && (
+                <Button onClick={handleJoinMeeting} className="bg-emerald-600 hover:bg-emerald-500 text-white border-0 shadow-lg shadow-emerald-900/20">
+                  {interview.link || interview.meetingLink ? 'Join External Meeting' : 'Join Meeting Room'}
+                </Button>
+              )}
+              {(isHRAdmin || isInterviewer) && interview.status === 'scheduled' && (
+                <>
+                  <Button variant="secondary" size="sm" onClick={() => setStatusModal('cancel')}>Cancel</Button>
+                  <Button variant="secondary" size="sm" onClick={() => handleStatusUpdate('completed')}>Mark Completed</Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
