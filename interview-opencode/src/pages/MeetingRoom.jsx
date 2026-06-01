@@ -43,18 +43,54 @@ export default function MeetingRoom() {
     dueDate: ''
   });
   const joinedRef = useRef(false);
+  const hasRequestedTokenRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
+    let pollInterval = null;
+
+    const fetchMeetingData = async () => {
+      const allMeetings = await asyncGet(KEYS.MEETINGS);
+      return (allMeetings || []).find(item => item.id === id);
+    };
+
+    const checkWaitingRoomStatus = async (m) => {
+      if (cancelled) return;
+      
+      const isHost = m.hostId === currentUser.id;
+      const requiresApproval = !['employee', 'hr', 'admin'].includes(currentUser.role) && !isHost;
+      
+      const waitingRoom = toArray(m.waitingRoom);
+      const myWaitStatus = waitingRoom.find(w => w.userId === currentUser.id)?.status;
+
+      if (requiresApproval && myWaitStatus !== 'approved') {
+        if (myWaitStatus !== 'waiting' && myWaitStatus !== 'rejected') {
+          const updatedWait = [...waitingRoom, { userId: currentUser.id, status: 'waiting', timestamp: new Date().toISOString() }];
+          const updatedMeeting = { ...m, waitingRoom: updatedWait };
+          setMeeting(updatedMeeting);
+          await apiPut(KEYS.MEETINGS, id, updatedMeeting);
+        }
+      } else {
+        if (!hasRequestedTokenRef.current) {
+          hasRequestedTokenRef.current = true;
+          try {
+            const tokenResponse = await getMeetingJoinToken(id, currentUser);
+            if (!cancelled) setRoomConfig(tokenResponse);
+          } catch (err) {
+            setError(err?.response?.data?.message || 'Failed to get room token');
+          }
+        }
+      }
+    };
 
     const loadRoom = async () => {
       try {
-        const [allMeetings, allUsers, allProjects] = await Promise.all([
-          asyncGet(KEYS.MEETINGS),
+        const [foundMeeting, allUsers, allProjects] = await Promise.all([
+          fetchMeetingData(),
           asyncGet(KEYS.USERS),
           asyncGet(KEYS.PROJECTS)
         ]);
-        const foundMeeting = (allMeetings || []).find(item => item.id === id);
+        
         if (!foundMeeting) {
           navigate('/meetings');
           return;
@@ -65,13 +101,12 @@ export default function MeetingRoom() {
           return;
         }
 
-        const tokenResponse = await getMeetingJoinToken(id, currentUser);
-        if (cancelled) return;
-        setMeeting(foundMeeting);
         setUsers(allUsers || []);
         setProjects(allProjects || []);
+        setMeeting(foundMeeting);
         setChatLogs(toArray(foundMeeting.chatLogs));
-        setRoomConfig(tokenResponse);
+
+        await checkWaitingRoomStatus(foundMeeting);
       } catch (err) {
         const message = err?.response?.data?.message || 'Unable to join this meeting room.';
         setError(message);
@@ -81,8 +116,22 @@ export default function MeetingRoom() {
     };
 
     loadRoom();
+
+    pollInterval = setInterval(async () => {
+      if (cancelled) return;
+      try {
+        const m = await fetchMeetingData();
+        if (m) {
+          setMeeting(m);
+          setChatLogs(toArray(m.chatLogs));
+          await checkWaitingRoomStatus(m);
+        }
+      } catch (e) {}
+    }, 3000);
+
     return () => {
       cancelled = true;
+      if (pollInterval) clearInterval(pollInterval);
       if (joinedRef.current && currentUser?.id) {
         markMeetingLeft(id, currentUser.id);
       }
@@ -93,6 +142,14 @@ export default function MeetingRoom() {
     .map(userId => users.find(user => user.id === userId))
     .filter(Boolean);
   const isHost = meeting?.hostId === currentUser.id;
+
+  const handleWaitingRoomAction = async (userId, status) => {
+    const updatedWait = toArray(meeting.waitingRoom).map(w => w.userId === userId ? { ...w, status } : w);
+    const updatedMeeting = { ...meeting, waitingRoom: updatedWait };
+    setMeeting(updatedMeeting);
+    await apiPut(KEYS.MEETINGS, id, updatedMeeting);
+    toast.success(status === 'approved' ? 'Allowed into meeting' : 'Denied entry');
+  };
 
   const handleConnected = useCallback(() => {
     if (joinedRef.current) return;
@@ -187,6 +244,42 @@ export default function MeetingRoom() {
     );
   }
 
+  const isHostNow = meeting?.hostId === currentUser.id;
+  const requiresApproval = currentUser && !['employee', 'hr', 'admin'].includes(currentUser.role) && !isHostNow;
+  const myWaitStatus = toArray(meeting?.waitingRoom).find(w => w.userId === currentUser.id)?.status;
+
+  if (requiresApproval && myWaitStatus !== 'approved') {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-950">
+        <div className="max-w-md rounded-lg border border-gray-800 bg-gray-900 p-6 text-center shadow-xl">
+          {myWaitStatus === 'rejected' ? (
+            <>
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-950 text-red-500">
+                <X size={24} />
+              </div>
+              <h2 className="mb-2 text-lg font-semibold text-gray-100">Join Request Denied</h2>
+              <p className="mb-6 text-sm text-gray-400">The host has denied your request to join this meeting.</p>
+              <Button onClick={() => navigate('/meetings')} variant="primary" className="w-full justify-center">
+                Back to Meetings
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary-950 text-primary-500">
+                <Loader2 size={24} className="animate-spin" />
+              </div>
+              <h2 className="mb-2 text-lg font-semibold text-gray-100">Waiting for Host</h2>
+              <p className="mb-6 text-sm text-gray-400">You are in the waiting room. Please wait for the host to let you in.</p>
+              <Button onClick={() => navigate('/meetings')} variant="secondary" className="w-full justify-center">
+                Leave Waiting Room
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (error || !roomConfig) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950">
@@ -206,6 +299,34 @@ export default function MeetingRoom() {
 
   return (
     <div className="fixed inset-0 z-[100] bg-gray-950">
+      {/* Waiting Room Notifications for Host */}
+      {isHost && toArray(meeting?.waitingRoom).filter(w => w.status === 'waiting').length > 0 && (
+        <div className="fixed left-1/2 top-16 z-[160] flex w-[min(92vw,400px)] -translate-x-1/2 flex-col gap-2">
+          {toArray(meeting?.waitingRoom).filter(w => w.status === 'waiting').map(w => {
+            const waitingUser = users.find(u => u.id === w.userId);
+            if (!waitingUser) return null;
+            return (
+              <div key={w.userId} className="flex items-center justify-between rounded-lg border border-primary-800 bg-primary-950/95 p-3 shadow-xl">
+                <div className="flex items-center gap-3">
+                  <Avatar name={waitingUser.name} size="sm" />
+                  <div>
+                    <p className="text-sm font-semibold text-primary-100">{waitingUser.name}</p>
+                    <p className="text-xs text-primary-300">is asking to join the meeting</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleWaitingRoomAction(w.userId, 'approved')} className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700">
+                    <CheckSquare size={16} />
+                  </button>
+                  <button onClick={() => handleWaitingRoomAction(w.userId, 'rejected')} className="flex h-8 w-8 items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700">
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {connectionError && (
         <div className="fixed left-1/2 top-4 z-[150] w-[min(92vw,520px)] -translate-x-1/2 rounded-lg border border-red-800 bg-red-950/95 p-4 shadow-xl">
           <h2 className="text-sm font-semibold text-red-100">Meeting media server is unreachable</h2>
