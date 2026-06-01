@@ -48,6 +48,20 @@ public class Interview {
     private String expiryTimestamp;
     @Column(columnDefinition = "TEXT")
     private String joinStatus;
+    
+    // New fields added to match frontend
+    @Column(columnDefinition = "TEXT")
+    private String mode;
+    @Column(columnDefinition = "TEXT")
+    private String duration;
+    @Column(columnDefinition = "TEXT")
+    private String department;
+    @Column(columnDefinition = "TEXT")
+    private String round;
+    @Column(columnDefinition = "TEXT")
+    private String panelIds; // We can store this as a comma-separated string or JSON array
+    @Column(columnDefinition = "TEXT")
+    private String meetingId;
 
     public Interview() {
     }
@@ -244,6 +258,54 @@ public class Interview {
 
     public void setJoinStatus(String joinStatus) {
         this.joinStatus = joinStatus;
+    }
+    
+    public String getMode() {
+        return mode;
+    }
+
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
+
+    public String getDuration() {
+        return duration;
+    }
+
+    public void setDuration(String duration) {
+        this.duration = duration;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getRound() {
+        return round;
+    }
+
+    public void setRound(String round) {
+        this.round = round;
+    }
+
+    public String getPanelIds() {
+        return panelIds;
+    }
+
+    public void setPanelIds(String panelIds) {
+        this.panelIds = panelIds;
+    }
+
+    public String getMeetingId() {
+        return meetingId;
+    }
+
+    public void setMeetingId(String meetingId) {
+        this.meetingId = meetingId;
     }
 }
 

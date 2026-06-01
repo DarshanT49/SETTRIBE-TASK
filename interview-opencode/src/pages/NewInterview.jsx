@@ -25,6 +25,56 @@ export default function NewInterview() {
     panelIds: [], meetingLink: '', location: '', source: 'Job Portal',
     experience: '', jobDescription: '', resumeLink: '' });
 
+  const EMAIL_TEMPLATES = [
+    {
+      id: 'default',
+      name: 'Standard Interview',
+      content: `Hi {{candidateName}},
+
+You have been scheduled for an interview for the {{position}} position on {{date}} at {{time}}.
+
+Please click the link below to join the video call at the scheduled time:
+{{joinLink}}
+
+Best regards,
+SetTribe HR Team`
+    },
+    {
+      id: 'technical',
+      name: 'Technical Round',
+      content: `Hi {{candidateName}},
+
+Congratulations on moving to the technical round for the {{position}} position! 
+Your technical interview is scheduled on {{date}} at {{time}}.
+
+Please ensure you are in a quiet environment and have a stable internet connection.
+Join the video call using this link:
+{{joinLink}}
+
+Best regards,
+SetTribe Engineering & HR Team`
+    },
+    {
+      id: 'final',
+      name: 'Final HR Round',
+      content: `Hi {{candidateName}},
+
+We are excited to invite you to the final HR discussion for the {{position}} position.
+This interview will take place on {{date}} at {{time}}.
+
+You can join the video call here:
+{{joinLink}}
+
+We look forward to speaking with you!
+
+Best regards,
+SetTribe HR Team`
+    }
+  ];
+
+  const [selectedTemplateId, setSelectedTemplateId] = useState(EMAIL_TEMPLATES[0].id);
+  const [emailTemplate, setEmailTemplate] = useState(EMAIL_TEMPLATES[0].content);
+
   useEffect(() => {
     (async () => {
     const us = await asyncGet(KEYS.USERS) || [];
@@ -33,7 +83,7 @@ export default function NewInterview() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!form.candidateName || !form.position || !form.date || !form.time || !form.interviewerId) {
+    if (!form.candidateName || !form.candidateEmail || !form.position || !form.date || !form.time || !form.interviewerId) {
       toast.error('Please fill in all required fields'); return;
     }
     setLoading(true);
@@ -76,12 +126,17 @@ export default function NewInterview() {
       email: form.candidateEmail,
       referredBy: form.source,
       position: form.position,
+      department: form.department,
       interviewType: form.round,
+      round: form.round,
+      mode: form.mode,
+      duration: form.duration,
       date: form.date,
       time: form.time,
       link: meetingLink,
       meetingId: finalMeetingId,
       interviewerId: form.interviewerId,
+      panelIds: JSON.stringify(form.panelIds),
       status: 'scheduled',
       token: `token-${interviewId}`,
       notes: form.jobDescription,
@@ -107,22 +162,47 @@ export default function NewInterview() {
         relatedId: interviewId, relatedType: 'interview' });
     }
 
+    const frontendUrl = import.meta.env.VITE_FRONTEND_URL || 'https://settribe-task.onrender.com';
+    let internalLink = `${frontendUrl}${tokenLink}`;
+    // If the app is using a custom backend URL via localStorage, we must pass it to the candidate 
+    // so their device knows where to connect to the backend.
+    const storedApiBase = window.localStorage.getItem('settribe_api_base_url');
+    if (storedApiBase && !tokenLink.startsWith('http')) {
+      internalLink += `&apiBase=${encodeURIComponent(storedApiBase)}`;
+    }
+
+    const fullJoinLink = form.mode === 'online' 
+      ? (tokenLink.startsWith('http') ? tokenLink : internalLink)
+      : form.location || 'In Person';
+
+    let finalMessage = emailTemplate
+      .replace(/{{candidateName}}/g, form.candidateName)
+      .replace(/{{position}}/g, form.position)
+      .replace(/{{date}}/g, form.date)
+      .replace(/{{time}}/g, form.time)
+      .replace(/{{joinLink}}/g, fullJoinLink);
+      
+    const finalMessageHtml = finalMessage.replace(/\n/g, '<br/>');
+
     // Send candidate email via EmailJS
     const templateParams = {
       candidate_name: form.candidateName,
-      candidate_email: form.candidateEmail, // The user MUST put {{candidate_email}} in the "To Email" field in the dashboard!
-      interview_date: `${form.date} at ${form.time}`, // Combining date and time since template only has interview_date
+      candidate_email: form.candidateEmail,
+      interview_date: `${form.date} at ${form.time}`,
       role: form.position,
-      join_link: form.mode === 'online' ? `${window.location.origin}${tokenLink}` : form.location || 'In Person',
-      title: `Interview Invitation - ${form.position}`, // For Subject
-      name: 'SetTribe HR Team', // For "From Name"
-      email: currentUser?.email || 'noreply@settribe.com', // For "Reply To"
+      join_link: fullJoinLink,
+      title: `Interview Invitation - ${form.position}`,
+      name: 'SetTribe HR Team',
+      email: currentUser?.email || 'hr@settribe.com',
+      custom_message: finalMessage,
+      custom_message_html: finalMessageHtml
     };
 
     try {
-      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_goc9w1j';
-      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_drkqxne';
-      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'V07dNeUiCodm5y05d';
+      const { EMAIL_CONFIG } = await import('../utils/emailConfig');
+      const serviceId = EMAIL_CONFIG.SERVICE_ID;
+      const templateId = EMAIL_CONFIG.TEMPLATE_ID;
+      const publicKey = EMAIL_CONFIG.PUBLIC_KEY;
       
       console.log('Sending email with variables:', { serviceId, templateId, publicKey });
       
@@ -159,7 +239,7 @@ export default function NewInterview() {
           <h2 className="font-semibold text-gray-100 mb-4 flex items-center gap-2"><span className="w-5 h-5 bg-primary-600 rounded text-white text-xs flex items-center justify-center">1</span>Candidate Info</h2>
           <div className="grid grid-cols-2 gap-4">
             <Input label="Candidate Name *" value={form.candidateName} onChange={e => setForm({ ...form, candidateName: e.target.value })} />
-            <Input label="Email" type="email" value={form.candidateEmail} onChange={e => setForm({ ...form, candidateEmail: e.target.value })} />
+            <Input label="Email *" type="email" value={form.candidateEmail} onChange={e => setForm({ ...form, candidateEmail: e.target.value })} />
             <Input label="Phone" type="tel" value={form.candidatePhone} onChange={e => setForm({ ...form, candidatePhone: e.target.value })} />
             <Input label="Years of Experience" type="number" min="0" value={form.experience} onChange={e => setForm({ ...form, experience: e.target.value })} />
             <Select label="Source" value={form.source} onChange={e => setForm({ ...form, source: e.target.value })}>
@@ -220,6 +300,48 @@ export default function NewInterview() {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Email Customization */}
+        <div>
+          <h2 className="font-semibold text-gray-100 mb-4 flex items-center gap-2">
+            <span className="w-5 h-5 bg-primary-600 rounded text-white text-xs flex items-center justify-center">4</span>
+            Email to Candidate
+          </h2>
+          
+          <div className="mb-4">
+            <Select 
+              label="Select a Template" 
+              value={selectedTemplateId}
+              onChange={e => {
+                const tmpl = EMAIL_TEMPLATES.find(t => t.id === e.target.value);
+                if (tmpl) {
+                  setSelectedTemplateId(tmpl.id);
+                  setEmailTemplate(tmpl.content);
+                } else if (e.target.value === 'custom') {
+                  setSelectedTemplateId('custom');
+                }
+              }}
+            >
+              {EMAIL_TEMPLATES.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+              <option value="custom">Custom Template</option>
+            </Select>
+          </div>
+
+          <div className="mb-2 text-xs text-gray-400">
+            Customize the email below. Placeholders like <code>{`{{candidateName}}`}</code>, <code>{`{{date}}`}</code>, and <code>{`{{joinLink}}`}</code> will be replaced automatically.
+          </div>
+          <Textarea 
+            label="Email Message" 
+            value={emailTemplate} 
+            onChange={e => {
+              setEmailTemplate(e.target.value);
+              setSelectedTemplateId('custom');
+            }} 
+            rows={10}
+          />
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
