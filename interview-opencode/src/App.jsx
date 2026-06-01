@@ -6,6 +6,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { MainLayout } from './components/layout/MainLayout';
 import { AuthGuard, PublicRoute, RoleGuard } from './components/layout/Guards';
+import { MeetingAlert } from './components/MeetingAlert';
 
 // Pages
 import Login from './pages/Login';
@@ -83,6 +84,7 @@ export default function App() {
                 error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
               }}
             />
+            <MeetingAlert />
             <Routes>
               {/* Public Routes */}
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />

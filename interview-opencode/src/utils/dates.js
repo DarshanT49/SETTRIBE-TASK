@@ -1,4 +1,7 @@
-import { formatDistanceToNow, format, isToday, isYesterday, parseISO, addDays } from 'date-fns';
+import { formatDistanceToNow, parseISO, addDays } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
+
+const IST = 'Asia/Kolkata';
 
 export function formatRelativeTime(dateStr) {
   if (!dateStr) return '';
@@ -12,10 +15,10 @@ export function formatRelativeTime(dateStr) {
 export function formatDate(dateStr, fmt = 'dd MMM yyyy') {
   if (!dateStr) return '';
   try {
-    return format(parseISO(dateStr), fmt);
+    return formatInTimeZone(parseISO(dateStr), IST, fmt);
   } catch {
     try {
-      return format(new Date(dateStr), fmt);
+      return formatInTimeZone(new Date(dateStr), IST, fmt);
     } catch {
       return dateStr;
     }
@@ -26,9 +29,13 @@ export function formatDateTime(dateStr) {
   if (!dateStr) return '';
   try {
     const d = parseISO(dateStr);
-    if (isToday(d)) return `Today, ${format(d, 'hh:mm a')}`;
-    if (isYesterday(d)) return `Yesterday, ${format(d, 'hh:mm a')}`;
-    return format(d, 'dd MMM yyyy, hh:mm a');
+    const dateOnly = formatInTimeZone(d, IST, 'yyyy-MM-dd');
+    const today = formatInTimeZone(new Date(), IST, 'yyyy-MM-dd');
+    const yesterday = formatInTimeZone(new Date(Date.now() - 86400000), IST, 'yyyy-MM-dd');
+
+    if (dateOnly === today) return `Today, ${formatInTimeZone(d, IST, 'hh:mm a')}`;
+    if (dateOnly === yesterday) return `Yesterday, ${formatInTimeZone(d, IST, 'hh:mm a')}`;
+    return formatInTimeZone(d, IST, 'dd MMM yyyy, hh:mm a');
   } catch {
     return dateStr;
   }
@@ -37,13 +44,17 @@ export function formatDateTime(dateStr) {
 export function groupByDate(items, dateKey = 'createdAt') {
   const groups = { today: [], yesterday: [], thisWeek: [], older: [] };
   const now = new Date();
+  const todayStr = formatInTimeZone(now, IST, 'yyyy-MM-dd');
+  const yesterdayStr = formatInTimeZone(new Date(Date.now() - 86400000), IST, 'yyyy-MM-dd');
   const oneWeekAgo = new Date(now - 7 * 86400000);
 
   items.forEach(item => {
     try {
       const d = new Date(item[dateKey]);
-      if (isToday(d)) groups.today.push(item);
-      else if (isYesterday(d)) groups.yesterday.push(item);
+      const dStr = formatInTimeZone(d, IST, 'yyyy-MM-dd');
+      
+      if (dStr === todayStr) groups.today.push(item);
+      else if (dStr === yesterdayStr) groups.yesterday.push(item);
       else if (d >= oneWeekAgo) groups.thisWeek.push(item);
       else groups.older.push(item);
     } catch {
@@ -72,7 +83,9 @@ export function rescheduleMilestones(milestones, fromMilestoneId, delayDays) {
 }
 
 export function getMeetingDateTime(meeting) {
-  return new Date(`${meeting.date}T${meeting.time}`);
+  // Assume the meeting time in the database was intended for IST
+  // Append +05:30 so it parses to the exact UTC equivalent
+  return new Date(`${meeting.date}T${meeting.time}:00+05:30`);
 }
 
 export function canStartMeeting(meeting) {
@@ -104,3 +117,4 @@ export function getAvatarColor(id) {
   const sum = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
   return colors[sum % colors.length];
 }
+
