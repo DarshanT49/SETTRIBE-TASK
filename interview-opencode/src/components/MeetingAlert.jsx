@@ -13,6 +13,10 @@ export function MeetingAlert() {
 
   // Unlock audio context on first user interaction to bypass autoplay policy
   useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
     const unlockAudio = () => {
       if (!audioCtxRef.current) {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -122,6 +126,17 @@ export function MeetingAlert() {
           if (timeUntilMeeting > 0 && timeUntilMeeting <= FIVE_MINUTES) {
             setActiveAlert(meeting);
             startBeep();
+            
+            if ('Notification' in window && Notification.permission === 'granted') {
+              const notification = new Notification('Meeting Starting Soon', {
+                body: `${meeting.title} at ${formatDateTime(getMeetingDateTime(meeting).toISOString())}`,
+              });
+              notification.onclick = () => {
+                window.focus();
+                notification.close();
+              };
+            }
+
             break; // Only alert for one meeting at a time
           }
         }
