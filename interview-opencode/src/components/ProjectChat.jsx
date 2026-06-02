@@ -8,6 +8,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
+import { createNotification } from '../services/notifications';
 
 export default function ProjectChat({ project, users }) {
   const { currentUser } = useAuth();
@@ -19,6 +20,7 @@ export default function ProjectChat({ project, users }) {
   const [mentionFilter, setMentionFilter] = useState('');
   const [attachedFile, setAttachedFile] = useState(null);
   const [mentionIndex, setMentionIndex] = useState(-1);
+  const [selectedMentionIdx, setSelectedMentionIdx] = useState(0);
   
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -46,6 +48,16 @@ export default function ProjectChat({ project, users }) {
       onConnect: () => {
         client.subscribe(`/topic/project/${project.id}`, (message) => {
           const newMsg = JSON.parse(message.body);
+          
+          // Show a toast if I was mentioned in this incoming message
+          if (newMsg.senderId !== currentUser.id && newMsg.content) {
+            const mentionName = currentUser.name.replace(/\s+/g, '');
+            // Case-insensitive check
+            if (newMsg.content.toLowerCase().includes(`@${mentionName.toLowerCase()}`)) {
+              toast(`You were mentioned in ${project.title} chat!`, { icon: '🔔', duration: 4000 });
+            }
+          }
+
           setMessages(prev => {
             if (prev.find(m => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
@@ -86,18 +98,35 @@ export default function ProjectChat({ project, users }) {
       setShowMentions(true);
       setMentionFilter(lastWord.substring(1).toLowerCase());
       setMentionIndex(val.lastIndexOf('@'));
+      setSelectedMentionIdx(0); // Reset selection
     } else {
       setShowMentions(false);
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (showMentions && mentionSuggestions.length > 0) {
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        insertMention(mentionSuggestions[selectedMentionIdx] || mentionSuggestions[0]);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedMentionIdx(prev => Math.min(prev + 1, mentionSuggestions.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedMentionIdx(prev => Math.max(prev - 1, 0));
+      }
+    }
+  };
+
   const insertMention = (user) => {
     const before = input.substring(0, mentionIndex);
-    const after = input.substring(input.length);
-    // Replace the incomplete @mention with the full username
-    setInput(`${before}@${user.name} `);
+    const mentionName = user.name.replace(/\s+/g, '');
+    // Replace the incomplete @mention with the full username (without spaces)
+    setInput(`${before}@${mentionName} `);
     setShowMentions(false);
-    inputRef.current?.focus();
+    // Small timeout ensures the focus happens after the state update cycle
+    setTimeout(() => inputRef.current?.focus(), 0);
   };
 
   const handleFileAttach = (e) => {
@@ -144,6 +173,31 @@ export default function ProjectChat({ project, users }) {
       readBy: JSON.stringify([currentUser.id]),
       createdAt: new Date().toISOString()
     };
+
+    // Detect mentions
+    const mentionRegex = /@(\w+)/g;
+    const mentions = input.match(mentionRegex) || [];
+    const mentionedUsers = [];
+    
+    mentions.forEach(mention => {
+      const name = mention.substring(1).toLowerCase();
+      const user = users.find(u => u.name.replace(/\s+/g, '').toLowerCase() === name);
+      if (user && project.teamIds?.includes(user.id) && !mentionedUsers.includes(user.id)) {
+        mentionedUsers.push(user.id);
+      }
+    });
+
+    // Create persistent notifications for mentioned users
+    mentionedUsers.forEach(userId => {
+      createNotification({
+        userId,
+        type: 'mention',
+        title: 'New Mention',
+        message: `${currentUser.name} mentioned you in the ${project.title} project chat`,
+        relatedId: project.id,
+        relatedType: 'project'
+      });
+    });
 
     if (stompClient && stompClient.connected) {
       stompClient.publish({
@@ -300,11 +354,14 @@ export default function ProjectChat({ project, users }) {
         {/* Mentions Popover */}
         {showMentions && mentionSuggestions.length > 0 && (
           <div className="absolute bottom-full left-4 mb-2 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-20">
-            {mentionSuggestions.map(u => (
+            {mentionSuggestions.map((u, idx) => (
               <button 
-                key={u.id} 
+                key={u.id}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => insertMention(u)}
-                className="w-full flex items-center gap-2 p-2 hover:bg-gray-700 text-left transition-colors"
+                onMouseEnter={() => setSelectedMentionIdx(idx)}
+                className={`w-full flex items-center gap-2 p-2 text-left transition-colors ${selectedMentionIdx === idx ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
               >
                 <Avatar name={u.name} size="xs" />
                 <span className="text-sm text-gray-200">{u.name}</span>
@@ -335,6 +392,7 @@ export default function ProjectChat({ project, users }) {
               type="text"
               value={input}
               onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
               placeholder="Type a message... (Use @ to mention)"
               className="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-100 p-3 h-11"
               autoComplete="off"

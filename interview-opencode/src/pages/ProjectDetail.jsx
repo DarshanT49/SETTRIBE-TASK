@@ -12,6 +12,7 @@ import { Avatar, Button, Badge, Modal, Input, Select, Textarea, StatusBadge, Pri
 import { formatDate, formatRelativeTime, formatDateTime, rescheduleMilestones, isOverdue } from '../utils/dates';
 import { KanbanBoard } from '../components/kanban/KanbanBoard';
 import ProjectChat from '../components/ProjectChat';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -45,7 +46,6 @@ export default function ProjectDetail() {
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
 
   const load = useCallback(async () => {
-    await new Promise(r => setTimeout(r, 200));
     const projs = await asyncGet(KEYS.PROJECTS) || [];
     const proj = projs.find(p => p.id === id);
     if (!proj) { navigate('/projects'); return; }
@@ -61,6 +61,7 @@ export default function ProjectDetail() {
   }, [id, navigate]);
 
   useEffect(() => { load(); }, [load]);
+  useAutoRefresh(load);
 
   if (loading) return <Skeleton className="h-96" />;
   if (!project) return null;
@@ -230,7 +231,7 @@ function OverviewTab({ project, users, tasks, meetings, getUser, canManage, onAd
             <div><span className="text-gray-500">Start Date:</span> <span className="text-gray-300">{formatDate(project.startDate)}</span></div>
             <div><span className="text-gray-500">End Date:</span> <span className="text-gray-300">{formatDate(project.endDate)}</span></div>
             {project.deadline && <div><span className="text-gray-500">Deadline:</span> <span className="text-red-400">{formatDate(project.deadline)}</span></div>}
-            {project.repoLink && <div><a href={project.repoLink} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-primary-400 hover:text-primary-300"><ExternalLink size={12} />Repository</a></div>}
+
           </div>
           {project.technologies?.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1">

@@ -6,6 +6,7 @@ import { Button, Modal, Input, Select, Textarea, Toggle, EmptyState, Skeleton } 
 import { formatDate, isOverdue } from '../utils/dates';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 const REMINDER_OPTIONS = ['5min', '10min', '30min', '1hr', '1day'];
 
@@ -28,6 +29,8 @@ export default function SelfTasks() {
   useEffect(() => {
     load();
   }, [currentUser.id]);
+
+  useAutoRefresh(load);
 
   const handleSave = async () => {
     if (!form.title.trim()) { toast.error('Task title is required'); return; }
@@ -176,9 +179,9 @@ function TaskCard({ task, onToggle, onEdit, onDelete }) {
         <button onClick={() => onToggle(task.id)} className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${task.status === 'done' ? 'bg-emerald-600 border-emerald-600' : 'border-gray-600 hover:border-primary-500'}`}>
           {task.status === 'done' && <Check size={10} className="text-white" />}
         </button>
-        <div className="flex-1">
-          <p className={`text-sm font-medium ${task.status === 'done' ? 'line-through text-gray-500' : 'text-gray-200'}`}>{task.title}</p>
-          {task.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{task.description}</p>}
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-medium break-all ${task.status === 'done' ? 'line-through text-gray-500' : 'text-gray-200'}`}>{task.title}</p>
+          {task.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 break-all">{task.description}</p>}
           {task.date && (
             <p className={`text-xs mt-1.5 ${overdue ? 'text-red-400 font-medium' : 'text-gray-500'}`}>
               {task.date}{task.time ? ` at ${task.time}` : ''}
