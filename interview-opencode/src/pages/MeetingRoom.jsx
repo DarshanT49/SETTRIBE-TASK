@@ -804,7 +804,7 @@ export default function MeetingRoom() {
               <div className="flex gap-2 border-t border-gray-800 p-3 relative">
                 {mentionQuery !== null && (
                   <div className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-gray-700 bg-gray-900 shadow-xl overflow-hidden z-10 max-h-48 overflow-y-auto">
-                    {participants.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase())).map(u => (
+                    {participants.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase())).map((u, idx) => (
                       <button
                         key={u.id}
                         type="button"
@@ -966,6 +966,16 @@ function renderMessageText(text, mentions, users, isMine) {
   return elements;
 }
 
+function ActiveParticipantsTracker({ onActiveParticipantsChange }) {
+  const participants = useParticipants();
+  
+  useEffect(() => {
+    const activeIds = participants.map(p => p.identity).filter(Boolean);
+    onActiveParticipantsChange(activeIds);
+  }, [participants, onActiveParticipantsChange]);
+
+  return null;
+}
 
 const RemoteVideo = ({ stream, isMuted, ...props }) => {
   const videoRef = useRef(null);
