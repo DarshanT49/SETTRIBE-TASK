@@ -39,5 +39,14 @@ export async function saveStandupRecords(meetingId, records) {
 
 export async function getStandupRecords(meetingId) {
   const { data } = await api.get(`/meetings/${meetingId}/standups`);
+   return data;
+}
+export async function getMeetingChat(meetingId) {
+  const { data } = await api.get(`/meetings/${meetingId}/chat`);
+  return data;
+}
+
+export async function postMeetingChat(meetingId, message) {
+  const { data } = await api.post(`/meetings/${meetingId}/chat`, message);
   return data;
 }

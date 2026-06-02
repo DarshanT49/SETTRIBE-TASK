@@ -11,14 +11,15 @@ import {
   Users,
   X,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../contexts/AuthContext';
 import { Avatar, Button } from '../components/ui';
 import { KEYS, apiPut, asyncGet, asyncSet } from '../services/storage';
-import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft, saveStandupRecords } from '../services/meetings';
+import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft, getMeetingChat, postMeetingChat, saveStandupRecords } from '../services/meetings';
 
 export default function MeetingRoom() {
   const { id } = useParams();
@@ -48,10 +49,15 @@ export default function MeetingRoom() {
   });
   const joinedRef = useRef(false);
   const hasRequestedTokenRef = useRef(false);
+  const previousWaitingCount = useRef(0);
+  const audioRef = useRef(null);
+  const previousChatCount = useRef(0);
+  const chatAudioRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
     let pollInterval = null;
+    let chatPollInterval = null;
 
     const fetchMeetingData = async () => {
       const allMeetings = await asyncGet(KEYS.MEETINGS);
@@ -129,17 +135,35 @@ export default function MeetingRoom() {
         const m = await fetchMeetingData();
         if (m) {
           setMeeting(m);
-          setChatLogs(toArray(m.chatLogs));
           await checkWaitingRoomStatus(m);
         }
       } catch (e) {}
     }, 3000);
 
+    chatPollInterval = setInterval(async () => {
+      if (cancelled) return;
+      try {
+        const logs = await getMeetingChat(id);
+        if (logs) {
+          setChatLogs(logs);
+        }
+      } catch (e) {}
+    }, 1000);
+
     return () => {
       cancelled = true;
       if (pollInterval) clearInterval(pollInterval);
+      if (chatPollInterval) clearInterval(chatPollInterval);
       if (joinedRef.current && currentUser?.id) {
         markMeetingLeft(id, currentUser.id);
+        
+        asyncGet(KEYS.MEETINGS).then(meetings => {
+          const m = (meetings || []).find(item => item.id === id);
+          if (m && m.hostId !== currentUser.id) {
+            const updatedWait = toArray(m.waitingRoom).filter(w => w.userId !== currentUser.id);
+            apiPut(KEYS.MEETINGS, id, { ...m, waitingRoom: updatedWait });
+          }
+        }).catch(() => {});
       }
     };
   }, [currentUser, id, navigate]);
@@ -149,12 +173,63 @@ export default function MeetingRoom() {
     .filter(Boolean);
   const isHost = meeting?.hostId === currentUser.id;
 
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio('/universfield-new-notification-051-494246.mp3');
+    }
+    if (!chatAudioRef.current) {
+      chatAudioRef.current = new Audio('/koiroylers-live-chat-353605.mp3');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (meeting && isHost) {
+      const currentWaitingCount = toArray(meeting.waitingRoom).filter(w => w.status === 'waiting').length;
+      if (currentWaitingCount > previousWaitingCount.current) {
+        if (audioRef.current) {
+          audioRef.current.play().catch(e => console.warn('Audio blocked', e));
+        }
+      }
+      previousWaitingCount.current = currentWaitingCount;
+    }
+  }, [meeting, isHost]);
+
+  useEffect(() => {
+    const currentChatCount = chatLogs.length;
+    if (currentChatCount > previousChatCount.current && previousChatCount.current > 0) {
+      const latestMsg = chatLogs[currentChatCount - 1];
+      const senderId = latestMsg?.userId || latestMsg?.senderId;
+      if (senderId !== currentUser.id) {
+        if (chatAudioRef.current) {
+          chatAudioRef.current.play().catch(e => console.warn('Chat audio blocked', e));
+        }
+      }
+    }
+    previousChatCount.current = currentChatCount;
+  }, [chatLogs, currentUser.id]);
+
+  const handlePermitAll = async () => {
+    const updatedWait = toArray(meeting.waitingRoom).map(w => w.status === 'waiting' ? { ...w, status: 'approved' } : w);
+    const updatedMeeting = { ...meeting, waitingRoom: updatedWait };
+    setMeeting(updatedMeeting);
+    await apiPut(KEYS.MEETINGS, id, updatedMeeting);
+    toast.success('All pending requests approved');
+  };
+
   const handleWaitingRoomAction = async (userId, status) => {
     const updatedWait = toArray(meeting.waitingRoom).map(w => w.userId === userId ? { ...w, status } : w);
     const updatedMeeting = { ...meeting, waitingRoom: updatedWait };
     setMeeting(updatedMeeting);
     await apiPut(KEYS.MEETINGS, id, updatedMeeting);
     toast.success(status === 'approved' ? 'Allowed into meeting' : 'Denied entry');
+  };
+
+  const handleRequestAgain = async () => {
+    const updatedWait = toArray(meeting.waitingRoom).filter(w => w.userId !== currentUser.id);
+    updatedWait.push({ userId: currentUser.id, status: 'waiting', timestamp: new Date().toISOString() });
+    const updatedMeeting = { ...meeting, waitingRoom: updatedWait };
+    setMeeting(updatedMeeting);
+    await apiPut(KEYS.MEETINGS, id, updatedMeeting);
   };
 
   const handleConnected = useCallback(() => {
@@ -180,12 +255,19 @@ export default function MeetingRoom() {
       text: message.trim(),
       timestamp: new Date().toISOString()
     };
-    const newLogs = [...chatLogs, newMsg];
-    const updatedMeeting = { ...meeting, chatLogs: newLogs };
-    setChatLogs(newLogs);
+    
+    // Optimistic update
+    setChatLogs(prev => [...prev, newMsg]);
     setMessage('');
-    setMeeting(updatedMeeting);
-    await apiPut(KEYS.MEETINGS, id, updatedMeeting);
+
+    try {
+      const updatedLogs = await postMeetingChat(id, newMsg);
+      if (updatedLogs) {
+        setChatLogs(updatedLogs);
+      }
+    } catch (e) {
+      toast.error('Failed to send message');
+    }
   };
 
   const handleAddStandupInput = (userId) => {
@@ -285,9 +367,14 @@ export default function MeetingRoom() {
               </div>
               <h2 className="mb-2 text-lg font-semibold text-gray-100">Join Request Denied</h2>
               <p className="mb-6 text-sm text-gray-400">The host has denied your request to join this meeting.</p>
-              <Button onClick={() => navigate('/meetings')} variant="primary" className="w-full justify-center">
-                Back to Meetings
-              </Button>
+              <div className="flex flex-col gap-3">
+                <Button onClick={handleRequestAgain} variant="primary" className="w-full justify-center">
+                  Request Again
+                </Button>
+                <Button onClick={() => navigate('/meetings')} variant="secondary" className="w-full justify-center">
+                  Back to Meetings
+                </Button>
+              </div>
             </>
           ) : (
             <>
@@ -325,34 +412,6 @@ export default function MeetingRoom() {
 
   return (
     <div className="fixed inset-0 z-[100] bg-gray-950">
-      {/* Waiting Room Notifications for Host */}
-      {isHost && toArray(meeting?.waitingRoom).filter(w => w.status === 'waiting').length > 0 && (
-        <div className="fixed left-1/2 top-16 z-[160] flex w-[min(92vw,400px)] -translate-x-1/2 flex-col gap-2">
-          {toArray(meeting?.waitingRoom).filter(w => w.status === 'waiting').map(w => {
-            const waitingUser = users.find(u => u.id === w.userId);
-            if (!waitingUser) return null;
-            return (
-              <div key={w.userId} className="flex items-center justify-between rounded-lg border border-primary-800 bg-primary-950/95 p-3 shadow-xl">
-                <div className="flex items-center gap-3">
-                  <Avatar name={waitingUser.name} size="sm" />
-                  <div>
-                    <p className="text-sm font-semibold text-primary-100">{waitingUser.name}</p>
-                    <p className="text-xs text-primary-300">is asking to join the meeting</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleWaitingRoomAction(w.userId, 'approved')} className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700">
-                    <CheckSquare size={16} />
-                  </button>
-                  <button onClick={() => handleWaitingRoomAction(w.userId, 'rejected')} className="flex h-8 w-8 items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700">
-                    <X size={16} />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
       {connectionError && (
         <div className="fixed left-1/2 top-4 z-[150] w-[min(92vw,520px)] -translate-x-1/2 rounded-lg border border-red-800 bg-red-950/95 p-4 shadow-xl">
           <h2 className="text-sm font-semibold text-red-100">Meeting media server is unreachable</h2>
@@ -392,18 +451,24 @@ export default function MeetingRoom() {
           <div className="flex border-b border-gray-800 pr-11">
             {[
               ['participants', 'People', Users],
-              ['chat', 'Chat', MessageSquare]
+              ['chat', 'Chat', MessageSquare],
+              ...(isHost ? [['lobby', 'Lobby', Clock]] : []),
+              ...(isHost && meeting.type === 'standup' ? [['standup', 'Standup', Grid3X3]] : []),
+              ...(isHost && meeting.type === 'project' ? [['tasks', 'Tasks', CheckSquare]] : [])
             ].map(([tab, label, Icon]) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setSidePanel(tab)}
-                className={`flex flex-1 items-center justify-center gap-1 py-3 text-xs font-medium ${
+                className={`relative flex flex-1 items-center justify-center gap-1 py-3 text-xs font-medium ${
                   sidePanel === tab ? 'border-b-2 border-primary-500 text-primary-400' : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
                 <Icon size={14} />
-                {label}
+                <span className="hidden sm:inline">{label}</span>
+                {tab === 'lobby' && toArray(meeting?.waitingRoom).filter(w => w.status === 'waiting').length > 0 && (
+                  <span className="absolute right-2 top-2 flex h-2 w-2 rounded-full bg-red-500"></span>
+                )}
               </button>
             ))}
           </div>
@@ -500,6 +565,52 @@ export default function MeetingRoom() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {sidePanel === 'lobby' && isHost && (
+            <div className="flex min-h-0 flex-1 flex-col">
+              {toArray(meeting?.waitingRoom).filter(w => w.status === 'waiting').length > 0 && (
+                <div className="border-b border-gray-800 p-3">
+                  <button 
+                    onClick={handlePermitAll}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600/20 py-2 text-sm font-medium text-emerald-500 transition-colors hover:bg-emerald-600 hover:text-white"
+                  >
+                    <CheckSquare size={16} />
+                    Permit All
+                  </button>
+                </div>
+              )}
+              <div className="flex-1 space-y-2 overflow-y-auto p-3">
+                {toArray(meeting?.waitingRoom).filter(w => w.status === 'waiting').length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-sm text-gray-500">
+                    No pending requests
+                  </div>
+                ) : (
+                  toArray(meeting?.waitingRoom).filter(w => w.status === 'waiting').map(w => {
+                    const waitingUser = users.find(u => u.id === w.userId);
+                    if (!waitingUser) return null;
+                    return (
+                      <div key={w.userId} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-800/50 p-2">
+                        <div className="flex items-center gap-2">
+                          <Avatar name={waitingUser.name} size="xs" />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm text-gray-200">{waitingUser.name}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => handleWaitingRoomAction(w.userId, 'approved')} className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600/20 text-emerald-500 hover:bg-emerald-600 hover:text-white" title="Approve">
+                            <CheckSquare size={14} />
+                          </button>
+                          <button onClick={() => handleWaitingRoomAction(w.userId, 'rejected')} className="flex h-7 w-7 items-center justify-center rounded-md bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white" title="Deny">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
 
