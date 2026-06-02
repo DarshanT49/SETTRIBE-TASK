@@ -17,7 +17,7 @@ import {
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../contexts/AuthContext';
-import { Avatar, Button } from '../components/ui';
+import { Avatar, Button, Modal, EmptyState } from '../components/ui';
 import { KEYS, apiPut, asyncGet, asyncSet } from '../services/storage';
 import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft, getMeetingChat, postMeetingChat, saveStandupRecords } from '../services/meetings';
 
@@ -39,6 +39,8 @@ export default function MeetingRoom() {
   const [message, setMessage] = useState('');
   const [chatLogs, setChatLogs] = useState([]);
   const [standupData, setStandupData] = useState({});
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState(null);
   const [taskForm, setTaskForm] = useState({
     title: '',
     description: '',
@@ -238,13 +240,27 @@ export default function MeetingRoom() {
     markMeetingJoined(id, currentUser.id);
   }, [currentUser.id, id]);
 
-  const handleDisconnected = useCallback(() => {
+  const handleDisconnected = useCallback(async () => {
     if (joinedRef.current) {
-      joinedRef.current = false;
-      markMeetingLeft(id, currentUser.id);
-      navigate(`/meetings/${id}`);
+      setShowLeaveModal(true);
     }
-  }, [currentUser.id, id, navigate]);
+  }, []);
+
+  const confirmLeave = async () => {
+    setShowLeaveModal(false);
+    joinedRef.current = false;
+    markMeetingLeft(id, currentUser.id);
+    navigate(`/meetings/${id}`);
+  };
+
+  const cancelLeave = () => {
+    setShowLeaveModal(false);
+  };
+
+  const handleMentionSelect = (user) => {
+    setMessage(prev => prev.slice(0, prev.lastIndexOf('@')) + `@${user.name} `);
+    setMentionQuery(null);
+  };
 
   const sendMessage = async () => {
     if (!message.trim() || !meeting) return;
@@ -418,7 +434,7 @@ export default function MeetingRoom() {
           <p className="mt-1 text-xs leading-5 text-red-200">{connectionError}</p>
         </div>
       )}
-      <div className={`h-full ${panelOpen ? 'mr-80' : ''}`}>
+      <div className={`h-full relative ${panelOpen ? 'md:mr-[400px]' : ''}`}>
         <LiveKitRoom
           token={roomConfig.token}
           serverUrl={roomConfig.url}
@@ -447,7 +463,7 @@ export default function MeetingRoom() {
       </button>
 
       {panelOpen && (
-        <aside className="fixed bottom-0 right-0 top-0 z-[120] flex w-80 flex-col border-l border-gray-800 bg-gray-900">
+        <aside className="fixed bottom-0 right-0 top-0 z-[120] flex w-full md:w-[400px] flex-col border-l border-gray-800 bg-gray-900 shadow-2xl">
           <div className="flex border-b border-gray-800 pr-11">
             {[
               ['participants', 'People', Users],
@@ -616,28 +632,63 @@ export default function MeetingRoom() {
 
           {sidePanel === 'chat' && (
             <div className="flex min-h-0 flex-1 flex-col">
-              <div className="flex-1 space-y-3 overflow-y-auto p-3">
-                {chatLogs.map(msg => {
-                  const sender = users.find(user => user.id === (msg.userId || msg.senderId));
-                  const mine = (msg.userId || msg.senderId) === currentUser.id;
-                  return (
-                    <div key={msg.id || msg.timestamp} className={`flex gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
-                      <Avatar name={sender?.name || 'User'} size="xs" />
-                      <div className={`max-w-[80%] ${mine ? 'items-end' : ''} flex flex-col`}>
-                        <p className="mb-0.5 text-xs text-gray-500">{sender?.name?.split(' ')[0] || 'User'}</p>
-                        <div className={`rounded-lg px-3 py-2 text-sm ${mine ? 'bg-primary-700 text-white' : 'bg-gray-800 text-gray-200'}`}>
-                          {msg.text}
+              <div className="flex-1 space-y-3 overflow-y-auto p-3 relative">
+                {chatLogs.length === 0 ? (
+                  <EmptyState 
+                    icon={MessageSquare}
+                    title="No messages yet"
+                    description="Be the first to start the conversation"
+                  />
+                ) : (
+                  chatLogs.map(msg => {
+                    const sender = users.find(user => user.id === (msg.userId || msg.senderId));
+                    const mine = (msg.userId || msg.senderId) === currentUser.id;
+                    return (
+                      <div key={msg.id || msg.timestamp} className={`flex gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
+                        <Avatar name={sender?.name || 'User'} size="xs" />
+                        <div className={`max-w-[80%] ${mine ? 'items-end' : ''} flex flex-col`}>
+                          <p className="mb-0.5 text-xs text-gray-500">{sender?.name?.split(' ')[0] || 'User'}</p>
+                          <div className={`rounded-lg px-3 py-2 text-sm ${mine ? 'bg-primary-700 text-white' : 'bg-gray-800 text-gray-200'}`}>
+                            {msg.text}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
-              <div className="flex gap-2 border-t border-gray-800 p-3">
+              <div className="flex gap-2 border-t border-gray-800 p-3 relative">
+                {mentionQuery !== null && (
+                  <div className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-gray-700 bg-gray-900 shadow-xl overflow-hidden z-10 max-h-48 overflow-y-auto">
+                    {users.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase())).map(u => (
+                      <button
+                        key={u.id}
+                        className="flex w-full items-center gap-2 px-3 py-2 hover:bg-gray-800 text-left"
+                        onClick={() => handleMentionSelect(u)}
+                      >
+                        <Avatar name={u.name} size="xs" />
+                        <span className="text-sm text-gray-200">{u.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <input
                   value={message}
-                  onChange={event => setMessage(event.target.value)}
-                  onKeyDown={event => event.key === 'Enter' && sendMessage()}
+                  onChange={event => {
+                    const val = event.target.value;
+                    setMessage(val);
+                    const lastWord = val.split(' ').pop();
+                    if (lastWord.startsWith('@')) {
+                      setMentionQuery(lastWord.slice(1));
+                    } else {
+                      setMentionQuery(null);
+                    }
+                  }}
+                  onKeyDown={event => {
+                    if (event.key === 'Escape') setMentionQuery(null);
+                    else if (event.key === 'Enter') sendMessage();
+                  }}
+                  onBlur={() => setTimeout(() => setMentionQuery(null), 150)}
                   placeholder="Type a message..."
                   className="flex-1 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 outline-none focus:border-primary-600"
                 />
@@ -651,10 +702,21 @@ export default function MeetingRoom() {
               </div>
             </div>
           )}
-
-
         </aside>
       )}
+
+      <Modal isOpen={showLeaveModal} onClose={cancelLeave} title="Leave Meeting" size="sm">
+        <div className="p-5 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-950 text-red-500">
+            <X size={24} />
+          </div>
+          <p className="mb-6 text-sm text-gray-300">Are you sure you want to leave this meeting?</p>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={cancelLeave}>Cancel</Button>
+            <Button variant="danger" onClick={confirmLeave}>Leave</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
