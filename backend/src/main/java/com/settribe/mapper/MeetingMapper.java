@@ -17,6 +17,7 @@ public class MeetingMapper {
         dto.setId(entity.getId());
         dto.setTitle(entity.getTitle());
         dto.setAgenda(entity.getAgenda());
+        dto.setStandupType(entity.getStandupType());
         dto.setDate(entity.getDate());
         dto.setTime(entity.getTime());
         dto.setDuration(entity.getDuration());
@@ -44,6 +45,7 @@ public class MeetingMapper {
         entity.setId(dto.getId());
         entity.setTitle(dto.getTitle());
         entity.setAgenda(dto.getAgenda());
+        entity.setStandupType(dto.getStandupType());
         entity.setDate(dto.getDate());
         entity.setTime(dto.getTime());
         entity.setDuration(dto.getDuration());

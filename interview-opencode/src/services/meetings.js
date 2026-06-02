@@ -23,3 +23,21 @@ export async function markMeetingLeft(meetingId, userId) {
     console.warn('Unable to record meeting leave:', error);
   }
 }
+
+export async function markMeetingAbsent(meetingId, userId) {
+  try {
+    await api.post(`/meetings/${meetingId}/attendance/absent`, { userId });
+  } catch (error) {
+    console.warn('Unable to record meeting absent:', error);
+  }
+}
+
+export async function saveStandupRecords(meetingId, records) {
+  const { data } = await api.post(`/meetings/${meetingId}/standups`, records);
+  return data;
+}
+
+export async function getStandupRecords(meetingId) {
+  const { data } = await api.get(`/meetings/${meetingId}/standups`);
+  return data;
+}

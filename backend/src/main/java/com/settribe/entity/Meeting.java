@@ -14,8 +14,7 @@ public class Meeting {
     private String id;
     @Column(columnDefinition = "TEXT")
     private String title;
-    @Column(columnDefinition = "TEXT")
-    private String agenda;
+
     @Column(columnDefinition = "TEXT")
     private String date;
     @Column(columnDefinition = "TEXT")
@@ -26,10 +25,16 @@ public class Meeting {
     private String hostId;
     @Column(columnDefinition = "TEXT")
     private String type;
+    @Column(name = "agenda", columnDefinition = "TEXT")
+    private String agenda;
+
+    @Column(name = "standup_type")
+    private String standupType; // 'morning' or 'evening'
+
+    @Column(name = "external_link")
+    private String externalLink;
     @Column(columnDefinition = "TEXT")
     private String meetingMode;
-    @Column(columnDefinition = "TEXT")
-    private String externalLink;
     @Column(columnDefinition = "TEXT")
     private String projectId;
     @Column(columnDefinition = "TEXT")
@@ -93,6 +98,14 @@ public class Meeting {
 
     public void setAgenda(String agenda) {
         this.agenda = agenda;
+    }
+
+    public String getStandupType() {
+        return standupType;
+    }
+
+    public void setStandupType(String standupType) {
+        this.standupType = standupType;
     }
 
     public String getDate() {

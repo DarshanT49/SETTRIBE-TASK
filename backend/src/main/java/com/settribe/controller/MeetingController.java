@@ -84,6 +84,35 @@ public class MeetingController {
         return updateAttendance(id, request.getUserId(), false);
     }
 
+    @PostMapping("/{id}/attendance/absent")
+    public ResponseEntity<?> markAbsent(@PathVariable String id, @RequestBody MeetingAttendanceRequest request) {
+        MeetingDTO meeting = service.findById(id).orElse(null);
+        if (meeting == null) return ResponseEntity.notFound().build();
+        UserDTO user = userService.findById(request.getUserId()).orElse(null);
+        if (user == null || !canJoin(meeting, request.getUserId())) {
+            return ResponseEntity.status(403).body(Map.of("message", "User is not invited to this meeting"));
+        }
+        List<Map<String, Object>> logs = meeting.getAttendanceLogs() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(meeting.getAttendanceLogs());
+        // Only add if no existing entry for this user
+        boolean alreadyLogged = logs.stream().anyMatch(l -> request.getUserId().equals(String.valueOf(l.get("userId"))));
+        if (!alreadyLogged) {
+            java.util.LinkedHashMap<String, Object> absentLog = new java.util.LinkedHashMap<>();
+            absentLog.put("userId", request.getUserId());
+            absentLog.put("joinTime", null);
+            absentLog.put("leaveTime", null);
+            absentLog.put("durationMinutes", 0);
+            absentLog.put("status", "absent");
+            absentLog.put("selfReported", true);
+            absentLog.put("markedAt", Instant.now().toString());
+            logs.add(absentLog);
+            meeting.setAttendanceLogs(logs);
+            return ResponseEntity.ok(service.update(id, meeting));
+        }
+        return ResponseEntity.ok(meeting);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<MeetingDTO> update(@PathVariable String id, @RequestBody MeetingDTO entity) {
         try {
@@ -165,13 +194,33 @@ public class MeetingController {
         }
         if (joined) {
             if (activeLog == null) {
-                logs.add(new java.util.LinkedHashMap<>(Map.of(
-                        "userId", userId,
-                        "joinTime", Instant.now().toString()
-                )));
+                java.util.LinkedHashMap<String, Object> newLog = new java.util.LinkedHashMap<>();
+                newLog.put("userId", userId);
+                newLog.put("joinTime", Instant.now().toString());
+                newLog.put("leaveTime", null);
+                newLog.put("durationMinutes", 0);
+                newLog.put("status", "present");
+                logs.add(newLog);
             }
         } else if (activeLog != null) {
-            activeLog.put("leaveTime", Instant.now().toString());
+            String leaveTimeStr = Instant.now().toString();
+            activeLog.put("leaveTime", leaveTimeStr);
+            // Compute active duration in minutes
+            try {
+                Instant joinInstant = Instant.parse(String.valueOf(activeLog.get("joinTime")));
+                Instant leaveInstant = Instant.parse(leaveTimeStr);
+                long durationMinutes = java.time.Duration.between(joinInstant, leaveInstant).toMinutes();
+                activeLog.put("durationMinutes", durationMinutes);
+                // Determine status: partial if left before 80% of scheduled duration
+                long scheduledMinutes = 60;
+                if (meeting.getDuration() != null) {
+                    try { scheduledMinutes = Long.parseLong(meeting.getDuration().toString()); } catch (Exception ignored) {}
+                }
+                activeLog.put("status", durationMinutes >= scheduledMinutes * 0.8 ? "present" : "partial");
+            } catch (Exception e) {
+                activeLog.put("durationMinutes", 0);
+                activeLog.put("status", "present");
+            }
         }
         meeting.setAttendanceLogs(logs);
         return ResponseEntity.ok(service.update(meetingId, meeting));
