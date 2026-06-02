@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
 import { PriorityBadge, StatusBadge, Skeleton, EmptyState, Avatar } from '../components/ui';
 import { formatDate, isOverdue } from '../utils/dates';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 export default function MyTasks() {
   const { currentUser } = useAuth();
@@ -17,7 +18,6 @@ export default function MyTasks() {
 
   useEffect(() => {
     const load = async () => {
-      await new Promise(r => setTimeout(r, 200));
       const allTasks = await asyncGet(KEYS.TASKS) || [];
       let ts = allTasks.filter(t => t.assigneeIds.includes(currentUser.id));
       if (statusFilter !== 'all') ts = ts.filter(t => t.status === statusFilter);
@@ -28,6 +28,17 @@ export default function MyTasks() {
     };
     load();
   }, [currentUser.id, statusFilter]);
+
+  const load = async () => {
+    const allTasks = await asyncGet(KEYS.TASKS) || [];
+    let ts = allTasks.filter(t => t.assigneeIds.includes(currentUser.id));
+    if (statusFilter !== 'all') ts = ts.filter(t => t.status === statusFilter);
+    setTasks(ts);
+    setProjects(await asyncGet(KEYS.PROJECTS) || []);
+    setUsers(await asyncGet(KEYS.USERS) || []);
+  };
+
+  useAutoRefresh(load);
 
   const getProject = (id) => projects.find(p => p.id === id);
   const getUser = (id) => users.find(u => u.id === id);

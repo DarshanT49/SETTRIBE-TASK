@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone, Building, Calendar, Edit2, Save, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS,  asyncGet, asyncSet } from '../services/storage';
 import { Avatar, Badge, Button, Input, Select, StatusBadge, PriorityBadge, Skeleton } from '../components/ui';
 import { formatDate, formatRelativeTime } from '../utils/dates';
 import toast from 'react-hot-toast';
+import MyProgress from './MyProgress';
 
 const DEPARTMENTS = ['Engineering', 'Design', 'QA', 'HR', 'Management'];
 const ALL_ROLES = ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'];
@@ -26,7 +27,11 @@ export default function EmployeeProfile() {
   const [meetings, setMeetings] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('tab') || 'overview';
+  });
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({});
 
@@ -74,6 +79,7 @@ export default function EmployeeProfile() {
   const completion = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
 
   const TABS = ['overview', 'tasks', 'meetings'];
+  if (['intern', 'employee'].includes(employee.role)) TABS.push('performance');
   if (currentUser.role === 'admin') TABS.push('edit');
 
   return (
@@ -234,6 +240,13 @@ export default function EmployeeProfile() {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+
+      {/* Performance Tab (Intern/Employee only) */}
+      {activeTab === 'performance' && ['intern', 'employee'].includes(employee.role) && (
+        <div className="mt-4">
+          <MyProgress targetEmployee={employee} isEmbedded={true} />
         </div>
       )}
 
