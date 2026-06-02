@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet, asyncSet, apiPut } from '../services/storage';
 import { createNotification, createBulkNotifications } from '../services/notifications';
 import { Avatar, Button, Badge, Modal, Select, Textarea, StatusBadge, Skeleton, Input } from '../components/ui';
-import { formatDate, formatDateTime, formatDuration, canStartMeeting } from '../utils/dates';
+import { formatDate, formatDateTime, formatDuration, canStartMeeting, getMeetingStatus } from '../utils/dates';
+import { markMeetingAbsent } from '../services/meetings';
 import toast from 'react-hot-toast';
 
 export default function MeetingDetail() {
@@ -84,6 +85,8 @@ export default function MeetingDetail() {
   const standupLogs = safeParse(meeting.standupLogs);
   const taskAssignedInMeeting = safeParse(meeting.taskAssignedInMeeting);
   const attendanceLogs = safeParse(meeting.attendanceLogs);
+  
+  const effectiveStatus = getMeetingStatus(meeting);
 
   const handleCantAttend = async () => {
     const allRsvps = await asyncGet(KEYS.MEETING_RSVPS) || [];
@@ -150,6 +153,26 @@ export default function MeetingDetail() {
     load();
   };
 
+  const handleMissedMeeting = async () => {
+    // API call to the backend
+    await markMeetingAbsent(id, currentUser.id);
+    
+    // Optimistic UI update
+    const updatedLogs = [...attendanceLogs, {
+      userId: currentUser.id,
+      joinTime: null,
+      leaveTime: null,
+      durationMinutes: 0,
+      status: 'absent',
+      selfReported: true,
+      markedAt: new Date().toISOString()
+    }];
+    const updatedMeeting = { ...meeting, attendanceLogs: updatedLogs };
+    await apiPut(KEYS.MEETINGS, id, updatedMeeting);
+    setMeeting(updatedMeeting);
+    toast.success('Attendance marked as absent');
+  };
+
   const rsvpStatus = { attending: { color: 'text-emerald-400', icon: '✅' }, declined: { color: 'text-red-400', icon: '❌' }, no_response: { color: 'text-gray-500', icon: '⬜' } };
 
   const TABS = [
@@ -171,7 +194,7 @@ export default function MeetingDetail() {
             <div className="flex-1">
               <div className="flex items-center gap-3 flex-wrap mb-3">
                 <h1 className="text-2xl font-bold text-gray-100">{meeting.title}</h1>
-                <StatusBadge status={meeting.status} />
+                <StatusBadge status={effectiveStatus} />
                 <span className="badge bg-blue-900/40 text-blue-400 border border-blue-800/50 capitalize px-3 py-1">{meeting.type}</span>
                 {relatedProject && (
                   <Link to={`/projects/${relatedProject.id}`} className="badge bg-purple-900/30 text-purple-400 border border-purple-800/50 hover:bg-purple-900/50 transition-colors flex items-center gap-1">
@@ -190,7 +213,7 @@ export default function MeetingDetail() {
             </div>
             
             <div className="flex flex-col gap-3 min-w-[140px]">
-              {(isParticipant || isHost) && canJoin && meeting.status !== 'completed' && (isHost || myRsvp?.status !== 'declined') && (
+              {(isParticipant || isHost) && canJoin && effectiveStatus !== 'completed' && effectiveStatus !== 'cancelled' && (isHost || myRsvp?.status !== 'declined') && (
                 <Link to={`/meetings/${id}/room`} className="w-full">
                   <Button className="w-full justify-center shadow-lg shadow-primary-900/20"><Video size={16} />Join Meeting</Button>
                 </Link>
@@ -200,14 +223,22 @@ export default function MeetingDetail() {
                   <Button variant="secondary" className="w-full justify-center"><LinkIcon size={14} /> External Link</Button>
                 </a>
               )}
-              {isHost && meeting.status !== 'completed' && (
+              {isHost && (
                 <Button variant="secondary" onClick={() => setShowRescheduleModal(true)} className="w-full justify-center"><Calendar size={14} /> Reschedule</Button>
               )}
-              {isParticipant && myRsvp?.status !== 'declined' && meeting.status !== 'completed' && (
+              {isParticipant && myRsvp?.status !== 'declined' && effectiveStatus === 'upcoming' && (
                 <Button variant="danger" size="sm" onClick={() => setShowCantAttend(true)}>Can't Attend</Button>
               )}
               {!isParticipant && meeting.allowJoinRequests && !(meeting.joinRequests || []).find(r => r.userId === currentUser.id) && (
                 <Button variant="secondary" size="sm" onClick={handleJoinRequest}><UserPlus size={14} />Request to Join</Button>
+              )}
+              
+              {/* I Missed This Meeting button for participants after completion if not in logs */}
+              {effectiveStatus === 'completed' && isParticipant && 
+               !attendanceLogs.some(l => l.userId === currentUser.id) && (
+                <Button variant="secondary" size="sm" onClick={handleMissedMeeting} className="w-full justify-center border-red-900/50 text-red-400 hover:bg-red-900/20">
+                  <XCircle size={14} /> I Missed This Meeting
+                </Button>
               )}
             </div>
           </div>
@@ -368,71 +399,116 @@ export default function MeetingDetail() {
           {/* TAB: Attendance */}
           {activeTab === 'attendance' && (
             <div className="card p-6 animate-fade-in space-y-6">
-              <h2 className="text-lg font-semibold text-gray-100 flex items-center gap-2">Meeting Attendance Logs</h2>
+              <h2 className="text-lg font-semibold text-gray-100 flex items-center gap-2">Meeting Attendance Roster</h2>
               
-              {/* Absent/Declined Section (Available anytime) */}
-              {(() => {
-                const declined = rsvps.filter(r => r.meetingId === id && r.status === 'declined');
-                if (declined.length === 0) return null;
-                return (
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">Declined / Expected Absent</h3>
-                    {declined.map((rsvp, idx) => {
-                      const u = getUser(rsvp.userId);
-                      return (
-                        <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-red-900/10 border border-red-900/30 rounded-lg gap-2">
-                          <div className="flex items-center gap-3">
-                            <Avatar name={u?.name} size="sm" />
-                            <div>
-                              <span className="text-sm font-medium text-red-400 block">{u?.name}</span>
-                              <span className="text-xs text-red-500/70">{rsvp.reason}</span>
-                            </div>
-                          </div>
-                          {rsvp.notes && (
-                            <div className="text-xs text-gray-400 bg-gray-900/50 p-2 rounded max-w-xs break-words border border-gray-800">
-                              {rsvp.notes}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              })()}
+              {effectiveStatus !== 'completed' ? (
+                <div className="text-center py-8 bg-gray-800/30 rounded-xl border border-gray-700/50 border-dashed">
+                  <Clock size={24} className="mx-auto text-gray-600 mb-2" />
+                  <p className="text-gray-400 text-sm">Attendance roster will be available once the meeting is completed.</p>
+                </div>
+              ) : (
+                <>
+                  {(() => {
+                    const scheduledMinutes = parseInt(meeting.duration) || 60;
+                    // Build roster: everyone in participantIds (and host)
+                    const allInvited = Array.from(new Set([meeting.hostId, ...meeting.participantIds]));
+                    
+                    const roster = allInvited.map(uid => {
+                      const u = getUser(uid);
+                      const log = attendanceLogs.find(l => l.userId === uid);
+                      const rsvp = rsvps.find(r => r.meetingId === id && r.userId === uid);
+                      
+                      let status = 'absent';
+                      let durationMinutes = 0;
+                      let joinTime = null;
+                      let leaveTime = null;
+                      
+                      if (log) {
+                        status = log.status || 'present';
+                        durationMinutes = log.durationMinutes || 0;
+                        joinTime = log.joinTime;
+                        leaveTime = log.leaveTime;
+                      }
+                      
+                      const percent = Math.min(100, Math.round((durationMinutes / scheduledMinutes) * 100));
+                      
+                      return { uid, user: u, status, durationMinutes, percent, joinTime, leaveTime, rsvp };
+                    });
 
-              {/* Real Attendance Logs (Only available after completion) */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-3">Actual Attendance</h3>
-                {meeting.status !== 'completed' ? (
-                  <div className="text-center py-8 bg-gray-800/30 rounded-xl border border-gray-700/50 border-dashed">
-                    <Clock size={24} className="mx-auto text-gray-600 mb-2" />
-                    <p className="text-gray-400 text-sm">Attendance logs will be available once the meeting is completed.</p>
-                  </div>
-                ) : attendanceLogs.length === 0 ? (
-                  <div className="text-center py-8 bg-gray-800/30 rounded-xl border border-gray-700/50 border-dashed">
-                    <Users size={24} className="mx-auto text-gray-600 mb-2" />
-                    <p className="text-gray-400 text-sm">No attendance data recorded.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {attendanceLogs.map((log, idx) => {
-                      const u = getUser(log.userId);
-                      return (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-800/50 border border-gray-700 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <Avatar name={u?.name} size="sm" />
-                            <span className="text-sm font-medium text-gray-200">{u?.name}</span>
+                    const presentCount = roster.filter(r => r.status === 'present').length;
+                    const partialCount = roster.filter(r => r.status === 'partial').length;
+                    const absentCount = roster.filter(r => r.status === 'absent').length;
+                    const rate = roster.length > 0 ? Math.round(((presentCount + partialCount) / roster.length) * 100) : 0;
+
+                    return (
+                      <div className="space-y-6">
+                        {/* Summary Cards */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl text-center">
+                            <p className="text-xs text-gray-500 mb-1">Present</p>
+                            <p className="text-2xl font-semibold text-emerald-400">{presentCount}</p>
                           </div>
-                          <div className="text-right">
-                            <span className="text-xs text-emerald-400/80 block">Joined: {log.joinTime ? new Date(log.joinTime).toLocaleTimeString() : '-'}</span>
-                            <span className="text-xs text-gray-500 block">Left: {log.leaveTime ? new Date(log.leaveTime).toLocaleTimeString() : '-'}</span>
+                          <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl text-center">
+                            <p className="text-xs text-gray-500 mb-1">Absent</p>
+                            <p className="text-2xl font-semibold text-red-400">{absentCount}</p>
+                          </div>
+                          <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl text-center">
+                            <p className="text-xs text-gray-500 mb-1">Partial</p>
+                            <p className="text-2xl font-semibold text-yellow-400">{partialCount}</p>
+                          </div>
+                          <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl text-center">
+                            <p className="text-xs text-gray-500 mb-1">Attendance Rate</p>
+                            <p className="text-2xl font-semibold text-blue-400">{rate}%</p>
                           </div>
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
+
+                        {/* Roster List */}
+                        <div className="space-y-3">
+                          {roster.map(r => (
+                            <div key={r.uid} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-800/30 border border-gray-700 rounded-xl gap-4">
+                              <div className="flex items-center gap-3 w-1/3">
+                                <Avatar name={r.user?.name} size="md" />
+                                <div>
+                                  <span className="text-sm font-medium text-gray-200 block">{r.user?.name || 'Unknown'}</span>
+                                  <span className={`text-xs font-semibold capitalize
+                                    ${r.status === 'present' ? 'text-emerald-400' : 
+                                      r.status === 'partial' ? 'text-yellow-400' : 'text-red-400'}`}>
+                                    {r.status}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <div className="flex-1 flex justify-center text-xs text-gray-400 space-x-6">
+                                {r.status !== 'absent' ? (
+                                  <>
+                                    <div><span className="text-gray-500 block">Joined</span>{r.joinTime ? new Date(r.joinTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '-'}</div>
+                                    <div><span className="text-gray-500 block">Left</span>{r.leaveTime ? new Date(r.leaveTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '-'}</div>
+                                    <div><span className="text-gray-500 block">Active Time</span>{formatDuration(r.durationMinutes)}</div>
+                                  </>
+                                ) : (
+                                  <div className="text-gray-500 italic">
+                                    {r.rsvp?.status === 'declined' ? `Declined (${r.rsvp.reason})` : 'Did not join'}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="w-24">
+                                <div className="text-xs text-gray-500 text-right mb-1">{r.percent}%</div>
+                                <div className="w-full bg-gray-700 rounded-full h-1.5">
+                                  <div 
+                                    className={`h-1.5 rounded-full ${r.percent >= 80 ? 'bg-emerald-500' : r.percent > 0 ? 'bg-yellow-500' : 'bg-red-500'}`} 
+                                    style={{ width: `${r.percent}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
             </div>
           )}
         </div>

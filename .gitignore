@@ -1,0 +1,17 @@
+# Eclipse
+.metadata/
+
+# Eclipse project files
+.project
+.classpath
+.settings/
+
+# Build output
+target/
+bin/
+
+# Node
+node_modules/
+
+# Logs
+*.log

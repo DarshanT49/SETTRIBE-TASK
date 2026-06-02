@@ -95,6 +95,18 @@ export function canStartMeeting(meeting) {
   return diff <= 15 * 60000 && diff > -2 * 3600000; // 15 min before to 2 hrs after
 }
 
+// Derives the effective meeting status from current time, overriding stale stored values.
+export function getMeetingStatus(m) {
+  // Honour explicit terminal states stored in DB
+  if (m.status === 'cancelled') return 'cancelled';
+  const start = getMeetingDateTime(m);
+  const end = new Date(start.getTime() + (parseInt(m.duration) || 60) * 60000);
+  const now = new Date();
+  if (now >= end) return 'completed';
+  if (now >= start) return 'ongoing';
+  return 'upcoming';
+}
+
 export function formatDuration(minutes) {
   const m = parseInt(minutes);
   if (m < 60) return `${m} min`;

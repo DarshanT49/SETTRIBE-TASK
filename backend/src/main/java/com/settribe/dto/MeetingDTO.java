@@ -7,6 +7,7 @@ public class MeetingDTO {
     private String id;
     private String title;
     private String agenda;
+    private String standupType;
     private String date;
     private String time;
     private String duration;
@@ -28,10 +29,11 @@ public class MeetingDTO {
 
     public MeetingDTO() {}
 
-    public MeetingDTO(String id, String title, String agenda, String date, String time, String duration, String hostId, String type, String meetingMode, String externalLink, String projectId, String status, Boolean allowJoinRequests, String createdAt) {
+    public MeetingDTO(String id, String title, String agenda, String standupType, String date, String time, String duration, String hostId, String type, String meetingMode, String externalLink, String projectId, String status, Boolean allowJoinRequests, String createdAt) {
         this.id = id;
         this.title = title;
         this.agenda = agenda;
+        this.standupType = standupType;
         this.date = date;
         this.time = time;
         this.duration = duration;
@@ -67,6 +69,14 @@ public class MeetingDTO {
 
     public void setAgenda(String agenda) {
         this.agenda = agenda;
+    }
+
+    public String getStandupType() {
+        return standupType;
+    }
+
+    public void setStandupType(String standupType) {
+        this.standupType = standupType;
     }
 
     public String getDate() {

@@ -1,17 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Calendar, List } from 'lucide-react';
+import { Plus, Search, Calendar, List, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
 import { Button, Avatar, Badge, StatusBadge, EmptyState, Skeleton } from '../components/ui';
-import { formatDate, formatDuration, getMeetingDateTime, canStartMeeting } from '../utils/dates';
+import { formatDate, formatDuration, getMeetingDateTime, canStartMeeting, getMeetingStatus } from '../utils/dates';
+
+
 
 const TYPE_COLORS = {
   standup: 'bg-blue-900/40 text-blue-400 border border-blue-800/50',
   project: 'bg-purple-900/40 text-purple-400 border border-purple-800/50',
   hr: 'bg-orange-900/40 text-orange-400 border border-orange-800/50',
   interview: 'bg-red-900/40 text-red-400 border border-red-800/50',
-  general: 'bg-gray-800 text-gray-400 border border-gray-700' };
+  general: 'bg-gray-800 text-gray-400 border border-gray-700'
+};
 
 export default function Meetings() {
   const { currentUser } = useAuth();
@@ -23,6 +26,8 @@ export default function Meetings() {
   const [filter, setFilter] = useState('upcoming');
   const [typeFilter, setTypeFilter] = useState('');
   const [viewMode, setViewMode] = useState('list');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   useEffect(() => {
     const load = async () => {
@@ -40,16 +45,42 @@ export default function Meetings() {
 
   const myRsvp = (meetingId) => rsvps.find(r => r.meetingId === meetingId && r.userId === currentUser.id);
 
-  const filtered = meetings.filter(m => {
+  const isAdmin = currentUser.role === 'admin';
+
+  // Non-admins can only see meetings they are a participant or host of.
+  // Admins see every meeting.
+  const visibleMeetings = isAdmin
+    ? meetings
+    : meetings.filter(m => m.hostId === currentUser.id || (m.participantIds || []).includes(currentUser.id));
+
+  const filtered = visibleMeetings.filter(m => {
     const matchSearch = !search || m.title.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === 'all' ? true : filter === 'upcoming' ? m.date >= today : filter === 'past' ? m.date < today : m.participantIds.includes(currentUser.id) || m.hostId === currentUser.id;
+    const effectiveStatus = getMeetingStatus(m);
+    let matchFilter;
+    if (filter === 'all') {
+      matchFilter = true;
+    } else if (filter === 'upcoming') {
+      matchFilter = effectiveStatus === 'upcoming' || effectiveStatus === 'ongoing';
+    } else if (filter === 'past') {
+      matchFilter = effectiveStatus === 'completed' || effectiveStatus === 'cancelled';
+    } else {
+      // 'my' – meetings I host or am a participant in
+      matchFilter = m.hostId === currentUser.id || (m.participantIds || []).includes(currentUser.id);
+    }
     const matchType = !typeFilter || m.type === typeFilter;
     return matchSearch && matchFilter && matchType;
   }).sort((a, b) => {
-    const da = new Date(`${a.date}T${a.time}`);
-    const db = new Date(`${b.date}T${b.time}`);
-    return filter === 'past' ? db - da : da - db;
+    const da = new Date(`${a.date}T${a.time}:00+05:30`);
+    const db = new Date(`${b.date}T${b.time}:00+05:30`);
+    // Always descending — latest meeting first
+    return db - da;
   });
+
+  // Reset to page 1 whenever filters/search change
+  useEffect(() => { setPage(1); }, [search, filter, typeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const rsvpColors = { attending: 'text-emerald-400', declined: 'text-red-400', no_response: 'text-gray-500' };
 
@@ -92,7 +123,7 @@ export default function Meetings() {
           action={<Link to="/meetings/new"><Button><Plus size={14} />Schedule Meeting</Button></Link>} />
       ) : viewMode === 'list' ? (
         <div className="space-y-3">
-          {filtered.map(m => {
+          {paginated.map(m => {
             const host = getUser(m.hostId);
             const rsvp = myRsvp(m.id);
             const canJoin = canStartMeeting(m);
@@ -103,7 +134,7 @@ export default function Meetings() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <Link to={`/meetings/${m.id}`} className="font-semibold text-gray-100 hover:text-primary-400 transition-colors">{m.title}</Link>
                       <span className={`badge ${TYPE_COLORS[m.type]}`}>{m.type}</span>
-                      <StatusBadge status={m.status} />
+                      <StatusBadge status={getMeetingStatus(m)} />
                     </div>
                     <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                       <span>📅 {m.date} at {m.time}</span>
@@ -111,13 +142,13 @@ export default function Meetings() {
                       <span className="flex items-center gap-1.5">
                         <Avatar name={host?.name} size="xs" />Host: {host?.name}
                       </span>
-                      <span>👥 {m.participantIds.length} participants</span>
+                      <span>👥 {(m.participantIds || []).length} participants</span>
                     </div>
                     {rsvp && <span className={`text-xs font-medium mt-1 block ${rsvpColors[rsvp.status]}`}>RSVP: {rsvp.status.replace('_', ' ')}</span>}
                   </div>
                   <div className="flex gap-2">
                     <Link to={`/meetings/${m.id}`}><Button variant="secondary" size="sm">Details</Button></Link>
-                    {canJoin && m.status !== 'completed' && (
+                    {canJoin && getMeetingStatus(m) !== 'completed' && getMeetingStatus(m) !== 'cancelled' && (
                       <Link to={`/meetings/${m.id}/room`}><Button size="sm">Join</Button></Link>
                     )}
                   </div>
@@ -125,6 +156,53 @@ export default function Meetings() {
               </div>
             );
           })}
+
+          {/* Pagination Bar */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2 border-t border-gray-800">
+              <p className="text-xs text-gray-500">
+                Showing{' '}
+                <span className="text-gray-300 font-medium">{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)}</span>
+                {' '}of{' '}
+                <span className="text-gray-300 font-medium">{filtered.length}</span> meetings
+              </p>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setPage(1)} disabled={page === 1}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-100 hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="First page">
+                  <ChevronsLeft size={15} />
+                </button>
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-100 hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Previous page">
+                  <ChevronLeft size={15} />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .reduce((acc, p, idx, arr) => {
+                    if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((item, idx) =>
+                    item === '...' ? (
+                      <span key={`e${idx}`} className="px-1.5 text-gray-600 text-xs select-none">…</span>
+                    ) : (
+                      <button key={item} onClick={() => setPage(item)}
+                        className={`min-w-[30px] h-[30px] rounded-lg text-xs font-medium transition-all ${page === item ? 'bg-primary-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-100 hover:bg-gray-800'}`}>
+                        {item}
+                      </button>
+                    )
+                  )}
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-100 hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Next page">
+                  <ChevronRight size={15} />
+                </button>
+                <button onClick={() => setPage(totalPages)} disabled={page === totalPages}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-100 hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Last page">
+                  <ChevronsRight size={15} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <CalendarView meetings={filtered} />

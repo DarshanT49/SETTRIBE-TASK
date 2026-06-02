@@ -17,7 +17,7 @@ export default function NewMeeting() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     title: '', agenda: '', date: '', time: '', duration: '60',
-    type: 'general', participantIds: [], meetingMode: 'internal',
+    type: 'general', standupType: 'morning', participantIds: [], meetingMode: 'internal',
     externalLink: '', projectId: searchParams.get('projectId') || '',
     allowJoinRequests: true });
 
@@ -103,6 +103,22 @@ export default function NewMeeting() {
             </Select>
           )}
         </div>
+
+        {form.type === 'standup' && (
+          <div className="p-4 bg-gray-800/50 rounded-xl">
+            <label className="label mb-3">Standup Type</label>
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" checked={form.standupType === 'morning'} onChange={() => setForm({ ...form, standupType: 'morning' })} className="text-primary-600" />
+                <span className="text-sm text-gray-300">Morning (What will you do today?)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" checked={form.standupType === 'evening'} onChange={() => setForm({ ...form, standupType: 'evening' })} className="text-primary-600" />
+                <span className="text-sm text-gray-300">Evening (What did you do today?)</span>
+              </label>
+            </div>
+          </div>
+        )}
 
         {/* Meeting Mode */}
         <div className="p-4 bg-gray-800/50 rounded-xl">

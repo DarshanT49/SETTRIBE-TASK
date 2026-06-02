@@ -10,6 +10,8 @@ import {
   Send,
   Users,
   X,
+  ChevronDown,
+  ChevronUp,
   Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -17,7 +19,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../contexts/AuthContext';
 import { Avatar, Button } from '../components/ui';
 import { KEYS, apiPut, asyncGet, asyncSet } from '../services/storage';
-import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft, getMeetingChat, postMeetingChat } from '../services/meetings';
+import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft, getMeetingChat, postMeetingChat, saveStandupRecords } from '../services/meetings';
 
 export default function MeetingRoom() {
   const { id } = useParams();
@@ -32,6 +34,8 @@ export default function MeetingRoom() {
   const [connectionError, setConnectionError] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
   const [sidePanel, setSidePanel] = useState('participants');
+  const [expandedUserId, setExpandedUserId] = useState(null);
+  const [dynamicStandupInputs, setDynamicStandupInputs] = useState({});
   const [message, setMessage] = useState('');
   const [chatLogs, setChatLogs] = useState([]);
   const [standupData, setStandupData] = useState({});
@@ -64,7 +68,9 @@ export default function MeetingRoom() {
       if (cancelled) return;
       
       const isHost = m.hostId === currentUser.id;
-      const requiresApproval = !['employee', 'hr', 'admin'].includes(currentUser.role) && !isHost;
+      const isAdmin = currentUser.role === 'admin';
+      // Admin and host bypass the waiting room entirely
+      const requiresApproval = !isAdmin && !isHost;
       
       const waitingRoom = toArray(m.waitingRoom);
       const myWaitStatus = waitingRoom.find(w => w.userId === currentUser.id)?.status;
@@ -264,33 +270,51 @@ export default function MeetingRoom() {
     }
   };
 
-  const handleSubmitStandup = async (participantId) => {
-    const data = standupData[participantId];
-    if (!data?.yesterday && !data?.today) {
-      toast.error('Please fill in at least Yesterday and Today fields');
-      return;
-    }
-    const logs = [
-      ...toArray(meeting.standupLogs),
-      { ...data, userId: participantId, loggedBy: currentUser.id, timestamp: new Date().toISOString() }
-    ];
-    const updatedMeeting = { ...meeting, standupLogs: logs };
-    setMeeting(updatedMeeting);
-    await apiPut(KEYS.MEETINGS, id, updatedMeeting);
-    toast.success('Stand-up logged');
+  const handleAddStandupInput = (userId) => {
+    const currentInputs = dynamicStandupInputs[userId] || [''];
+    setDynamicStandupInputs({ ...dynamicStandupInputs, [userId]: [...currentInputs, ''] });
   };
 
-  const handleAssignTask = async () => {
-    if (!taskForm.title || taskForm.assigneeIds.length === 0) {
-      toast.error('Task title and assignees are required');
+  const handleStandupInputChange = (userId, index, value) => {
+    const currentInputs = dynamicStandupInputs[userId] || [''];
+    const newInputs = [...currentInputs];
+    newInputs[index] = value;
+    setDynamicStandupInputs({ ...dynamicStandupInputs, [userId]: newInputs });
+  };
+
+  const handleSubmitStandup = async (participantId) => {
+    const inputs = dynamicStandupInputs[participantId] || [];
+    const validInputs = inputs.filter(i => i.trim() !== '');
+    if (validInputs.length === 0) {
+      toast.error('Please fill in at least one task');
+      return;
+    }
+    
+    try {
+      const records = validInputs.map(content => ({
+        userId: participantId,
+        content: content.trim()
+      }));
+      await saveStandupRecords(id, records);
+      toast.success('Standup records saved successfully');
+      setDynamicStandupInputs({ ...dynamicStandupInputs, [participantId]: [''] }); // reset
+    } catch (err) {
+      toast.error('Failed to save standup records');
+    }
+  };
+
+  const handleAssignTask = async (participantId) => {
+    if (!taskForm.title) {
+      toast.error('Task title is required');
       return;
     }
     const newTask = {
       id: uuidv4(),
-      projectId: taskForm.projectId,
+      projectId: meeting.projectId || taskForm.projectId || '',
       milestoneId: null,
       sprintId: null,
       ...taskForm,
+      assigneeIds: [participantId],
       creatorId: currentUser.id,
       assignedBy: currentUser.id,
       status: 'todo',
@@ -312,7 +336,7 @@ export default function MeetingRoom() {
     setMeeting(updatedMeeting);
     await apiPut(KEYS.MEETINGS, id, updatedMeeting);
     setTaskForm({ title: '', description: '', assigneeIds: [], projectId: '', priority: 'medium', dueDate: '' });
-    toast.success('Task assigned');
+    toast.success('Task assigned to participant');
   };
 
   if (loading) {
@@ -327,7 +351,9 @@ export default function MeetingRoom() {
   }
 
   const isHostNow = meeting?.hostId === currentUser.id;
-  const requiresApproval = currentUser && !['employee', 'hr', 'admin'].includes(currentUser.role) && !isHostNow;
+  const isAdminNow = currentUser.role === 'admin';
+  // Admin and host never go to the waiting room
+  const requiresApproval = !isAdminNow && !isHostNow;
   const myWaitStatus = toArray(meeting?.waitingRoom).find(w => w.userId === currentUser.id)?.status;
 
   if (requiresApproval && myWaitStatus !== 'approved') {
@@ -449,17 +475,96 @@ export default function MeetingRoom() {
 
           {sidePanel === 'participants' && (
             <div className="flex-1 space-y-2 overflow-y-auto p-3">
-              {participants.map(user => (
-                <div key={user.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-gray-800">
-                  <Avatar name={user.name} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm text-gray-200">
-                      {user.name} {user.id === meeting.hostId && <span className="text-xs text-primary-400">(Host)</span>}
-                    </p>
-                    <p className="text-xs capitalize text-gray-500">{user.role}</p>
+              {participants.map(user => {
+                const isExpanded = expandedUserId === user.id;
+                const showAccordion = isHost && (meeting.type === 'standup' || meeting.type === 'project') && !['admin', 'manager'].includes(user.role);
+                
+                return (
+                  <div key={user.id} className="rounded-lg bg-gray-800/50 border border-gray-700/50 overflow-hidden">
+                    <div 
+                      onClick={() => showAccordion && setExpandedUserId(isExpanded ? null : user.id)}
+                      className={`flex items-center gap-3 p-3 ${showAccordion ? 'cursor-pointer hover:bg-gray-700/50' : ''}`}
+                    >
+                      <Avatar name={user.name} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-gray-200">
+                          {user.name} {user.id === meeting.hostId && <span className="text-xs text-primary-400">(Host)</span>}
+                        </p>
+                        <p className="text-xs capitalize text-gray-500">{user.role}</p>
+                      </div>
+                      {showAccordion && (
+                        <div className="text-gray-500">
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </div>
+                      )}
+                    </div>
+
+                    {isExpanded && showAccordion && (
+                      <div className="p-3 border-t border-gray-700/50 bg-gray-900/50">
+                        {meeting.type === 'standup' && (
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-semibold text-primary-300 uppercase">
+                              {meeting.standupType === 'evening' ? 'Evening Standup (What did you do today?)' : 'Morning Standup (What will you do today?)'}
+                            </h4>
+                            
+                            {(dynamicStandupInputs[user.id] || ['']).map((val, idx) => (
+                              <input 
+                                key={idx}
+                                className="input-field text-xs w-full mb-2"
+                                placeholder={`Task ${idx + 1}...`}
+                                value={val}
+                                onChange={(e) => handleStandupInputChange(user.id, idx, e.target.value)}
+                              />
+                            ))}
+                            
+                            <button
+                              type="button"
+                              onClick={() => handleAddStandupInput(user.id)}
+                              className="text-xs text-primary-400 hover:text-primary-300 mb-2 flex items-center gap-1"
+                            >
+                              <Plus size={12} /> Add another task
+                            </button>
+                            
+                            <button
+                              type="button"
+                              onClick={() => handleSubmitStandup(user.id)}
+                              className="w-full rounded-lg bg-primary-600 py-1.5 text-xs text-white hover:bg-primary-700"
+                            >
+                              Save Standup Records
+                            </button>
+                          </div>
+                        )}
+
+                        {meeting.type === 'project' && (
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-semibold text-primary-300 uppercase">Assign Project Task</h4>
+                            <input className="input-field text-xs w-full" placeholder="Task title *" value={taskForm.title} onChange={event => setTaskForm({ ...taskForm, title: event.target.value })} />
+                            <textarea className="input-field text-xs w-full" rows={2} placeholder="Description" value={taskForm.description} onChange={event => setTaskForm({ ...taskForm, description: event.target.value })} />
+                            <input className="input-field text-xs w-full" type="date" value={taskForm.dueDate} onChange={event => setTaskForm({ ...taskForm, dueDate: event.target.value })} />
+                            <select className="input-field text-xs w-full" value={taskForm.priority} onChange={event => setTaskForm({ ...taskForm, priority: event.target.value })}>
+                              {['low', 'medium', 'high', 'critical'].map(priority => <option key={priority} value={priority}>{priority}</option>)}
+                            </select>
+                            {!meeting.projectId && projects.length > 0 && (
+                              <select className="input-field text-xs w-full" value={taskForm.projectId} onChange={event => setTaskForm({ ...taskForm, projectId: event.target.value })}>
+                                <option value="">Select project</option>
+                                {projects.map(project => <option key={project.id} value={project.id}>{project.title}</option>)}
+                              </select>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleAssignTask(user.id)}
+                              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 py-1.5 text-xs text-white hover:bg-primary-700"
+                            >
+                              <Plus size={12} />
+                              Assign Task
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -547,80 +652,7 @@ export default function MeetingRoom() {
             </div>
           )}
 
-          {sidePanel === 'standup' && isHost && (
-            <div className="flex-1 space-y-4 overflow-y-auto p-3">
-              {participants.filter(user => !['admin', 'manager'].includes(user.role)).map(user => (
-                <div key={user.id} className="rounded-lg bg-gray-800/50 p-3">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Avatar name={user.name} size="xs" />
-                    <span className="text-sm font-medium text-gray-200">{user.name}</span>
-                  </div>
-                  {['yesterday', 'today', 'blockers'].map(field => (
-                    <textarea
-                      key={field}
-                      placeholder={field}
-                      className="input-field mb-2 text-xs"
-                      rows={2}
-                      onChange={event => setStandupData(data => ({
-                        ...data,
-                        [user.id]: { ...(data[user.id] || {}), [field]: event.target.value }
-                      }))}
-                    />
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => handleSubmitStandup(user.id)}
-                    className="w-full rounded-lg bg-primary-600 py-1.5 text-xs text-white hover:bg-primary-700"
-                  >
-                    Log Stand-up
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
 
-          {sidePanel === 'tasks' && isHost && (
-            <div className="flex-1 space-y-3 overflow-y-auto p-3">
-              <input className="input-field text-sm" placeholder="Task title *" value={taskForm.title} onChange={event => setTaskForm({ ...taskForm, title: event.target.value })} />
-              <textarea className="input-field text-sm" rows={2} placeholder="Description" value={taskForm.description} onChange={event => setTaskForm({ ...taskForm, description: event.target.value })} />
-              <input className="input-field text-sm" type="date" value={taskForm.dueDate} onChange={event => setTaskForm({ ...taskForm, dueDate: event.target.value })} />
-              <select className="input-field text-sm" value={taskForm.priority} onChange={event => setTaskForm({ ...taskForm, priority: event.target.value })}>
-                {['low', 'medium', 'high', 'critical'].map(priority => <option key={priority} value={priority}>{priority}</option>)}
-              </select>
-              {projects.length > 0 && (
-                <select className="input-field text-sm" value={taskForm.projectId} onChange={event => setTaskForm({ ...taskForm, projectId: event.target.value })}>
-                  <option value="">No project</option>
-                  {projects.map(project => <option key={project.id} value={project.id}>{project.title}</option>)}
-                </select>
-              )}
-              <div className="space-y-1">
-                <p className="text-xs text-gray-500">Assign To</p>
-                {participants.map(user => (
-                  <label key={user.id} className="flex cursor-pointer items-center gap-2 py-1">
-                    <input
-                      type="checkbox"
-                      checked={taskForm.assigneeIds.includes(user.id)}
-                      onChange={event => setTaskForm(form => ({
-                        ...form,
-                        assigneeIds: event.target.checked
-                          ? [...form.assigneeIds, user.id]
-                          : form.assigneeIds.filter(userId => userId !== user.id)
-                      }))}
-                    />
-                    <span className="text-xs text-gray-300">{user.name}</span>
-                  </label>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={handleAssignTask}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 py-2 text-sm text-white hover:bg-primary-700"
-              >
-                <Plus size={14} />
-                Assign Task
-              </button>
-            </div>
-          )}
         </aside>
       )}
     </div>
