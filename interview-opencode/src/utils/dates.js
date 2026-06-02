@@ -99,6 +99,7 @@ export function canStartMeeting(meeting) {
 export function getMeetingStatus(m) {
   // Honour explicit terminal states stored in DB
   if (m.status === 'cancelled') return 'cancelled';
+  if (m.status === 'completed' || m.endedByHost) return 'completed';
   const start = getMeetingDateTime(m);
   const end = new Date(start.getTime() + (parseInt(m.duration) || 60) * 60000);
   const now = new Date();
