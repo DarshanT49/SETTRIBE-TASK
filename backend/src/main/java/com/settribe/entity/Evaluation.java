@@ -28,6 +28,8 @@ public class Evaluation {
     @Column(length = 2000)
     private String notes;
     @Column(columnDefinition = "TEXT")
+    private String skillsAssessed;
+    @Column(columnDefinition = "TEXT")
     private String createdAt;
 
     public Evaluation() {}
@@ -56,6 +58,8 @@ public class Evaluation {
     public void setRecommendation(String recommendation) { this.recommendation = recommendation; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    public String getSkillsAssessed() { return skillsAssessed; }
+    public void setSkillsAssessed(String skillsAssessed) { this.skillsAssessed = skillsAssessed; }
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
 }

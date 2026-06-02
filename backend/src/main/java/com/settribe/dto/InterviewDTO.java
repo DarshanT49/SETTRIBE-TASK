@@ -20,6 +20,13 @@ public class InterviewDTO {
     private String createdAt;
     private String expiryTimestamp;
     private String joinStatus;
+    
+    private String mode;
+    private String duration;
+    private String department;
+    private String round;
+    private String panelIds;
+    private String meetingId;
 
     public InterviewDTO() {}
 
@@ -216,4 +223,17 @@ public class InterviewDTO {
     public void setJoinStatus(String joinStatus) {
         this.joinStatus = joinStatus;
     }
+
+    public String getMode() { return mode; }
+    public void setMode(String mode) { this.mode = mode; }
+    public String getDuration() { return duration; }
+    public void setDuration(String duration) { this.duration = duration; }
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+    public String getRound() { return round; }
+    public void setRound(String round) { this.round = round; }
+    public String getPanelIds() { return panelIds; }
+    public void setPanelIds(String panelIds) { this.panelIds = panelIds; }
+    public String getMeetingId() { return meetingId; }
+    public void setMeetingId(String meetingId) { this.meetingId = meetingId; }
 }

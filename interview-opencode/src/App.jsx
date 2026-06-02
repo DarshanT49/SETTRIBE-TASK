@@ -30,6 +30,7 @@ import NewInterview from './pages/NewInterview';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
 import JoinInterview from './pages/JoinInterview';
+import CandidateFeedback from './pages/CandidateFeedback';
 
 // Simple pending / denied pages
 function PendingApprovalPage() {
@@ -95,6 +96,7 @@ export default function App() {
               {/* Meeting Room (Full Screen, no layout) */}
               <Route path="/meetings/:id/room" element={<AuthGuard><MeetingRoom /></AuthGuard>} />
               <Route path="/join-interview/:token" element={<JoinInterview />} />
+              <Route path="/candidate-feedback/:interviewId" element={<CandidateFeedback />} />
 
               {/* Protected Routes with Layout */}
               <Route path="/*" element={

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit, Plus, Lock, AlertTriangle, CheckCircle, Clock,
   MoreVertical, Users, FileText, History, KanbanSquare, Target,
-  ChevronDown, Download, Trash, ExternalLink, Calendar
+  ChevronDown, Download, Trash, ExternalLink, Calendar, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS,  asyncGet, asyncSet } from '../services/storage';
@@ -11,11 +11,13 @@ import { createBulkNotifications, createNotification } from '../services/notific
 import { Avatar, Button, Badge, Modal, Input, Select, Textarea, StatusBadge, PriorityBadge, Skeleton, EmptyState, Toggle } from '../components/ui';
 import { formatDate, formatRelativeTime, formatDateTime, rescheduleMilestones, isOverdue } from '../utils/dates';
 import { KanbanBoard } from '../components/kanban/KanbanBoard';
+import ProjectChat from '../components/ProjectChat';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: Target },
+  { id: 'chat', label: 'Team Chat', icon: MessageSquare },
   { id: 'requirements', label: 'Requirements', icon: FileText },
   { id: 'milestones', label: 'Milestones', icon: Target },
   { id: 'tasks', label: 'Tasks', icon: KanbanSquare },
@@ -162,6 +164,7 @@ export default function ProjectDetail() {
 
       {/* Tab Content */}
       {activeTab === 'overview' && <OverviewTab project={project} users={users} tasks={tasks} meetings={meetings} getUser={getUser} canManage={canManage} onAddMember={() => setShowAddMemberModal(true)} onRefresh={load} />}
+      {activeTab === 'chat' && <ProjectChat project={project} users={users} />}
       {activeTab === 'requirements' && <RequirementsTab requirements={requirements} users={users} canManage={canManage} projectId={id} onRefresh={load} project={project} />}
       {activeTab === 'milestones' && <MilestonesTab milestones={milestones} canManage={canManage} onMarkComplete={handleMarkComplete} onMarkDelayed={(ms) => setShowDelayModal(ms)} onAddMilestone={() => setShowMilestoneModal(true)} />}
       {activeTab === 'tasks' && <KanbanBoard project={project} tasks={tasks} users={users} currentUser={currentUser} canManage={canManage} onRefresh={load} />}
