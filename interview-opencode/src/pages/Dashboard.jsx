@@ -9,37 +9,38 @@ import { KEYS, asyncGet } from '../services/storage';
 import { Avatar, Badge, Button, StatusBadge, PriorityBadge, Skeleton } from '../components/ui';
 import { formatRelativeTime, formatDate, canStartMeeting, getMeetingStatus } from '../utils/dates';
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const load = async () => {
+    const users = await asyncGet(KEYS.USERS) || [];
+    const projects = await asyncGet(KEYS.PROJECTS) || [];
+    const tasks = await asyncGet(KEYS.TASKS) || [];
+    const meetings = await asyncGet(KEYS.MEETINGS) || [];
+    const interviews = await asyncGet(KEYS.INTERVIEWS) || [];
+    const requests = await asyncGet(KEYS.REGISTRATION_REQUESTS) || [];
+    const milestones = await asyncGet(KEYS.MILESTONES) || [];
+    const selfTasks = await asyncGet(KEYS.SELF_TASKS) || [];
+    const projectHistory = await asyncGet(KEYS.PROJECT_HISTORY) || [];
+
+    const today = new Date().toISOString().split('T')[0];
+    const thisWeek = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+
+    setData({
+      users, projects, tasks, meetings, interviews, requests, milestones, selfTasks, projectHistory,
+      today, thisWeek });
+    setLoading(false);
+  };
+
   useEffect(() => {
-    (async () => {
-    const load = async () => {
-      await new Promise(r => setTimeout(r, 300));
-      const users = await asyncGet(KEYS.USERS) || [];
-      const projects = await asyncGet(KEYS.PROJECTS) || [];
-      const tasks = await asyncGet(KEYS.TASKS) || [];
-      const meetings = await asyncGet(KEYS.MEETINGS) || [];
-      const interviews = await asyncGet(KEYS.INTERVIEWS) || [];
-      const requests = await asyncGet(KEYS.REGISTRATION_REQUESTS) || [];
-      const milestones = await asyncGet(KEYS.MILESTONES) || [];
-      const selfTasks = await asyncGet(KEYS.SELF_TASKS) || [];
-      const projectHistory = await asyncGet(KEYS.PROJECT_HISTORY) || [];
-
-      const today = new Date().toISOString().split('T')[0];
-      const thisWeek = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
-
-      setData({
-        users, projects, tasks, meetings, interviews, requests, milestones, selfTasks, projectHistory,
-        today, thisWeek });
-      setLoading(false);
-    };
     load();
-  })();
   }, []);
+
+  useAutoRefresh(load);
 
   if (loading) return <DashboardSkeleton />;
   if (!data) return null;

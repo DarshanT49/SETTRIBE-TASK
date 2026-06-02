@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LiveKitRoom, VideoConference } from '@livekit/components-react';
+import { LiveKitRoom, VideoConference, useParticipants } from '@livekit/components-react';
 import {
   CheckSquare,
   Grid3X3,
@@ -52,6 +52,8 @@ export default function MeetingRoom() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [initialMedia, setInitialMedia] = useState({ audio: true, video: true });
   const [mentionQuery, setMentionQuery] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [selectedMentionIdx, setSelectedMentionIdx] = useState(0);
   const [taskForm, setTaskForm] = useState({
     title: '',
     description: '',
@@ -79,19 +81,19 @@ export default function MeetingRoom() {
 
     const checkWaitingRoomStatus = async (m) => {
       if (cancelled) return;
-      
+
       const isHost = m.hostId === currentUser.id;
       const isAdmin = currentUser.role === 'admin';
-      
+
       const isHostPresent = toArray(m.attendanceLogs).some(l => l.userId === m.hostId && !l.leaveTime);
-      
+
       if (!isHost && !isAdmin && !isHostPresent) {
         return;
       }
-      
+
       const meetingTime = getMeetingDateTime(m);
       const minutesLate = (new Date() - meetingTime) / 60000;
-      
+
       let requiresApproval = false;
       if (!isAdmin && !isHost) {
         if (['employee', 'hr', 'manager'].includes(currentUser.role)) {
@@ -102,7 +104,7 @@ export default function MeetingRoom() {
           requiresApproval = true;
         }
       }
-      
+
       const waitingRoom = toArray(m.waitingRoom);
       const myWaitStatus = waitingRoom.find(w => w.userId === currentUser.id)?.status;
 
@@ -133,7 +135,7 @@ export default function MeetingRoom() {
           asyncGet(KEYS.USERS),
           asyncGet(KEYS.PROJECTS)
         ]);
-        
+
         if (!foundMeeting) {
           handleGoBack();
           return;
@@ -176,7 +178,7 @@ export default function MeetingRoom() {
           setMeeting(m);
           await checkWaitingRoomStatus(m);
         }
-      } catch (e) {}
+      } catch (e) { }
     }, 3000);
 
     chatPollInterval = setInterval(async () => {
@@ -186,7 +188,7 @@ export default function MeetingRoom() {
         if (logs) {
           setChatLogs(logs);
         }
-      } catch (e) {}
+      } catch (e) { }
     }, 1000);
 
     return () => {
@@ -196,7 +198,7 @@ export default function MeetingRoom() {
       if (joinedRef.current && currentUser?.id) {
         markMeetingLeft(id, currentUser.id);
       }
-      
+
       if (currentUser?.id) {
         asyncGet(KEYS.MEETINGS).then(meetings => {
           const m = (meetings || []).find(item => item.id === id);
@@ -207,7 +209,7 @@ export default function MeetingRoom() {
               apiPut(KEYS.MEETINGS, id, { ...m, waitingRoom: updatedWait });
             }
           }
-        }).catch(() => {});
+        }).catch(() => { });
       }
     };
   }, [currentUser, id, navigate]);
@@ -248,7 +250,7 @@ export default function MeetingRoom() {
     if (currentChatCount > previousChatCount.current && previousChatCount.current > 0) {
       const latestMsg = chatLogs[currentChatCount - 1];
       const isMine = (latestMsg.userId || latestMsg.senderId) === currentUser.id;
-      
+
       if (!isMine) {
         if (chatAudioRef.current) {
           chatAudioRef.current.play().catch(e => console.warn('Chat audio blocked', e));
@@ -334,14 +336,19 @@ export default function MeetingRoom() {
     setShowLeaveModal(false);
   };
 
+  const handleActiveParticipantsChange = useCallback((users) => {
+    setOnlineUsers(users);
+  }, []);
+
   const handleMentionSelect = (user) => {
-    setMessage(prev => prev.slice(0, prev.lastIndexOf('@')) + `@${user.name} `);
+    const mentionName = user.name.replace(/\s+/g, '');
+    setMessage(prev => prev.slice(0, prev.lastIndexOf('@')) + `@${mentionName} `);
     setMentionQuery(null);
   };
 
   const sendMessage = async () => {
     if (!message.trim() || !meeting) return;
-    
+
     const mentionedUsers = participants.filter(u => message.includes(`@${u.name}`));
     const mentions = mentionedUsers.map(u => u.id);
 
@@ -353,7 +360,7 @@ export default function MeetingRoom() {
       mentions: mentions,
       timestamp: new Date().toISOString()
     };
-    
+
     // Optimistic update
     setChatLogs(prev => [...prev, newMsg]);
     setMessage('');
@@ -403,7 +410,7 @@ export default function MeetingRoom() {
       toast.error('Please fill in at least one task');
       return;
     }
-    
+
     try {
       const records = validInputs.map(content => ({
         userId: participantId,
@@ -466,9 +473,9 @@ export default function MeetingRoom() {
 
   const isHostNow = meeting?.hostId === currentUser.id;
   const isAdminNow = currentUser.role === 'admin';
-  
+
   const isHostPresentNow = toArray(meeting?.attendanceLogs).some(l => l.userId === meeting?.hostId && !l.leaveTime);
-  
+
   if (!isHostNow && !isAdminNow && !isHostPresentNow) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950">
@@ -488,7 +495,7 @@ export default function MeetingRoom() {
 
   const meetingTimeNow = meeting ? getMeetingDateTime(meeting) : new Date();
   const minutesLateNow = (new Date() - meetingTimeNow) / 60000;
-  
+
   let requiresApproval = false;
   if (!isAdminNow && !isHostNow) {
     if (['employee', 'hr', 'manager'].includes(currentUser.role)) {
@@ -579,6 +586,7 @@ export default function MeetingRoom() {
           data-lk-theme="default"
           className="h-full"
         >
+          <ActiveParticipantsTracker onActiveParticipantsChange={handleActiveParticipantsChange} />
           <VideoConference />
         </LiveKitRoom>
       </div>
@@ -612,29 +620,10 @@ export default function MeetingRoom() {
 
       {panelOpen && (
         <aside className="fixed bottom-0 right-0 top-0 z-[120] flex w-full md:w-[400px] flex-col border-l border-gray-800 bg-gray-900 shadow-2xl">
-          <div className="flex border-b border-gray-800 pr-11">
-            {[
-              ['participants', 'People', Users],
-              ['chat', 'Chat', MessageSquare],
-              ...(isHost ? [['lobby', 'Lobby', Clock]] : []),
-              ...(isHost && meeting.type === 'standup' ? [['standup', 'Standup', Grid3X3]] : []),
-              ...(isHost && meeting.type === 'project' ? [['tasks', 'Tasks', CheckSquare]] : [])
-            ].map(([tab, label, Icon]) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setSidePanel(tab)}
-                className={`relative flex flex-1 items-center justify-center gap-1 py-3 text-xs font-medium ${
-                  sidePanel === tab ? 'border-b-2 border-primary-500 text-primary-400' : 'text-gray-500 hover:text-gray-300'
-                }`}
-              >
-                <Icon size={14} />
-                <span className="hidden sm:inline">{label}</span>
-                {tab === 'lobby' && toArray(meeting?.waitingRoom).filter(w => w.status === 'waiting').length > 0 && (
-                  <span className="absolute right-2 top-2 flex h-2 w-2 rounded-full bg-red-500"></span>
-                )}
-              </button>
-            ))}
+          <div className="flex items-center border-b border-gray-800 p-3 pr-12 min-h-[50px]">
+            <h3 className="text-sm font-semibold text-gray-100 capitalize">
+              {sidePanel === 'participants' ? 'People' : sidePanel}
+            </h3>
           </div>
 
           {sidePanel === 'participants' && (
@@ -642,10 +631,10 @@ export default function MeetingRoom() {
               {participants.map(user => {
                 const isExpanded = expandedUserId === user.id;
                 const showAccordion = isHost && (meeting.type === 'standup' || meeting.type === 'project') && !['admin', 'manager'].includes(user.role);
-                
+
                 return (
                   <div key={user.id} className="rounded-lg bg-gray-800/50 border border-gray-700/50 overflow-hidden">
-                    <div 
+                    <div
                       onClick={() => showAccordion && setExpandedUserId(isExpanded ? null : user.id)}
                       className={`flex items-center gap-3 p-3 ${showAccordion ? 'cursor-pointer hover:bg-gray-700/50' : ''}`}
                     >
@@ -654,7 +643,14 @@ export default function MeetingRoom() {
                         <p className="truncate text-sm text-gray-200">
                           {user.name} {user.id === meeting.hostId && <span className="text-xs text-primary-400">(Host)</span>}
                         </p>
-                        <p className="text-xs capitalize text-gray-500">{user.role}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-xs capitalize text-gray-500">{user.role}</p>
+                          {onlineUsers.includes(user.id) ? (
+                            <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-full font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> In Meeting</span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-[10px] text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded-full font-medium"><span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span> Offline</span>
+                          )}
+                        </div>
                       </div>
                       {showAccordion && (
                         <div className="text-gray-500">
@@ -670,9 +666,9 @@ export default function MeetingRoom() {
                             <h4 className="text-xs font-semibold text-primary-300 uppercase">
                               {meeting.standupType === 'evening' ? 'Evening Standup (What did you do today?)' : 'Morning Standup (What will you do today?)'}
                             </h4>
-                            
+
                             {(dynamicStandupInputs[user.id] || ['']).map((val, idx) => (
-                              <input 
+                              <input
                                 key={idx}
                                 className="input-field text-xs w-full mb-2"
                                 placeholder={`Task ${idx + 1}...`}
@@ -680,7 +676,7 @@ export default function MeetingRoom() {
                                 onChange={(e) => handleStandupInputChange(user.id, idx, e.target.value)}
                               />
                             ))}
-                            
+
                             <button
                               type="button"
                               onClick={() => handleAddStandupInput(user.id)}
@@ -688,7 +684,7 @@ export default function MeetingRoom() {
                             >
                               <Plus size={12} /> Add another task
                             </button>
-                            
+
                             <button
                               type="button"
                               onClick={() => handleSubmitStandup(user.id)}
@@ -736,7 +732,7 @@ export default function MeetingRoom() {
             <div className="flex min-h-0 flex-1 flex-col">
               {toArray(meeting?.waitingRoom).filter(w => w.status === 'waiting').length > 0 && (
                 <div className="border-b border-gray-800 p-3">
-                  <button 
+                  <button
                     onClick={handlePermitAll}
                     className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600/20 py-2 text-sm font-medium text-emerald-500 transition-colors hover:bg-emerald-600 hover:text-white"
                   >
@@ -782,7 +778,7 @@ export default function MeetingRoom() {
             <div className="flex min-h-0 flex-1 flex-col">
               <div className="flex-1 space-y-3 overflow-y-auto p-3 relative">
                 {chatLogs.length === 0 ? (
-                  <EmptyState 
+                  <EmptyState
                     icon={MessageSquare}
                     title="No messages yet"
                     description="Be the first to start the conversation"
@@ -811,8 +807,11 @@ export default function MeetingRoom() {
                     {participants.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase())).map(u => (
                       <button
                         key={u.id}
-                        className="flex w-full items-center gap-2 px-3 py-2 hover:bg-gray-800 text-left"
+                        type="button"
+                        className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors ${selectedMentionIdx === idx ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleMentionSelect(u)}
+                        onMouseEnter={() => setSelectedMentionIdx(idx)}
                       >
                         <Avatar name={u.name} size="xs" />
                         <span className="text-sm text-gray-200">{u.name}</span>
@@ -828,11 +827,34 @@ export default function MeetingRoom() {
                     const lastWord = val.split(' ').pop();
                     if (lastWord.startsWith('@')) {
                       setMentionQuery(lastWord.slice(1));
+                      setSelectedMentionIdx(0);
                     } else {
                       setMentionQuery(null);
                     }
                   }}
                   onKeyDown={event => {
+                    const mentionSuggestions = mentionQuery !== null
+                      ? participants
+                        .filter(u => onlineUsers.includes(u.id))
+                        .filter(u => u.name.replace(/\s+/g, '').toLowerCase().includes(mentionQuery.replace(/\s+/g, '').toLowerCase()))
+                      : [];
+
+                    if (mentionQuery !== null && mentionSuggestions.length > 0) {
+                      if (event.key === 'Enter' || event.key === 'Tab') {
+                        event.preventDefault();
+                        handleMentionSelect(mentionSuggestions[selectedMentionIdx] || mentionSuggestions[0]);
+                        return;
+                      } else if (event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        setSelectedMentionIdx(prev => Math.min(prev + 1, mentionSuggestions.length - 1));
+                        return;
+                      } else if (event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        setSelectedMentionIdx(prev => Math.max(prev - 1, 0));
+                        return;
+                      }
+                    }
+
                     if (event.key === 'Escape') setMentionQuery(null);
                     else if (event.key === 'Enter') sendMessage();
                   }}
@@ -850,6 +872,32 @@ export default function MeetingRoom() {
               </div>
             </div>
           )}
+
+          <div className="flex border-t border-gray-800 bg-gray-950 mt-auto">
+            {[
+              ['participants', 'People', Users],
+              ['chat', 'Chat', MessageSquare],
+              ...(isHost ? [['lobby', 'Lobby', Clock]] : []),
+              ...(isHost && meeting.type === 'standup' ? [['standup', 'Standup', Grid3X3]] : []),
+              ...(isHost && meeting.type === 'project' ? [['tasks', 'Tasks', CheckSquare]] : [])
+            ].map(([tab, label, Icon]) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setSidePanel(tab)}
+                className={`relative flex flex-1 items-center justify-center gap-1 py-3 text-xs font-medium ${sidePanel === tab
+                    ? 'border-t-2 border-primary-500 text-primary-400 bg-gray-900 -mt-[1px]'
+                    : 'border-t-2 border-transparent text-gray-500 hover:text-gray-300 hover:bg-gray-900/50 -mt-[1px]'
+                  }`}
+              >
+                <Icon size={14} />
+                <span className="hidden sm:inline">{label}</span>
+                {tab === 'lobby' && toArray(meeting?.waitingRoom).filter(w => w.status === 'waiting').length > 0 && (
+                  <span className="absolute right-2 top-2 flex h-2 w-2 rounded-full bg-red-500"></span>
+                )}
+              </button>
+            ))}
+          </div>
         </aside>
       )}
 
@@ -885,16 +933,16 @@ function toArray(value) {
 
 function renderMessageText(text, mentions, users, isMine) {
   if (!mentions || mentions.length === 0) return text;
-  
+
   let elements = [];
   let remainingText = text;
-  
+
   const mentionedUsers = mentions.map(uid => users.find(u => u.id === uid)).filter(Boolean).sort((a, b) => b.name.length - a.name.length);
-  
+
   while (remainingText.length > 0) {
     let foundMention = null;
     let earliestIndex = remainingText.length;
-    
+
     for (const user of mentionedUsers) {
       const mentionStr = `@${user.name}`;
       const index = remainingText.indexOf(mentionStr);
@@ -903,7 +951,7 @@ function renderMessageText(text, mentions, users, isMine) {
         foundMention = mentionStr;
       }
     }
-    
+
     if (foundMention) {
       if (earliestIndex > 0) {
         elements.push(remainingText.substring(0, earliestIndex));
