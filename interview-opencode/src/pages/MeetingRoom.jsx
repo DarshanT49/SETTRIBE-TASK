@@ -17,7 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../contexts/AuthContext';
 import { Avatar, Button } from '../components/ui';
 import { KEYS, apiPut, asyncGet, asyncSet } from '../services/storage';
-import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft } from '../services/meetings';
+import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft, getMeetingChat, postMeetingChat } from '../services/meetings';
 
 export default function MeetingRoom() {
   const { id } = useParams();
@@ -47,10 +47,13 @@ export default function MeetingRoom() {
   const hasRequestedTokenRef = useRef(false);
   const previousWaitingCount = useRef(0);
   const audioRef = useRef(null);
+  const previousChatCount = useRef(0);
+  const chatAudioRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
     let pollInterval = null;
+    let chatPollInterval = null;
 
     const fetchMeetingData = async () => {
       const allMeetings = await asyncGet(KEYS.MEETINGS);
@@ -126,15 +129,25 @@ export default function MeetingRoom() {
         const m = await fetchMeetingData();
         if (m) {
           setMeeting(m);
-          setChatLogs(toArray(m.chatLogs));
           await checkWaitingRoomStatus(m);
         }
       } catch (e) {}
     }, 3000);
 
+    chatPollInterval = setInterval(async () => {
+      if (cancelled) return;
+      try {
+        const logs = await getMeetingChat(id);
+        if (logs) {
+          setChatLogs(logs);
+        }
+      } catch (e) {}
+    }, 1000);
+
     return () => {
       cancelled = true;
       if (pollInterval) clearInterval(pollInterval);
+      if (chatPollInterval) clearInterval(chatPollInterval);
       if (joinedRef.current && currentUser?.id) {
         markMeetingLeft(id, currentUser.id);
         
@@ -158,6 +171,9 @@ export default function MeetingRoom() {
     if (!audioRef.current) {
       audioRef.current = new Audio('/universfield-new-notification-051-494246.mp3');
     }
+    if (!chatAudioRef.current) {
+      chatAudioRef.current = new Audio('/koiroylers-live-chat-353605.mp3');
+    }
   }, []);
 
   useEffect(() => {
@@ -171,6 +187,20 @@ export default function MeetingRoom() {
       previousWaitingCount.current = currentWaitingCount;
     }
   }, [meeting, isHost]);
+
+  useEffect(() => {
+    const currentChatCount = chatLogs.length;
+    if (currentChatCount > previousChatCount.current && previousChatCount.current > 0) {
+      const latestMsg = chatLogs[currentChatCount - 1];
+      const senderId = latestMsg?.userId || latestMsg?.senderId;
+      if (senderId !== currentUser.id) {
+        if (chatAudioRef.current) {
+          chatAudioRef.current.play().catch(e => console.warn('Chat audio blocked', e));
+        }
+      }
+    }
+    previousChatCount.current = currentChatCount;
+  }, [chatLogs, currentUser.id]);
 
   const handlePermitAll = async () => {
     const updatedWait = toArray(meeting.waitingRoom).map(w => w.status === 'waiting' ? { ...w, status: 'approved' } : w);
@@ -219,12 +249,19 @@ export default function MeetingRoom() {
       text: message.trim(),
       timestamp: new Date().toISOString()
     };
-    const newLogs = [...chatLogs, newMsg];
-    const updatedMeeting = { ...meeting, chatLogs: newLogs };
-    setChatLogs(newLogs);
+    
+    // Optimistic update
+    setChatLogs(prev => [...prev, newMsg]);
     setMessage('');
-    setMeeting(updatedMeeting);
-    await apiPut(KEYS.MEETINGS, id, updatedMeeting);
+
+    try {
+      const updatedLogs = await postMeetingChat(id, newMsg);
+      if (updatedLogs) {
+        setChatLogs(updatedLogs);
+      }
+    } catch (e) {
+      toast.error('Failed to send message');
+    }
   };
 
   const handleSubmitStandup = async (participantId) => {
