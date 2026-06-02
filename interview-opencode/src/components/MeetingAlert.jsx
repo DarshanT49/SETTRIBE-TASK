@@ -96,6 +96,9 @@ export function MeetingAlert() {
             if (acknowledged.includes(meeting.id)) return false;
             if (meeting.status === 'completed' || meeting.status === 'cancelled') return false;
 
+            // If the user is already in this specific meeting room, do not trigger the alarm
+            if (window.location.pathname === `/meetings/${meeting.id}/room`) return false;
+
             const meetingTime = getMeetingDateTime(meeting).getTime();
             const timeUntilMeeting = meetingTime - now;
             return timeUntilMeeting > 0 && timeUntilMeeting <= FIVE_MINUTES_MS;

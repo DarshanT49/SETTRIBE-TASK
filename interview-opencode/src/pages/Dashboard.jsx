@@ -7,7 +7,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
 import { Avatar, Badge, Button, StatusBadge, PriorityBadge, Skeleton } from '../components/ui';
-import { formatRelativeTime, formatDate, canStartMeeting } from '../utils/dates';
+import { formatRelativeTime, formatDate, canStartMeeting, getMeetingStatus } from '../utils/dates';
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function Dashboard() {
@@ -140,7 +140,11 @@ function AdminDashboard({ data, currentUser }) {
     { day: 'Sun', completed: 1, created: 0 },
   ];
 
-  const upcomingMeetings = meetings.filter(m => m.date >= data.today).slice(0, 3);
+  const upcomingMeetings = meetings.filter(m => {
+    if (m.date < data.today) return false;
+    const status = getMeetingStatus(m);
+    return status === 'upcoming' || status === 'ongoing';
+  }).slice(0, 3);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -326,7 +330,11 @@ function ManagerDashboard({ data, currentUser }) {
     return myProjectIds.includes(t.projectId);
   });
   const pendingReviews = teamTasks.filter(t => t.status === 'in_review').length;
-  const upcomingMeetings = meetings.filter(m => m.participantIds.includes(currentUser.id) && m.date >= data.today);
+  const upcomingMeetings = meetings.filter(m => {
+    if (!m.participantIds.includes(currentUser.id) || m.date < data.today) return false;
+    const status = getMeetingStatus(m);
+    return status === 'upcoming' || status === 'ongoing';
+  });
 
   const teamProductivity = users.filter(u => ['employee', 'intern'].includes(u.role)).map(u => ({
     name: u.name.split(' ')[0],
@@ -393,7 +401,11 @@ function EmployeeDashboard({ data, currentUser }) {
   const openTasks = myTasks.filter(t => !['done'].includes(t.status));
   const overdueTasks = myTasks.filter(t => !['done'].includes(t.status) && new Date(t.dueDate) < new Date());
   const completedThisWeek = myTasks.filter(t => t.status === 'done' && new Date(t.dueDate) >= new Date(Date.now() - 7 * 86400000)).length;
-  const upcomingMeetings = meetings.filter(m => m.participantIds.includes(currentUser.id) && m.date >= data.today);
+  const upcomingMeetings = meetings.filter(m => {
+    if (!m.participantIds.includes(currentUser.id) || m.date < data.today) return false;
+    const status = getMeetingStatus(m);
+    return status === 'upcoming' || status === 'ongoing';
+  });
   const myProjects = projects.filter(p => p.teamIds.includes(currentUser.id));
 
   return (
