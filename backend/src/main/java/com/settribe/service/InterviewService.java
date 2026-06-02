@@ -17,6 +17,9 @@ public class InterviewService {
     @Autowired
     private InterviewRepository repository;
 
+    @Autowired
+    private EmailService emailService;
+
     public List<InterviewDTO> findAll() {
         return repository.findAll().stream().map(InterviewMapper::toDTO).collect(Collectors.toList());
     }
@@ -27,7 +30,15 @@ public class InterviewService {
 
     public InterviewDTO save(InterviewDTO dto) {
         Interview entity = InterviewMapper.toEntity(dto);
-        return InterviewMapper.toDTO(repository.save(entity));
+        Interview saved = repository.save(entity);
+        InterviewDTO savedDto = InterviewMapper.toDTO(saved);
+        
+        // Send email invitation if scheduled
+        if ("scheduled".equalsIgnoreCase(savedDto.getStatus())) {
+            emailService.sendInterviewInvitation(savedDto);
+        }
+        
+        return savedDto;
     }
 
     public InterviewDTO update(String id, InterviewDTO dto) {
@@ -58,6 +69,19 @@ public class InterviewService {
                 repository.save(interview);
                 throw new RuntimeException("Interview session has expired");
             }
+            
+            // Allow joining up to 5 minutes early, else put in waiting room
+            try {
+                if (interview.getDate() != null && interview.getTime() != null) {
+                    java.time.LocalDateTime startDateTime = java.time.LocalDateTime.parse(interview.getDate() + "T" + interview.getTime());
+                    long startMillis = startDateTime.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+                    if (System.currentTimeMillis() < startMillis - (5 * 60 * 1000)) {
+                        InterviewDTO dto = InterviewMapper.toDTO(interview);
+                        dto.setJoinStatus("WAITING_ROOM");
+                        return dto;
+                    }
+                }
+            } catch (Exception e) {}
         }
         
         return InterviewMapper.toDTO(interview);

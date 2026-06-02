@@ -57,7 +57,31 @@ export function KanbanBoard({ project, tasks, users, currentUser, canManage, onR
     history.push({ id: uuidv4(), taskId, projectId: project.id, action: 'status_changed', performedBy: currentUser.id, fromStatus: oldStatus, toStatus: newStatus, details: `Status changed from ${oldStatus} to ${newStatus}`, timestamp: new Date().toISOString() });
     asyncSet(KEYS.TASK_HISTORY, history);
 
-    toast.success(`Task moved to ${COLUMNS.find(c => c.id === newStatus)?.label}`);
+    const oldStatusStr = oldStatus;
+    toast.success(
+      (t) => (
+        <div className="flex items-center gap-3">
+          <span>Moved to {COLUMNS.find(c => c.id === newStatus)?.label}</span>
+          <button 
+            onClick={async () => {
+              toast.dismiss(t.id);
+              const tasksNow = await asyncGet(KEYS.TASKS) || [];
+              const taskIdx = tasksNow.findIndex(tsk => tsk.id === taskId);
+              if (taskIdx !== -1) {
+                tasksNow[taskIdx].status = oldStatusStr;
+                await asyncSet(KEYS.TASKS, tasksNow);
+                onRefresh();
+                toast.success('Action undone');
+              }
+            }}
+            className="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded border border-gray-600 text-white"
+          >
+            Undo
+          </button>
+        </div>
+      ),
+      { duration: 5000 }
+    );
     onRefresh();
   };
 
@@ -74,7 +98,7 @@ export function KanbanBoard({ project, tasks, users, currentUser, canManage, onR
 
       {/* Kanban Board */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={e => setActiveId(e.active.id)} onDragEnd={handleDragEnd}>
-        <div className="flex gap-3 overflow-x-auto pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-thin scrollbar-thumb-gray-800">
           {COLUMNS.map(col => {
             const colTasks = getTasksByStatus(col.id);
             return (
@@ -126,10 +150,10 @@ function DroppableColumn({ column, tasks, users, getUser, onTaskClick, onAddTask
   const { setNodeRef } = useSortable({ id: column.id });
 
   return (
-    <div ref={setNodeRef} className="kanban-column flex flex-col" style={{ minWidth: '260px' }}>
-      <div className="p-3 border-b border-gray-800 flex items-center justify-between">
+    <div ref={setNodeRef} className="kanban-column flex flex-col" style={{ minWidth: '280px' }}>
+      <div className="p-4 border-b border-gray-800/60 flex items-center justify-between bg-gray-900/20 rounded-t-2xl">
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-semibold ${column.color}`}>{column.label}</span>
+          <span className={`text-sm font-semibold tracking-wide ${column.color}`}>{column.label}</span>
           <span className="text-xs bg-gray-800 text-gray-500 rounded-full px-2 py-0.5">{tasks.length}</span>
         </div>
         {onAddTask && (
@@ -139,10 +163,16 @@ function DroppableColumn({ column, tasks, users, getUser, onTaskClick, onAddTask
         )}
       </div>
       <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex-1 p-2 space-y-2 min-h-32">
-          {tasks.map(task => (
-            <SortableTaskCard key={task.id} task={task} users={users} getUser={getUser} onClick={() => onTaskClick(task)} />
-          ))}
+        <div className="flex-1 p-3 space-y-3 min-h-[150px] relative">
+          {tasks.length === 0 ? (
+            <div className="absolute inset-0 flex items-center justify-center m-4 rounded-xl border-2 border-dashed border-gray-800 text-gray-500 text-xs text-center p-4">
+              No tasks.<br/>Drag one here!
+            </div>
+          ) : (
+            tasks.map(task => (
+              <SortableTaskCard key={task.id} task={task} users={users} getUser={getUser} onClick={() => onTaskClick(task)} />
+            ))
+          )}
         </div>
       </SortableContext>
     </div>
@@ -155,8 +185,9 @@ function SortableTaskCard({ task, users, getUser, onClick }) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}
-      className="task-card select-none" onClick={onClick}>
+      className="task-card select-none group" onClick={onClick}>
       <TaskCardContent task={task} users={users} getUser={getUser} />
+      <div className="absolute inset-0 border border-primary-500/0 group-hover:border-primary-500/30 rounded-xl pointer-events-none transition-colors duration-300"></div>
     </div>
   );
 }
@@ -164,7 +195,7 @@ function SortableTaskCard({ task, users, getUser, onClick }) {
 function TaskCardDragging({ task, users }) {
   const getUser = (uid) => users.find(u => u.id === uid);
   return (
-    <div className="task-card shadow-2xl rotate-2 w-64">
+    <div className="task-card shadow-[0_20px_50px_rgba(0,0,0,0.5)] rotate-3 scale-105 w-[280px] border-primary-500/50 bg-gray-800/95 backdrop-blur-xl z-[100]">
       <TaskCardContent task={task} users={users} getUser={getUser} />
     </div>
   );
@@ -175,30 +206,36 @@ function TaskCardContent({ task, users, getUser }) {
 
   return (
     <>
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <p className="text-sm font-medium text-gray-200 leading-tight">{task.title}</p>
-        <PriorityBadge priority={task.priority} />
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <p className="text-sm font-medium text-gray-200 leading-snug line-clamp-2">{task.title}</p>
+        <div className="shrink-0 pt-0.5">
+          <PriorityBadge priority={task.priority} />
+        </div>
       </div>
 
       {task.assigneeIds?.length > 0 && (
-        <div className="flex -space-x-1.5 mb-2">
+        <div className="flex -space-x-2 mb-3">
           {task.assigneeIds.slice(0, 3).map(id => (
-            <Avatar key={id} name={getUser(id)?.name} size="xs" className="border border-gray-700" />
+            <div key={id} className="rounded-full ring-2 ring-gray-800 transition-transform hover:scale-110 hover:z-10">
+              <Avatar name={getUser(id)?.name} size="sm" />
+            </div>
           ))}
           {task.assigneeIds.length > 3 && (
-            <div className="w-6 h-6 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center text-xs text-gray-400">+{task.assigneeIds.length - 3}</div>
+            <div className="w-8 h-8 rounded-full bg-gray-700 ring-2 ring-gray-800 flex items-center justify-center text-xs font-medium text-gray-300 hover:scale-110 hover:z-10 transition-transform">
+              +{task.assigneeIds.length - 3}
+            </div>
           )}
         </div>
       )}
 
-      <div className="flex items-center justify-between mt-2">
-        <span className={`text-xs ${overdue ? 'text-red-400 font-medium' : 'text-gray-500'} flex items-center gap-1`}>
-          {overdue && <AlertCircle size={10} />}
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-700/50">
+        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-md ${overdue ? 'bg-red-950/50 text-red-400 border border-red-900/50' : 'bg-gray-900/50 text-gray-400 border border-gray-800'} flex items-center gap-1.5`}>
+          {overdue ? <AlertCircle size={10} /> : null}
           {formatDate(task.dueDate, 'dd MMM')}
         </span>
-        <div className="flex items-center gap-2 text-gray-600 text-xs">
-          {task.comments?.length > 0 && <span className="flex items-center gap-0.5"><MessageSquare size={10} />{task.comments.length}</span>}
-          {task.attachments?.length > 0 && <span className="flex items-center gap-0.5"><Paperclip size={10} />{task.attachments.length}</span>}
+        <div className="flex items-center gap-3 text-gray-500 text-xs font-medium">
+          {task.comments?.length > 0 && <span className="flex items-center gap-1 hover:text-gray-300 transition-colors"><MessageSquare size={12} />{task.comments.length}</span>}
+          {task.attachments?.length > 0 && <span className="flex items-center gap-1 hover:text-gray-300 transition-colors"><Paperclip size={12} />{task.attachments.length}</span>}
         </div>
       </div>
     </>
@@ -229,12 +266,45 @@ function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefres
     const idx = allTasks.findIndex(t => t.id === task.id);
     if (idx === -1) return;
     const statusMap = { approve: 'done', reject: 'changes_requested', changes: 'changes_requested' };
-    allTasks[idx].status = statusMap[action] || allTasks[idx].status;
+    
+    const oldStatus = allTasks[idx].status;
+    const newStatus = statusMap[action] || oldStatus;
+    if (oldStatus === newStatus) return;
+
+    allTasks[idx].status = newStatus;
     asyncSet(KEYS.TASKS, allTasks);
+    
     const history = await asyncGet(KEYS.TASK_HISTORY) || [];
-    history.push({ id: uuidv4(), taskId: task.id, projectId: project.id, action: `task_${action}d`, performedBy: currentUser.id, fromStatus: task.status, toStatus: allTasks[idx].status, details: `Task ${action}d by ${currentUser.name}`, timestamp: new Date().toISOString() });
+    history.push({ id: uuidv4(), taskId: task.id, projectId: project.id, action: `task_${action}d`, performedBy: currentUser.id, fromStatus: oldStatus, toStatus: newStatus, details: `Task ${action}d by ${currentUser.name}`, timestamp: new Date().toISOString() });
     asyncSet(KEYS.TASK_HISTORY, history);
-    toast.success(`Task ${action}d!`);
+    
+    const taskIdStr = task.id;
+    const actionPastTense = `${action}d`;
+
+    toast.success(
+      (t) => (
+        <div className="flex items-center gap-3">
+          <span>Task {actionPastTense}!</span>
+          <button 
+            onClick={async () => {
+              toast.dismiss(t.id);
+              const tasksNow = await asyncGet(KEYS.TASKS) || [];
+              const taskIdx = tasksNow.findIndex(tsk => tsk.id === taskIdStr);
+              if (taskIdx !== -1) {
+                tasksNow[taskIdx].status = oldStatus;
+                await asyncSet(KEYS.TASKS, tasksNow);
+                onRefresh();
+                toast.success('Action undone');
+              }
+            }}
+            className="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded border border-gray-600 text-white"
+          >
+            Undo
+          </button>
+        </div>
+      ),
+      { duration: 5000 }
+    );
     onRefresh();
   };
 
@@ -381,9 +451,19 @@ function AddTaskModal({ project, defaultStatus, users, currentUser, onClose, onS
   const [form, setForm] = useState({
     title: '', description: '', priority: 'medium', status: defaultStatus,
     assigneeIds: [], milestoneId: '', sprintId: '', startDate: '', dueDate: '' });
+  const [formErrors, setFormErrors] = useState({});
 
   const handleSave = async () => {
-    if (!form.title || !form.startDate || !form.dueDate) { toast.error('Title, start date, and due date are required'); return; }
+    const errors = {};
+    if (!form.title) errors.title = 'Title is required';
+    if (!form.startDate) errors.startDate = 'Start date is required';
+    if (!form.dueDate) errors.dueDate = 'Due date is required';
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
+
     const allTasks = await asyncGet(KEYS.TASKS) || [];
     const newTask = {
       id: uuidv4(),
@@ -418,8 +498,8 @@ function AddTaskModal({ project, defaultStatus, users, currentUser, onClose, onS
   return (
     <Modal isOpen title="Add Task" onClose={onClose} size="lg">
       <div className="p-5 space-y-4">
-        <Input label="Task Title *" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-        <Textarea label="Description *" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+        <Input label="Task Title *" error={formErrors.title} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+        <Textarea label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
         <div className="grid grid-cols-2 gap-4">
           <Select label="Priority" value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })}>
             {['low', 'medium', 'high', 'critical'].map(p => <option key={p} value={p} className="capitalize">{p}</option>)}
@@ -427,8 +507,8 @@ function AddTaskModal({ project, defaultStatus, users, currentUser, onClose, onS
           <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
             {['backlog', 'todo', 'in_progress'].map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
           </Select>
-          <Input label="Start Date *" type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
-          <Input label="Due Date *" type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />
+          <Input label="Start Date *" type="date" error={formErrors.startDate} value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
+          <Input label="Due Date *" type="date" error={formErrors.dueDate} value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />
           {milestones.length > 0 && (
             <Select label="Milestone" value={form.milestoneId} onChange={e => setForm({ ...form, milestoneId: e.target.value })}>
               <option value="">No milestone</option>

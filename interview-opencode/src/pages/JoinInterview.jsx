@@ -4,19 +4,31 @@ import { LiveKitRoom, VideoConference } from '@livekit/components-react';
 import { createBulkNotifications } from '../services/notifications';
 import api from '../services/api';
 
+import { useNavigate } from 'react-router-dom';
+
 export default function JoinInterview() {
   const { token } = useParams();
+  const navigate = useNavigate();
   const [status, setStatus] = useState('Validating your interview link...');
   const [error, setError] = useState(null);
   const [roomConfig, setRoomConfig] = useState(null);
   const [connectionError, setConnectionError] = useState('');
+  const [interviewData, setInterviewData] = useState(null);
+  const [isWaiting, setIsWaiting] = useState(false);
 
   useEffect(() => {
     const validateToken = async () => {
       try {
         const resp = await api.get(`/interviews/validate?token=${token}`);
         const interview = resp.data;
+        setInterviewData(interview);
         
+        if (interview.joinStatus === 'WAITING_ROOM') {
+            setIsWaiting(true);
+            return;
+        }
+
+        setIsWaiting(false);
         setStatus('Link validated. Connecting to meeting room...');
         
         // Notify panel members
@@ -51,7 +63,17 @@ export default function JoinInterview() {
     };
 
     validateToken();
-  }, [token]);
+    
+    // Polling if in waiting room
+    let intervalId;
+    if (isWaiting) {
+        intervalId = setInterval(validateToken, 10000); // Check every 10 seconds
+    }
+    
+    return () => {
+        if (intervalId) clearInterval(intervalId);
+    };
+  }, [token, isWaiting]);
 
   if (error) {
     return (
@@ -60,6 +82,28 @@ export default function JoinInterview() {
           <div className="text-6xl mb-4">🚫</div>
           <h1 className="text-xl font-bold text-red-500 mb-2">Access Denied</h1>
           <p className="text-gray-400 text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isWaiting) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 animate-fade-in">
+        <div className="card p-8 max-w-md text-center border-primary-900/50">
+          <div className="w-16 h-16 rounded-full bg-primary-900/30 border border-primary-700/50 flex items-center justify-center mx-auto mb-6">
+            <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-100 mb-2">Waiting Room</h1>
+          <p className="text-gray-400 text-sm mb-6">
+            Please wait. Your interview starts soon and the interviewer has not joined the meeting yet.
+          </p>
+          <div className="bg-gray-800/50 p-4 rounded-lg text-left">
+            <p className="text-xs text-gray-500 font-medium mb-1">CANDIDATE</p>
+            <p className="text-sm text-gray-200 font-semibold mb-3">{interviewData?.candidateName}</p>
+            <p className="text-xs text-gray-500 font-medium mb-1">POSITION</p>
+            <p className="text-sm text-gray-200 font-semibold">{interviewData?.position}</p>
+          </div>
         </div>
       </div>
     );
@@ -82,6 +126,11 @@ export default function JoinInterview() {
           video
           onError={() => {
             setConnectionError(`The browser could not connect to ${roomConfig.url}. Start LiveKit on port 7880 or update LIVEKIT_URL to the reachable LiveKit WebSocket URL.`);
+          }}
+          onDisconnected={() => {
+            if (interviewData) {
+              navigate(`/candidate-feedback/${interviewData.id}`);
+            }
           }}
           data-lk-theme="default"
           className="h-full"

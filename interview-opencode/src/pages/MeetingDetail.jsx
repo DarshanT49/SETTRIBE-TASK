@@ -177,7 +177,7 @@ export default function MeetingDetail() {
 
   const TABS = [
     { id: 'overview', label: 'Overview', icon: List },
-    { id: 'notes', label: 'Notes & Chat', icon: MessageSquare },
+    { id: 'notes', label: 'Notes', icon: FileText },
     { id: 'tasks', label: 'Assigned Tasks', icon: CheckSquare },
     { id: 'attendance', label: 'Attendance Logs', icon: Users },
   ];
@@ -306,29 +306,28 @@ export default function MeetingDetail() {
             </div>
           )}
 
-          {/* TAB: Notes & Chat */}
+          {/* TAB: Notes */}
           {activeTab === 'notes' && (
             <div className="space-y-6 animate-fade-in">
               <div className="card p-6">
-                <h2 className="text-lg font-semibold text-gray-100 mb-4">Meeting Chat Logs</h2>
-                {chatLogs.length === 0 ? (
+                <h2 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2"><FileText size={18} className="text-primary-400"/> Participant Notes</h2>
+                {rsvps.filter(r => r.meetingId === id && r.notes && r.status === 'attending').length === 0 ? (
                   <div className="text-center py-10 bg-gray-800/30 rounded-xl border border-gray-700/50 border-dashed">
-                    <MessageSquare size={32} className="mx-auto text-gray-600 mb-3" />
-                    <p className="text-gray-400 text-sm">No chat messages were recorded during this meeting.</p>
+                    <FileText size={32} className="mx-auto text-gray-600 mb-3" />
+                    <p className="text-gray-400 text-sm">No notes were taken by participants during this meeting.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                    {chatLogs.map((msg, idx) => {
-                      const sender = getUser(msg.senderId);
+                  <div className="space-y-4">
+                    {rsvps.filter(r => r.meetingId === id && r.notes && r.status === 'attending').map((rsvp, idx) => {
+                      const u = getUser(rsvp.userId);
                       return (
-                        <div key={idx} className="flex gap-3">
-                          <Avatar name={sender?.name || 'Unknown'} size="sm" />
-                          <div className="bg-gray-800/50 p-3 rounded-xl rounded-tl-sm border border-gray-700/50">
-                            <div className="flex items-center justify-between gap-4 mb-1">
-                              <span className="text-sm font-medium text-gray-200">{sender?.name || 'Unknown User'}</span>
-                              <span className="text-xs text-gray-500">{msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</span>
-                            </div>
-                            <p className="text-sm text-gray-300">{msg.text}</p>
+                        <div key={idx} className="p-4 bg-gray-800/30 rounded-xl border border-gray-700">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Avatar name={u?.name} size="xs" />
+                            <span className="text-sm font-medium text-gray-200">{u?.name}'s Notes</span>
+                          </div>
+                          <div className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">
+                            {rsvp.notes}
                           </div>
                         </div>
                       )
