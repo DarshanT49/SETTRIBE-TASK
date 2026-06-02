@@ -23,3 +23,13 @@ export async function markMeetingLeft(meetingId, userId) {
     console.warn('Unable to record meeting leave:', error);
   }
 }
+
+export async function getMeetingChat(meetingId) {
+  const { data } = await api.get(`/meetings/${meetingId}/chat`);
+  return data;
+}
+
+export async function postMeetingChat(meetingId, message) {
+  const { data } = await api.post(`/meetings/${meetingId}/chat`, message);
+  return data;
+}

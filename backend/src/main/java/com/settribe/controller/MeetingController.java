@@ -17,6 +17,8 @@ import com.settribe.dto.MeetingDTO;
 import com.settribe.dto.MeetingJoinTokenRequest;
 import com.settribe.dto.MeetingJoinTokenResponse;
 import com.settribe.dto.UserDTO;
+import com.settribe.dto.ChatMessageDTO;
+import com.settribe.service.ChatMessageService;
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
@@ -30,6 +32,8 @@ public class MeetingController {
     private UserService userService;
     @Autowired
     private LiveKitTokenService liveKitTokenService;
+    @Autowired
+    private ChatMessageService chatMessageService;
 
     @GetMapping
     public List<MeetingDTO> getAll() {
@@ -98,6 +102,29 @@ public class MeetingController {
     public ResponseEntity<Void> delete(@PathVariable String id) {
         service.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/chat")
+    public ResponseEntity<List<ChatMessageDTO>> addChatMessage(@PathVariable String id, @RequestBody ChatMessageDTO chatMessage) {
+        MeetingDTO meeting = service.findById(id).orElse(null);
+        if (meeting == null) {
+            return ResponseEntity.notFound().build();
+        }
+        chatMessage.setMeetingId(id);
+        chatMessageService.save(chatMessage);
+        
+        List<ChatMessageDTO> logs = chatMessageService.findByMeetingId(id);
+        return ResponseEntity.ok(logs);
+    }
+
+    @GetMapping("/{id}/chat")
+    public ResponseEntity<List<ChatMessageDTO>> getChatMessages(@PathVariable String id) {
+        MeetingDTO meeting = service.findById(id).orElse(null);
+        if (meeting == null) {
+            return ResponseEntity.notFound().build();
+        }
+        List<ChatMessageDTO> logs = chatMessageService.findByMeetingId(id);
+        return ResponseEntity.ok(logs);
     }
 
     private boolean canJoin(MeetingDTO meeting, String userId) {
@@ -172,6 +199,11 @@ public class MeetingController {
             }
         } else if (activeLog != null) {
             activeLog.put("leaveTime", Instant.now().toString());
+            
+            // Delete chat messages if the host leaves
+            if (userId.equals(meeting.getHostId())) {
+                chatMessageService.deleteByMeetingId(meetingId);
+            }
         }
         meeting.setAttendanceLogs(logs);
         return ResponseEntity.ok(service.update(meetingId, meeting));
