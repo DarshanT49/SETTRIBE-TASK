@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, FolderKanban, CheckSquare, ClipboardList,
   Video, UserCheck, BarChart3, Bell, User, LogOut, ChevronLeft,
-  ChevronRight, Clock, Shield, Menu, X
+  ChevronRight, Clock, Shield, Menu, X, Trophy, TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
@@ -11,6 +11,9 @@ import { Avatar, Badge } from '../ui';
 
 const allNavLinks = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'] },
+  { to: '/team-performance', icon: TrendingUp, label: 'Team Performance', roles: ['admin', 'hr', 'manager', 'employee', 'panel'] },
+  { to: '/progress', icon: BarChart3, label: 'My Progress', roles: ['intern'] },
+  { to: '/leaderboard', icon: Trophy, label: 'Leaderboard', roles: ['intern'] },
   { to: '/employees/pending', icon: Shield, label: 'Pending Approvals', roles: ['admin', 'hr'] },
   { to: '/employees', icon: Users, label: 'Employees', roles: ['admin', 'hr', 'manager', 'panel'] },
   { to: '/projects', icon: FolderKanban, label: 'Projects', roles: ['admin', 'manager', 'employee', 'intern'] },
@@ -45,7 +48,7 @@ export function Sidebar({ collapsed, onCollapse }) {
         <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
           <span className="text-white font-bold text-sm">ST</span>
         </div>
-        {!collapsed && <span className="font-bold text-gray-100 text-lg">SetTribe</span>}
+        {!collapsed && <span className="font-bold text-gray-100 text-lg">SETTribe</span>}
         <button
           onClick={onCollapse}
           className="ml-auto text-gray-500 hover:text-gray-300 transition-colors"

@@ -1,4 +1,5 @@
 import api from './api';
+import { notifyUpdate } from './realtime';
 
 // Map frontend KEYS to backend API endpoint paths
 const KEY_TO_ENDPOINT = {
@@ -101,6 +102,7 @@ export const asyncSet = async (key, value) => {
     } else {
       await api.post(`/${endpoint}`, value);
     }
+    notifyUpdate();
     return value;
   } catch (error) {
     console.error(`Error setting ${key}:`, error);
@@ -133,6 +135,7 @@ export const asyncDeleteById = async (key, id) => {
   const endpoint = KEY_TO_ENDPOINT[key] || key;
   try {
     await api.delete(`/${endpoint}/${id}`);
+    notifyUpdate();
   } catch (error) {
     console.error(`Error deleting ${key}/${id}:`, error);
   }
@@ -146,6 +149,7 @@ export const asyncDelete = async (key) => {
   const endpoint = KEY_TO_ENDPOINT[key] || key;
   try {
     await api.delete(`/${endpoint}`);
+    notifyUpdate();
   } catch (error) {
     console.error(`Error deleting ${key}:`, error);
   }
@@ -181,6 +185,7 @@ export const apiPost = async (key, item) => {
   const endpoint = KEY_TO_ENDPOINT[key] || key;
   try {
     const res = await api.post(`/${endpoint}`, item);
+    notifyUpdate();
     return res.data;
   } catch (e) {
     console.error(`Error posting to ${key}:`, e);
@@ -192,6 +197,7 @@ export const apiPut = async (key, id, item) => {
   const endpoint = KEY_TO_ENDPOINT[key] || key;
   try {
     const res = await api.put(`/${endpoint}/${id}`, item);
+    notifyUpdate();
     return res.data;
   } catch (e) {
     console.error(`Error putting to ${key}/${id}:`, e);
@@ -203,6 +209,7 @@ export const apiDelete = async (key, id) => {
   const endpoint = KEY_TO_ENDPOINT[key] || key;
   try {
     await api.delete(`/${endpoint}/${id}`);
+    notifyUpdate();
   } catch (e) {
     console.error(`Error deleting ${key}/${id}:`, e);
     throw e;

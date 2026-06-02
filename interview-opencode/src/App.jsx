@@ -7,6 +7,8 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { MainLayout } from './components/layout/MainLayout';
 import { AuthGuard, PublicRoute, RoleGuard } from './components/layout/Guards';
 import { MeetingAlert } from './components/MeetingAlert';
+import { initRealTime } from './services/realtime';
+import { useEffect } from 'react';
 
 // Pages
 import Login from './pages/Login';
@@ -31,6 +33,9 @@ import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
 import JoinInterview from './pages/JoinInterview';
 import CandidateFeedback from './pages/CandidateFeedback';
+import MyProgress from './pages/MyProgress';
+import Leaderboard from './pages/Leaderboard';
+import TeamPerformance from './pages/TeamPerformance';
 
 // Simple pending / denied pages
 function PendingApprovalPage() {
@@ -71,6 +76,10 @@ function NotFound() {
 }
 
 export default function App() {
+  useEffect(() => {
+    initRealTime();
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>
@@ -105,6 +114,9 @@ export default function App() {
                     <Routes>
                       <Route path="/" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/progress" element={<MyProgress />} />
+                      <Route path="/leaderboard" element={<Leaderboard />} />
+                      <Route path="/team-performance" element={<RoleGuard allowedRoles={['admin', 'hr', 'manager', 'employee', 'panel']}><TeamPerformance /></RoleGuard>} />
 
                       {/* Employees */}
                       <Route path="/employees" element={<Employees />} />

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone, Building, Calendar, Save, Download, Clock, Laptop, Shield } from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Mail, Phone, Building, Calendar, Edit2, Save, X, Download, Clock, Laptop, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet, asyncSet } from '../services/storage';
 import { Avatar, Button, Input, Select, StatusBadge, PriorityBadge, Skeleton } from '../components/ui';
 import { formatDate } from '../utils/dates';
 import toast from 'react-hot-toast';
+import MyProgress from './MyProgress';
 
 // New Chart & Widget Components
 import { ProductivityChart } from '../components/ui/charts/ProductivityChart';
@@ -144,7 +145,12 @@ export default function EmployeeProfile() {
   const [users, setUsers] = useState([]);
   
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('tab') || 'dashboard';
+  });
+  const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({});
   
   // Dashboard state
@@ -271,6 +277,7 @@ export default function EmployeeProfile() {
   }));
 
   const TABS = ['dashboard', 'tasks', 'meetings'];
+  if (['intern', 'employee'].includes(employee.role)) TABS.push('performance');
   if (currentUser.role === 'admin') TABS.push('edit');
 
   return (
@@ -537,6 +544,13 @@ export default function EmployeeProfile() {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+
+      {/* Performance Tab (Intern/Employee only) */}
+      {activeTab === 'performance' && ['intern', 'employee'].includes(employee.role) && (
+        <div className="mt-4 print:hidden">
+          <MyProgress targetEmployee={employee} isEmbedded={true} />
         </div>
       )}
 
