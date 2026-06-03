@@ -12,7 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    @Value("${frontend.urls:http://localhost:5173,http://localhost:3000,http://192.168.1.45:5173}")
+    @Value("${frontend.urls:https://settribe-task-1.onrender.com}")
     private String[] frontendUrls;
 
     @Override

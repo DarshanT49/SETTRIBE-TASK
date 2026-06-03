@@ -1,6 +1,7 @@
 package com.settribe.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,12 @@ public class EmailService {
     @Autowired
     private EmailTemplateService emailTemplateService;
 
+    @Value("${frontend.urls:https://settribe-task-1.onrender.com}")
+    private String[] frontendUrls;
+
+    @Value("${spring.mail.username}")
+    private String senderEmail;
+
     public String compileTemplate(String htmlBody, Map<String, String> variables) {
         String compiled = htmlBody;
         if (compiled == null) return "";
@@ -38,8 +45,10 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             
+            helper.setFrom(senderEmail, "SetTribe HR Team");
             helper.setTo(interview.getEmail());
-            String interviewLink = "http://localhost:5173/join-interview/" + interview.getToken();
+            String baseUrl = frontendUrls != null && frontendUrls.length > 0 ? frontendUrls[0] : "https://settribe-task-1.onrender.com";
+            String interviewLink = baseUrl + "/join-interview/" + interview.getToken();
             
             EmailTemplate template = emailTemplateService.getActiveTemplateByCategory("Interview Invitation");
             String htmlTemplate;

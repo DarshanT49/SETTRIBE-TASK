@@ -10,7 +10,7 @@ public class CorsConfig implements WebMvcConfigurer {
 
     // Injected from application.properties → frontend.urls
     // Override with FRONTEND_URLS env variable in production
-    @Value("${frontend.urls:http://localhost:5173,http://localhost:3000}")
+    @Value("${frontend.urls:https://settribe-task-1.onrender.com}")
     private String[] frontendUrls;
 
     @Override

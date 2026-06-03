@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Environment / Secrets ###
+.env
+.env.local
+# .env.production.example is intentionally NOT ignored (it's a safe template)
