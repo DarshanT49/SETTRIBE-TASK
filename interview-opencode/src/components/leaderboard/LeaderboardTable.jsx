@@ -19,7 +19,7 @@ export function LeaderboardTable({ interns }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-800">
-          {interns.map((intern, index) => (
+          {interns.map((intern,   index) => (
             <tr key={intern.id} className="hover:bg-gray-800/50 transition-colors">
               <td className="p-4">
                 {getRankBadge(intern.rank)}

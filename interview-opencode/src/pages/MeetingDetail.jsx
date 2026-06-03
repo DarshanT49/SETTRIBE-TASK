@@ -5,7 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet, asyncSet, apiPut } from '../services/storage';
 import { exportMeetingReport } from '../utils/exportExcel';
 import { createNotification, createBulkNotifications } from '../services/notifications';
+   
 import { Avatar, Button, Badge, Modal, Select, Textarea, StatusBadge, Skeleton, Input } from '../components/ui';
+   
 import { formatDate, formatDateTime, formatDuration, canStartMeeting, getMeetingStatus } from '../utils/dates';
 import { markMeetingAbsent } from '../services/meetings';
 import toast from 'react-hot-toast';
@@ -55,10 +57,12 @@ export default function MeetingDetail() {
     }
   };
 
+   
   useEffect(() => { setTimeout(load, 200); }, [id]);
 
   useEffect(() => {
     if (meeting) {
+   
       setRescheduleForm({ date: meeting.date, time: meeting.time, duration: meeting.duration });
     }
   }, [meeting]);
@@ -93,6 +97,7 @@ export default function MeetingDetail() {
     return Array.isArray(data) ? data : [];
   };
 
+   
   const chatLogs = safeParse(meeting.chatLogs);
   const standupLogs = safeParse(meeting.standupLogs);
   const taskAssignedInMeeting = safeParse(meeting.taskAssignedInMeeting);

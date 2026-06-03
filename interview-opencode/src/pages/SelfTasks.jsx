@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
+   
 import { Plus, Check, Edit, Trash, Search, Bell, BellOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet, asyncSet } from '../services/storage';
 import { Button, Modal, Input, Select, Textarea, Toggle, EmptyState, Skeleton } from '../components/ui';
+   
 import { formatDate, isOverdue } from '../utils/dates';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
+   
 const REMINDER_OPTIONS = ['5min', '10min', '30min', '1hr', '1day'];
 
 export default function SelfTasks() {
@@ -27,7 +30,9 @@ export default function SelfTasks() {
   };
 
   useEffect(() => {
+   
     load();
+   
   }, [currentUser.id]);
 
   useAutoRefresh(load);

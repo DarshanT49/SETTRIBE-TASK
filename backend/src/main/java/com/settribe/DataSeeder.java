@@ -18,6 +18,7 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired private TaskRepository taskRepository;
     @Autowired private MeetingRepository meetingRepository;
     @Autowired private InterviewRepository interviewRepository;
+    @Autowired private EmailTemplateRepository emailTemplateRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -77,7 +78,7 @@ public class DataSeeder implements CommandLineRunner {
                 "Implement product listing page with filters",
                 "Create a responsive product listing page with search, category filter.", "high",
                 "user-manager-001", "user-manager-001", "in_progress", now,
-                Instant.now().plus(5, ChronoUnit.DAYS).toString(), "", null, false, now);
+                Instant.now().plus(5, ChronoUnit.DAYS).toString(), "", null, false, now, 5.0);
             task1.setAssigneeIds("[\"user-employee-001\"]");
             taskRepository.save(task1);
 
@@ -85,7 +86,7 @@ public class DataSeeder implements CommandLineRunner {
                 "Shopping cart with localStorage persistence",
                 "Implement full cart functionality.", "high",
                 "user-manager-001", "user-manager-001", "todo", tomorrow,
-                Instant.now().plus(7, ChronoUnit.DAYS).toString(), "", null, false, now);
+                Instant.now().plus(7, ChronoUnit.DAYS).toString(), "", null, false, now, 8.0);
             task2.setAssigneeIds("[\"user-employee-001\",\"user-intern-001\"]");
             taskRepository.save(task2);
 
@@ -93,7 +94,7 @@ public class DataSeeder implements CommandLineRunner {
                 "User authentication UI",
                 "Design and implement all auth pages.", "critical",
                 "user-employee-001", "user-employee-001", "in_review", twoDaysAgo, tomorrow,
-                "", null, false, twoDaysAgo);
+                "", null, false, twoDaysAgo, 10.0);
             task3.setAssigneeIds("[\"user-intern-001\"]");
             taskRepository.save(task3);
 
@@ -101,7 +102,7 @@ public class DataSeeder implements CommandLineRunner {
                 "Setup Tailwind design system",
                 "Create base design tokens and reusable components.", "medium",
                 "user-manager-001", "user-manager-001", "done", lastMonth, yesterday,
-                "", null, false, lastMonth);
+                "", null, false, lastMonth, 4.0);
             task4.setAssigneeIds("[\"user-employee-001\"]");
             taskRepository.save(task4);
 
@@ -110,7 +111,7 @@ public class DataSeeder implements CommandLineRunner {
                 "HR analytics charts.", "medium",
                 "user-manager-001", "user-manager-001", "done",
                 Instant.now().minus(50, ChronoUnit.DAYS).toString(), yesterday,
-                "", null, false, Instant.now().minus(50, ChronoUnit.DAYS).toString());
+                "", null, false, Instant.now().minus(50, ChronoUnit.DAYS).toString(), 15.0);
             task5.setAssigneeIds("[\"user-employee-001\"]");
             taskRepository.save(task5);
 
@@ -136,6 +137,24 @@ public class DataSeeder implements CommandLineRunner {
                 tomorrowDateStr.substring(0, 10), "10:00", "",
                 "user-panel-001", "scheduled", "token-interview-001", "Candidate has 4 years of React experience.",
                 "Karan_Mehta_Resume.pdf", "waiting", now));
+
+            // Seed Email Templates
+            if (emailTemplateRepository.count() == 0) {
+                EmailTemplate template = new EmailTemplate();
+                template.setId("tmpl-interview-invite");
+                template.setName("Standard Interview Invitation");
+                template.setCategory("Interview Invitation");
+                template.setSubject("Interview Invitation - {{JobRole}}");
+                template.setHtmlBody("<p>Dear {{CandidateName}},</p><p>Thank you for applying for the position of {{JobRole}}.</p><p>We are pleased to invite you for an interview.</p><p><strong>Interview Details:</strong></p><ul><li>Date: {{InterviewDate}}</li><li>Time: {{InterviewTime}}</li><li>Interviewer: {{InterviewerName}}</li></ul><p>Please join using the following link:</p><p><a href=\"{{MeetingLink}}\">Join Interview</a></p><p>We look forward to speaking with you.</p><p>Regards,</p><p>{{HRName}}</p><p>{{CompanyName}}</p>");
+                template.setIsDefault(true);
+                template.setIsActive(true);
+                template.setVersion(1);
+                template.setCreatedBy("user-admin-001");
+                template.setUpdatedBy("user-admin-001");
+                template.setCreatedAt(now);
+                template.setUpdatedAt(now);
+                emailTemplateRepository.save(template);
+            }
 
             System.out.println("✅ Data Seeding Completed!");
         }

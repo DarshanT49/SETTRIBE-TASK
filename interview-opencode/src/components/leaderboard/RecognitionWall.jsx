@@ -1,3 +1,4 @@
+   
 import { Trophy, Star, Zap, Flame, Rocket } from 'lucide-react';
 import { Avatar } from '../ui';
 

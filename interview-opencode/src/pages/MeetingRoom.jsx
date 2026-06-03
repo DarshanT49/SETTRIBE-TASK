@@ -12,8 +12,10 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  Clock
+  Clock,
+  ClipboardList
 } from 'lucide-react';
+import InterviewEvaluationPanel from '../components/InterviewEvaluationPanel';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../contexts/AuthContext';
@@ -918,11 +920,24 @@ export default function MeetingRoom() {
             </div>
           )}
 
+          {sidePanel === 'evaluate' && isHost && meeting.type === 'interview' && (
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+              <InterviewEvaluationPanel
+                meeting={meeting}
+                currentUser={{ id: meeting.hostId }}
+                onSaved={() => {}}
+              />
+            </div>
+          )}
+
           <div className="flex border-t border-gray-800 bg-gray-950 mt-auto">
             {[
               ['participants', 'People', Users],
               ['chat', 'Chat', MessageSquare],
-              ...(isHost ? [['lobby', 'Lobby', Clock]] : [])
+              ...(isHost ? [['lobby', 'Lobby', Clock]] : []),
+              ...(isHost && meeting.type === 'interview' ? [['evaluate', 'Evaluate', ClipboardList]] : []),
+              ...(isHost && meeting.type === 'standup' ? [['standup', 'Standup', Grid3X3]] : []),
+              ...(isHost && meeting.type === 'project' ? [['tasks', 'Tasks', CheckSquare]] : [])
             ].map(([tab, label, Icon]) => (
               <button
                 key={tab}
@@ -952,7 +967,7 @@ export default function MeetingRoom() {
           <p className="mb-6 text-sm text-gray-300">Are you sure you want to leave this meeting?</p>
           <div className="flex justify-end gap-3">
             <Button variant="secondary" onClick={cancelLeave}>Cancel</Button>
-            <Button variant="danger" onClick={confirmLeave}>Leave</Button>
+            <Button variant="danger" className="w-full" onClick={() => { confirmLeave(); }}>Leave</Button>
           </div>
         </div>
       </Modal>

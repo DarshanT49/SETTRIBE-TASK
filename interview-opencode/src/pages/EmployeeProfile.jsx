@@ -273,7 +273,7 @@ export default function EmployeeProfile() {
   const healthProjects = projects.map(p => ({
     ...p,
     health: p.progress > 80 ? 'green' : p.progress > 40 ? 'amber' : 'red',
-    burndownRate: Math.floor(Math.random() * 5) + 2
+    burndownRate: Math.floor(  Math.random() * 5) + 2
   }));
 
   const TABS = ['dashboard', 'tasks', 'meetings'];

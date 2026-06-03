@@ -1,12 +1,15 @@
+   
 import { useState } from 'react';
+   
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, FolderKanban, CheckSquare, ClipboardList,
   Video, UserCheck, BarChart3, Bell, User, LogOut, ChevronLeft,
-  ChevronRight, Clock, Shield, Menu, X, Trophy, TrendingUp, Database
+  ChevronRight, Clock, Shield, Menu, X, Trophy, TrendingUp, Database, Mail
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
+   
 import { Avatar, Badge } from '../ui';
 
 const allNavLinks = [
@@ -22,6 +25,7 @@ const allNavLinks = [
   { to: '/meetings', icon: Video, label: 'Meetings', roles: ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'] },
   { to: '/standup-data', icon: Database, label: 'Standup Data', roles: ['admin', 'manager'] },
   { to: '/interviews', icon: UserCheck, label: 'Interviews', roles: ['admin', 'hr', 'manager', 'employee', 'panel'] },
+  { to: '/email-templates', icon: Mail, label: 'Email Templates', roles: ['admin', 'hr'] },
   { to: '/reports', icon: BarChart3, label: 'Reports', roles: ['admin', 'hr', 'manager', 'employee'] },
   { to: '/notifications', icon: Bell, label: 'Notifications', roles: ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'] },
   { to: '/profile', icon: User, label: 'Profile', roles: ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'] },

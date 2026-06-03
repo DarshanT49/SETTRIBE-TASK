@@ -1,16 +1,26 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+   
 import { Plus, Search, UserCheck, ChevronDown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
+   
 import { Avatar, Button, Badge, StatusBadge, EmptyState, Skeleton } from '../components/ui';
+   
 import { formatDate } from '../utils/dates';
 
 const STATUS_COLORS = {
   scheduled: 'bg-blue-900/40 text-blue-400 border border-blue-800/50',
+  in_progress: 'bg-amber-900/40 text-amber-400 border border-amber-800/50',
   completed: 'bg-emerald-900/40 text-emerald-400 border border-emerald-800/50',
   cancelled: 'bg-gray-800 text-gray-500 border border-gray-700',
-  waiting: 'bg-yellow-900/40 text-yellow-400 border border-yellow-800/50' };
+  waiting: 'bg-yellow-900/40 text-yellow-400 border border-yellow-800/50',
+  selected: 'bg-emerald-900/40 text-emerald-400 border border-emerald-800/50',
+  rejected: 'bg-red-900/40 text-red-400 border border-red-800/50',
+  on_hold: 'bg-yellow-900/40 text-yellow-400 border border-yellow-800/50',
+  next_round: 'bg-blue-900/40 text-blue-400 border border-blue-800/50',
+  offer_released: 'bg-violet-900/40 text-violet-400 border border-violet-800/50'
+};
 
 const ROUNDS = ['screening', 'technical', 'hr', 'final', 'all'];
 
@@ -71,9 +81,9 @@ export default function Interviews() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by candidate, position..." className="input-field pl-9" />
         </div>
         <div className="flex gap-1">
-          {['all', 'scheduled', 'waiting', 'completed', 'cancelled'].map(s => (
+          {['all', 'scheduled', 'in_progress', 'waiting', 'completed', 'selected', 'rejected', 'cancelled'].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${statusFilter === s ? 'bg-primary-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}`}>{s}</button>
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${statusFilter === s ? 'bg-primary-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}`}>{s.replace('_', ' ')}</button>
           ))}
         </div>
         <select value={roundFilter} onChange={e => setRoundFilter(e.target.value)} className="input-field w-32">
@@ -102,7 +112,7 @@ export default function Interviews() {
                     <div>
                       <div className="flex items-center gap-3 flex-wrap">
                         <h3 className="font-semibold text-gray-100">{i.candidateName}</h3>
-                        <span className={`badge ${STATUS_COLORS[i.status] || 'bg-gray-800 text-gray-400 border border-gray-700'}`}>{i.status}</span>
+                        <span className={`badge ${STATUS_COLORS[i.status] || 'bg-gray-800 text-gray-400 border border-gray-700'}`}>{(i.status || '').replace('_', ' ')}</span>
                         <span className="badge bg-gray-800 text-gray-400 border border-gray-700 capitalize">{i.round}</span>
                         {hasEval && <span className="badge bg-emerald-900/40 text-emerald-400 border border-emerald-800/50">Evaluated ✓</span>}
                       </div>

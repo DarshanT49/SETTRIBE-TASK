@@ -1,3 +1,4 @@
+ 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { login as authLogin, logout as authLogout, getCurrentUser, getSessionSync } from '../services/auth';
 import { startReminderEngine, stopReminderEngine } from '../services/reminderEngine';
@@ -21,6 +22,7 @@ export function AuthProvider({ children }) {
         setLoading(false);
       });
     } else {
+   
       setLoading(false);
     }
   }, []);

@@ -1,7 +1,9 @@
+ 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { KEYS, asyncGet } from '../services/storage';
 import { markNotificationRead, markAllRead as markAllReadService, deleteNotification } from '../services/notifications';
 import { useAuth } from './AuthContext';
+   
 import api from '../services/api';
 
 const NotificationContext = createContext(null);
@@ -21,6 +23,7 @@ export function NotificationProvider({ children }) {
   }, [currentUser]);
 
   useEffect(() => {
+   
     refresh();
     const interval = setInterval(refresh, 5000); // Poll every 5s
     return () => clearInterval(interval);

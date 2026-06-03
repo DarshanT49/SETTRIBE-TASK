@@ -19,6 +19,7 @@ const KEY_TO_ENDPOINT = {
   projectHistory: 'projectHistory',
   taskHistory: 'taskHistory',
   meetingSignals: 'meetingSignals',
+  emailTemplates: 'emailTemplates',
 };
 
 // Keys that are local-only (not persisted to backend)
@@ -234,6 +235,7 @@ export const KEYS = {
   PROJECT_HISTORY: 'projectHistory',
   TASK_HISTORY: 'taskHistory',
   MEETING_SIGNALS: 'meetingSignals',
+  EMAIL_TEMPLATES: 'emailTemplates',
   SEEDED: 'seeded',
   THEME: 'theme',
 };

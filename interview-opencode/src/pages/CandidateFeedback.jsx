@@ -7,6 +7,7 @@ import { Button, Textarea } from '../components/ui';
 
 export default function CandidateFeedback() {
   const { interviewId } = useParams();
+   
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -21,11 +22,11 @@ export default function CandidateFeedback() {
   });
 
   const categories = [
-    { key: 'experienceRating', label: 'Overall Interview Experience' },
+    { key: 'experienceRating', label: 'Interview Experience' },
     { key: 'videoQualityRating', label: 'Video Call Quality' },
     { key: 'audioQualityRating', label: 'Audio Quality' },
     { key: 'platformRating', label: 'Platform Experience' },
-    { key: 'joiningEaseRating', label: 'Ease of Joining' },
+    { key: 'joiningEaseRating', label: 'Overall Rating' },
   ];
 
   const handleRating = (key, value) => {
