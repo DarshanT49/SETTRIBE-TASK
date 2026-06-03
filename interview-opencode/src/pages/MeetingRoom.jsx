@@ -86,9 +86,9 @@ export default function MeetingRoom() {
       const isHost = m.hostId === currentUser.id;
       const isAdmin = currentUser.role === 'admin';
       // Admin and host bypass the waiting room entirely
-      const isHostPresent = toArray(m.attendanceLogs).some(l => l.userId === m.hostId && !l.leaveTime);
+      const hasHostStartedMeeting = toArray(m.attendanceLogs).some(l => l.userId === m.hostId);
 
-      if (!isHost && !isAdmin && !isHostPresent) {
+      if (!isHost && !isAdmin && !hasHostStartedMeeting) {
         return;
       }
 
@@ -516,9 +516,9 @@ export default function MeetingRoom() {
   const isHostNow = meeting?.hostId === currentUser.id;
   const isAdminNow = currentUser.role === 'admin';
 
-  const isHostPresentNow = toArray(meeting?.attendanceLogs).some(l => l.userId === meeting?.hostId && !l.leaveTime);
+  const hasHostStartedMeetingNow = toArray(meeting?.attendanceLogs).some(l => l.userId === meeting?.hostId);
 
-  if (!isHostNow && !isAdminNow && !isHostPresentNow) {
+  if (!isHostNow && !isAdminNow && !hasHostStartedMeetingNow) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950">
         <div className="max-w-md rounded-lg border border-gray-800 bg-gray-900 p-6 text-center shadow-xl">
