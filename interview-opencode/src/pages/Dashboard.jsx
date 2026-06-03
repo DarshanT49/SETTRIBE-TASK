@@ -241,7 +241,7 @@ function AdminDashboard({ data, currentUser }) {
             <h2 className="font-semibold text-gray-100">Upcoming Meetings</h2>
             <Link to="/meetings" className="text-xs text-primary-400 hover:text-primary-300">View all →</Link>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {upcomingMeetings.length === 0 ? (
               <div className="text-center py-6 text-gray-500 text-sm">No upcoming meetings</div>
             ) : upcomingMeetings.map(m => <MeetingCard key={m.id} meeting={m} users={users} />)}
@@ -285,7 +285,7 @@ function HRDashboard({ data, currentUser }) {
             const user = users.find(u => u.id === req.userId);
             if (!user) return null;
             return (
-              <div key={req.id} className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg mb-2">
+              <div key={req.id} className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg mb-3">
                 <Avatar name={user.name} size="sm" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-200">{user.name}</p>
@@ -306,7 +306,7 @@ function HRDashboard({ data, currentUser }) {
           {todayInterviews.length === 0 ? (
             <div className="text-center py-8 text-gray-500 text-sm">No interviews today</div>
           ) : todayInterviews.map(i => (
-            <div key={i.id} className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg mb-2">
+            <div key={i.id} className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg mb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-200">{i.candidateName}</p>
@@ -382,7 +382,7 @@ function ManagerDashboard({ data, currentUser }) {
           {myProjects.length === 0 ? (
             <div className="text-center py-8 text-gray-500 text-sm">No projects assigned</div>
           ) : myProjects.map(p => (
-            <Link key={p.id} to={`/projects/${p.id}`} className="flex items-center gap-3 p-3 bg-gray-800/50 border border-gray-700 rounded-lg mb-2 hover:border-gray-600 transition-colors">
+            <Link key={p.id} to={`/projects/${p.id}`} className="flex items-center gap-3 p-3 bg-gray-800/50 border border-gray-700 rounded-lg mb-3 hover:border-gray-600 transition-colors">
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-200">{p.title}</p>
                 <div className="mt-1 h-1.5 bg-gray-700 rounded-full"><div className="h-full bg-primary-600 rounded-full" style={{ width: `${p.progress}%` }} /></div>
@@ -444,7 +444,7 @@ function EmployeeDashboard({ data, currentUser }) {
           {myProjects.length === 0 ? (
             <div className="text-center py-8 text-gray-500 text-sm">No projects yet</div>
           ) : myProjects.map(p => (
-            <Link key={p.id} to={`/projects/${p.id}`} className="flex items-center gap-3 p-3 bg-gray-800/50 border border-gray-700 rounded-lg mb-2 hover:border-gray-600 transition-colors">
+            <Link key={p.id} to={`/projects/${p.id}`} className="flex items-center gap-3 p-3 bg-gray-800/50 border border-gray-700 rounded-lg mb-3 hover:border-gray-600 transition-colors">
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-200">{p.title}</p>
                 <div className="mt-1.5 h-1.5 bg-gray-700 rounded-full"><div className="h-full bg-primary-600 rounded-full" style={{ width: `${p.progress}%` }} /></div>
@@ -497,7 +497,7 @@ function PanelDashboard({ data, currentUser }) {
         {myInterviews.length === 0 ? (
           <div className="text-center py-8 text-gray-500 text-sm">No interviews assigned</div>
         ) : myInterviews.map(i => (
-          <Link key={i.id} to={`/interviews/${i.id}`} className="flex items-center justify-between p-3 bg-gray-800/50 border border-gray-700 rounded-lg mb-2 hover:border-gray-600 transition-colors">
+          <Link key={i.id} to={`/interviews/${i.id}`} className="flex items-center justify-between p-3 bg-gray-800/50 border border-gray-700 rounded-lg mb-3 hover:border-gray-600 transition-colors">
             <div>
               <p className="text-sm font-medium text-gray-200">{i.candidateName}</p>
               <p className="text-xs text-gray-500">{i.position} · {i.date} {i.time}</p>

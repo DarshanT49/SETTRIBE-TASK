@@ -43,11 +43,12 @@ public class Task {
     private String createdAt;
     @Column(columnDefinition = "TEXT")
     private String assigneeIds; // stored as JSON array string
+    private Double estimatedHours;
 
     public Task() {
     }
 
-    public Task(String id, String projectId, String milestoneId, String sprintId, String title, String description, String priority, String creatorId, String assignedBy, String status, String startDate, String dueDate, String delayReason, String newDueDate, Boolean isDelayed, String createdAt) {
+    public Task(String id, String projectId, String milestoneId, String sprintId, String title, String description, String priority, String creatorId, String assignedBy, String status, String startDate, String dueDate, String delayReason, String newDueDate, Boolean isDelayed, String createdAt, Double estimatedHours) {
         this.id = id;
         this.projectId = projectId;
         this.milestoneId = milestoneId;
@@ -64,6 +65,7 @@ public class Task {
         this.newDueDate = newDueDate;
         this.isDelayed = isDelayed;
         this.createdAt = createdAt;
+        this.estimatedHours = estimatedHours;
     }
 
     public String getId() {
@@ -200,6 +202,14 @@ public class Task {
 
     public void setAssigneeIds(String assigneeIds) {
         this.assigneeIds = assigneeIds;
+    }
+
+    public Double getEstimatedHours() {
+        return estimatedHours;
+    }
+
+    public void setEstimatedHours(Double estimatedHours) {
+        this.estimatedHours = estimatedHours;
     }
 }
 

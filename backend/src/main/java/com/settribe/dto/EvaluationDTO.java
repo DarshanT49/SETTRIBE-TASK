@@ -6,13 +6,14 @@ public class EvaluationDTO {
     private String evaluatorId;
     private String candidateName;
     private String position;
-    private Integer technicalScore;
-    private Integer communicationScore;
-    private Integer problemSolvingScore;
-    private Integer cultureFitScore;
+    private Double percentage;
     private Integer overallScore;
     private String recommendation;
     private String notes;
+    private String skillsAssessed;
+    private String candidateStrengths;
+    private String areasForImprovement;
+    private String recommendedNextSteps;
     private String createdAt;
 
     public EvaluationDTO() {}
@@ -27,20 +28,22 @@ public class EvaluationDTO {
     public void setCandidateName(String candidateName) { this.candidateName = candidateName; }
     public String getPosition() { return position; }
     public void setPosition(String position) { this.position = position; }
-    public Integer getTechnicalScore() { return technicalScore; }
-    public void setTechnicalScore(Integer technicalScore) { this.technicalScore = technicalScore; }
-    public Integer getCommunicationScore() { return communicationScore; }
-    public void setCommunicationScore(Integer communicationScore) { this.communicationScore = communicationScore; }
-    public Integer getProblemSolvingScore() { return problemSolvingScore; }
-    public void setProblemSolvingScore(Integer problemSolvingScore) { this.problemSolvingScore = problemSolvingScore; }
-    public Integer getCultureFitScore() { return cultureFitScore; }
-    public void setCultureFitScore(Integer cultureFitScore) { this.cultureFitScore = cultureFitScore; }
+    public Double getPercentage() { return percentage; }
+    public void setPercentage(Double percentage) { this.percentage = percentage; }
     public Integer getOverallScore() { return overallScore; }
     public void setOverallScore(Integer overallScore) { this.overallScore = overallScore; }
     public String getRecommendation() { return recommendation; }
     public void setRecommendation(String recommendation) { this.recommendation = recommendation; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    public String getSkillsAssessed() { return skillsAssessed; }
+    public void setSkillsAssessed(String skillsAssessed) { this.skillsAssessed = skillsAssessed; }
+    public String getCandidateStrengths() { return candidateStrengths; }
+    public void setCandidateStrengths(String candidateStrengths) { this.candidateStrengths = candidateStrengths; }
+    public String getAreasForImprovement() { return areasForImprovement; }
+    public void setAreasForImprovement(String areasForImprovement) { this.areasForImprovement = areasForImprovement; }
+    public String getRecommendedNextSteps() { return recommendedNextSteps; }
+    public void setRecommendedNextSteps(String recommendedNextSteps) { this.recommendedNextSteps = recommendedNextSteps; }
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
 }

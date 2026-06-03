@@ -4,7 +4,7 @@ export function generateInterviewEmail({ candidateName, position, interviewType,
 
   return {
     to: '',
-    subject: `Interview Invitation — ${position} at SetTribe`,
+    subject: `Interview Invitation — ${position} at SETTribe`,
     body: `Dear ${candidateName},
 
 We are pleased to inform you that you have been scheduled for a ${typeLabel} interview for the position of ${position} at SetTribe.
@@ -24,7 +24,7 @@ Instructions:
 We look forward to speaking with you!
 
 Best regards,
-SetTribe HR Team
+SETTribe HR Team
 hr@settribe.com`,
     candidateLink,
   };

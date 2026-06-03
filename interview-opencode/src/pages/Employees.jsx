@@ -108,7 +108,7 @@ export default function Employees() {
           {Array(8).fill(0).map((_, i) => <Skeleton key={i} className={viewMode === 'grid' ? 'h-48' : 'h-16'} />)}
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Users} title="No employees found" description="Try adjusting your search or filters" />
+        <EmptyState icon={  Users} title="No employees found" description="Try adjusting your search or filters" />
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map(user => (

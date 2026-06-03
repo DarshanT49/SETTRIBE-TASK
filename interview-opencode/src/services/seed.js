@@ -4,6 +4,7 @@ import { KEYS, asyncSet } from './storage';
 const now = new Date().toISOString();
 const yesterday = new Date(Date.now() - 86400000).toISOString();
 const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString();
+   
 const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString();
 const nextMonth = new Date(Date.now() + 30 * 86400000).toISOString();
 const lastMonth = new Date(Date.now() - 30 * 86400000).toISOString();

@@ -1,3 +1,4 @@
+   
 import { CalendarCheck, CalendarX, Clock, Coffee, Users, Video } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 

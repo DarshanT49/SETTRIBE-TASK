@@ -1,0 +1,303 @@
+[
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\App.jsx",
+    "unusedVars": [
+      "'logout' is assigned a value but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\components\\ProjectChat.jsx",
+    "unusedVars": [
+      "'React' is defined but never used.",
+      "'MoreVertical' is defined but never used.",
+      "'Pin' is defined but never used.",
+      "'Input' is defined but never used.",
+      "'str' is defined but never used.",
+      "'i' is defined but never used."
+    ],
+    "setStates": [
+      74
+    ]
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\components\\analytics\\ManHoursDashboard.jsx",
+    "unusedVars": [
+      "'React' is defined but never used.",
+      "'LineChart' is defined but never used.",
+      "'Line' is defined but never used.",
+      "'worklogService' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\components\\kanban\\KanbanBoard.jsx",
+    "unusedVars": [
+      "'users' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\components\\layout\\Sidebar.jsx",
+    "unusedVars": [
+      "'useState' is defined but never used.",
+      "'useLocation' is defined but never used.",
+      "'Clock' is defined but never used.",
+      "'Menu' is defined but never used.",
+      "'X' is defined but never used.",
+      "'Badge' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\components\\leaderboard\\LeaderboardTable.jsx",
+    "unusedVars": [
+      "'index' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\components\\leaderboard\\RecognitionWall.jsx",
+    "unusedVars": [
+      "'Flame' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\components\\progress\\AttendanceActivity.jsx",
+    "unusedVars": [
+      "'Users' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\components\\progress\\ProjectAnalytics.jsx",
+    "unusedVars": [
+      "'CheckCircle' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\contexts\\AuthContext.jsx",
+    "unusedVars": [],
+    "setStates": [
+      24
+    ]
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\contexts\\NotificationContext.jsx",
+    "unusedVars": [
+      "'api' is defined but never used."
+    ],
+    "setStates": [
+      24
+    ]
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\CandidateFeedback.jsx",
+    "unusedVars": [
+      "'navigate' is assigned a value but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\Dashboard.jsx",
+    "unusedVars": [
+      "'ArrowRight' is defined but never used.",
+      "'Badge' is defined but never used.",
+      "'PriorityBadge' is defined but never used.",
+      "'formatDate' is defined but never used.",
+      "'canStartMeeting' is defined but never used.",
+      "'LineChart' is defined but never used.",
+      "'Line' is defined but never used.",
+      "'trend' is defined but never used.",
+      "'milestones' is assigned a value but never used.",
+      "'myTasks' is assigned a value but never used."
+    ],
+    "setStates": [
+      40
+    ]
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\EmployeeProfile.jsx",
+    "unusedVars": [
+      "'Edit2' is defined but never used.",
+      "'X' is defined but never used.",
+      "'editMode' is assigned a value but never used.",
+      "'setEditMode' is assigned a value but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\Employees.jsx",
+    "unusedVars": [
+      "'Filter' is defined but never used.",
+      "'CheckCircle' is defined but never used.",
+      "'XCircle' is defined but never used.",
+      "'Clock' is defined but never used.",
+      "'createNotification' is defined but never used.",
+      "'Badge' is defined but never used.",
+      "'StatusBadge' is defined but never used.",
+      "'formatRelativeTime' is defined but never used."
+    ],
+    "setStates": [
+      41
+    ]
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\InterviewDetail.jsx",
+    "unusedVars": [
+      "'Badge' is defined but never used.",
+      "'Input' is defined but never used.",
+      "'formatDate' is defined but never used.",
+      "'formatDateTime' is defined but never used."
+    ],
+    "setStates": [
+      43
+    ]
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\Interviews.jsx",
+    "unusedVars": [
+      "'ChevronDown' is defined but never used.",
+      "'Badge' is defined but never used.",
+      "'StatusBadge' is defined but never used.",
+      "'formatDate' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\MeetingDetail.jsx",
+    "unusedVars": [
+      "'MessageSquare' is defined but never used.",
+      "'Badge' is defined but never used.",
+      "'formatDateTime' is defined but never used.",
+      "'chatLogs' is assigned a value but never used."
+    ],
+    "setStates": [
+      60
+    ]
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\MeetingRoom.jsx",
+    "unusedVars": [
+      "'standupData' is assigned a value but never used.",
+      "'setStandupData' is assigned a value but never used.",
+      "'e' is defined but never used.",
+      "'e' is defined but never used.",
+      "'e' is defined but never used.",
+      "'err' is defined but never used.",
+      "'RemoteVideo' is assigned a value but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\Meetings.jsx",
+    "unusedVars": [
+      "'useMemo' is defined but never used.",
+      "'Badge' is defined but never used.",
+      "'formatDate' is defined but never used.",
+      "'getMeetingDateTime' is defined but never used.",
+      "'today' is assigned a value but never used."
+    ],
+    "setStates": [
+      80
+    ]
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\MyProgress.jsx",
+    "unusedVars": [
+      "'useState' is defined but never used.",
+      "'useEffect' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\MyTasks.jsx",
+    "unusedVars": [
+      "'Filter' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\NewProject.jsx",
+    "unusedVars": [
+      "'Link' is defined but never used.",
+      "'useSearchParams' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\Notifications.jsx",
+    "unusedVars": [
+      "'Check' is defined but never used.",
+      "'ArrowRight' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\PendingApprovals.jsx",
+    "unusedVars": [
+      "'Clock' is defined but never used."
+    ],
+    "setStates": [
+      27
+    ]
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\ProjectDetail.jsx",
+    "unusedVars": [
+      "'ChevronDown' is defined but never used.",
+      "'Download' is defined but never used.",
+      "'ExternalLink' is defined but never used.",
+      "'Calendar' is defined but never used.",
+      "'createNotification' is defined but never used.",
+      "'Badge' is defined but never used.",
+      "'Select' is defined but never used.",
+      "'Toggle' is defined but never used.",
+      "'formatDateTime' is defined but never used.",
+      "'showChangeReqModal' is assigned a value but never used.",
+      "'setShowChangeReqModal' is assigned a value but never used.",
+      "'users' is defined but never used.",
+      "'meetings' is defined but never used.",
+      "'idx' is defined but never used.",
+      "'currentUserId' is defined but never used."
+    ],
+    "setStates": [
+      63
+    ]
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\Projects.jsx",
+    "unusedVars": [
+      "'Filter' is defined but never used.",
+      "'Badge' is defined but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\pages\\SelfTasks.jsx",
+    "unusedVars": [
+      "'BellOff' is defined but never used.",
+      "'formatDate' is defined but never used.",
+      "'REMINDER_OPTIONS' is assigned a value but never used."
+    ],
+    "setStates": [
+      30
+    ]
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\services\\seed.js",
+    "unusedVars": [
+      "'nextWeek' is assigned a value but never used."
+    ],
+    "setStates": []
+  },
+  {
+    "file": "D:\\Settribe\\MTMS\\SETTRIBE-TASK\\interview-opencode\\src\\utils\\performanceMath.js",
+    "unusedVars": [
+      "'task' is defined but never used."
+    ],
+    "setStates": []
+  }
+]

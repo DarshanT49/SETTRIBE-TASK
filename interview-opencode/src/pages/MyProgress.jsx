@@ -1,3 +1,4 @@
+   
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -13,6 +14,7 @@ import { FeedbackReviews } from '../components/progress/FeedbackReviews';
 import { Achievements } from '../components/progress/Achievements';
 import { AIInsights } from '../components/progress/AIInsights';
 import { ExportReports } from '../components/progress/ExportReports';
+import { ManHoursDashboard } from '../components/analytics/ManHoursDashboard';
 
 export default function MyProgress({ targetEmployee, isEmbedded = false }) {
   const { currentUser } = useAuth();
@@ -153,6 +155,11 @@ export default function MyProgress({ targetEmployee, isEmbedded = false }) {
       {/* 1. Profile Summary Section */}
       <section>
         <ProfileSummary intern={internProfile} stats={generalStats} />
+      </section>
+
+      {/* NEW: Man-Hours & Productivity Dashboard */}
+      <section className="bg-gray-900/40 p-6 rounded-2xl border border-gray-800/60">
+        <ManHoursDashboard userId={displayUser?.id || 'mock-id'} />
       </section>
 
       {/* 6. Performance Scorecard Section */}

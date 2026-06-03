@@ -28,6 +28,7 @@ export default function NewMeeting() {
     // Auto-include current user
     setForm(f => ({ ...f, participantIds: [currentUser.id] }));
   })();
+   
   }, []);
 
   const toggleParticipant = (uid) => {

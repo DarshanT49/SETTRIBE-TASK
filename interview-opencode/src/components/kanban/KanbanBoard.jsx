@@ -201,6 +201,7 @@ function TaskCardDragging({ task, users }) {
   );
 }
 
+   
 function TaskCardContent({ task, users, getUser }) {
   const overdue = isOverdue(task.dueDate) && !['done'].includes(task.status);
 
@@ -245,6 +246,8 @@ function TaskCardContent({ task, users, getUser }) {
 function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefresh }) {
   const [comment, setComment] = useState('');
   const [showDelayModal, setShowDelayModal] = useState(false);
+  const [showLogHoursModal, setShowLogHoursModal] = useState(false);
+  const [logHoursForm, setLogHoursForm] = useState({ hours: '', description: '', date: new Date().toISOString().split('T')[0] });
   const [delayForm, setDelayForm] = useState({ reason: '', newDueDate: '' });
   const getUser = (uid) => users.find(u => u.id === uid);
 
@@ -318,6 +321,14 @@ function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefres
     onRefresh();
   };
 
+  const handleLogHoursSubmit = async () => {
+    if (!logHoursForm.hours || isNaN(logHoursForm.hours)) { toast.error('Please enter valid hours'); return; }
+    // Normally call backend: await worklogService.logTime({ taskId: task.id, ... })
+    toast.success(`Logged ${logHoursForm.hours} hours!`);
+    setShowLogHoursModal(false);
+    onRefresh();
+  };
+
   const isAssignee = task.assigneeIds?.includes(currentUser.id);
   const canApprove = ['admin', 'manager'].includes(currentUser.role) || project.ownerId === currentUser.id;
   const taskOverdue = isOverdue(task.dueDate) && task.status !== 'done';
@@ -351,6 +362,12 @@ function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefres
             <div><span className="text-gray-500">Assigned By:</span><p className="text-gray-300 mt-1">{getUser(task.assignedBy)?.name}</p></div>
             <div><span className="text-gray-500">Start Date:</span><p className="text-gray-300 mt-1">{formatDate(task.startDate)}</p></div>
             <div><span className="text-gray-500">Due Date:</span><p className={`mt-1 ${taskOverdue ? 'text-red-400' : 'text-gray-300'}`}>{formatDate(task.dueDate)} {taskOverdue && '(Overdue!)'}</p></div>
+            <div><span className="text-gray-500">Estimated Hours:</span><p className="text-gray-300 mt-1">{task.estimatedHours || 'Not Set'}</p></div>
+            {isAssignee && (
+               <div>
+                 <Button size="sm" variant="secondary" onClick={() => setShowLogHoursModal(true)}>Log Actual Hours</Button>
+               </div>
+            )}
           </div>
 
           {/* Overdue Alert */}
@@ -439,6 +456,21 @@ function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefres
           </div>
         </Modal>
       )}
+
+      {/* Log Hours Modal */}
+      {showLogHoursModal && (
+        <Modal isOpen title="Log Actual Hours" onClose={() => setShowLogHoursModal(false)} size="sm">
+          <div className="p-5 space-y-4">
+            <Input label="Hours Worked *" type="number" step="0.5" min="0" value={logHoursForm.hours} onChange={e => setLogHoursForm({ ...logHoursForm, hours: e.target.value })} />
+            <Input label="Date *" type="date" value={logHoursForm.date} onChange={e => setLogHoursForm({ ...logHoursForm, date: e.target.value })} />
+            <Textarea label="Description (Optional)" value={logHoursForm.description} onChange={e => setLogHoursForm({ ...logHoursForm, description: e.target.value })} />
+            <div className="flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => setShowLogHoursModal(false)}>Cancel</Button>
+              <Button onClick={handleLogHoursSubmit}>Log Time</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }
@@ -449,7 +481,7 @@ function AddTaskModal({ project, defaultStatus, users, currentUser, onClose, onS
   const teamMembers = users.filter(u => project.teamIds?.includes(u.id));
 
   const [form, setForm] = useState({
-    title: '', description: '', priority: 'medium', status: defaultStatus,
+    title: '', description: '', priority: 'medium', status: defaultStatus, estimatedHours: '',
     assigneeIds: [], milestoneId: '', sprintId: '', startDate: '', dueDate: '' });
   const [formErrors, setFormErrors] = useState({});
 
@@ -507,6 +539,7 @@ function AddTaskModal({ project, defaultStatus, users, currentUser, onClose, onS
           <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
             {['backlog', 'todo', 'in_progress'].map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
           </Select>
+          <Input label="Estimated Hours" type="number" step="0.5" min="0" value={form.estimatedHours} onChange={e => setForm({ ...form, estimatedHours: e.target.value })} />
           <Input label="Start Date *" type="date" error={formErrors.startDate} value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
           <Input label="Due Date *" type="date" error={formErrors.dueDate} value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />
           {milestones.length > 0 && (

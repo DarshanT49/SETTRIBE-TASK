@@ -1,9 +1,12 @@
+   
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Calendar, List, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
+   
 import { Button, Avatar, Badge, StatusBadge, EmptyState, Skeleton } from '../components/ui';
+   
 import { formatDate, formatDuration, getMeetingDateTime, canStartMeeting, getMeetingStatus } from '../utils/dates';
 
 
@@ -41,6 +44,7 @@ export default function Meetings() {
   }, []);
 
   const getUser = (uid) => users.find(u => u.id === uid);
+   
   const today = new Date().toISOString().split('T')[0];
 
   const myRsvp = (meetingId) => rsvps.find(r => r.meetingId === meetingId && r.userId === currentUser.id);
@@ -77,6 +81,7 @@ export default function Meetings() {
   });
 
   // Reset to page 1 whenever filters/search change
+   
   useEffect(() => { setPage(1); }, [search, filter, typeFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));

@@ -82,11 +82,11 @@ export default function ProjectChat({ project, users }) {
     scrollToBottom();
   }, [messages]);
 
-  const scrollToBottom = () => {
+  function scrollToBottom() {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
-  };
+  }
 
   const handleInputChange = (e) => {
     const val = e.target.value;

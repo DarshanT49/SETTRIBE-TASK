@@ -12,6 +12,7 @@ export function calculateTaskEfficiency(tasks) {
 
   let totalEfficiency = 0;
   
+   
   completedTasks.forEach(task => {
     // Mock efficiency: assume an average of 90% if no historical dates are fully present
     // In a real app, you would calculate: (Actual Hours / Estimated Hours)

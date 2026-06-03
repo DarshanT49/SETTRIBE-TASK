@@ -7,7 +7,6 @@ import { createNotification, createBulkNotifications } from '../services/notific
 import { Button, Input, Select, Textarea, Avatar } from '../components/ui';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
-import emailjs from '@emailjs/browser';
 
 const ROUNDS = ['screening', 'technical', 'hr', 'final'];
 const MODES = ['online', 'in_person', 'phone'];
@@ -24,56 +23,6 @@ export default function NewInterview() {
     date: '', time: '', duration: '60', interviewerId: '',
     panelIds: [], meetingLink: '', location: '', source: 'Job Portal',
     experience: '', jobDescription: '', resumeLink: '' });
-
-  const EMAIL_TEMPLATES = [
-    {
-      id: 'default',
-      name: 'Standard Interview',
-      content: `Hi {{candidateName}},
-
-You have been scheduled for an interview for the {{position}} position on {{date}} at {{time}}.
-
-Please click the link below to join the video call at the scheduled time:
-{{joinLink}}
-
-Best regards,
-SetTribe HR Team`
-    },
-    {
-      id: 'technical',
-      name: 'Technical Round',
-      content: `Hi {{candidateName}},
-
-Congratulations on moving to the technical round for the {{position}} position! 
-Your technical interview is scheduled on {{date}} at {{time}}.
-
-Please ensure you are in a quiet environment and have a stable internet connection.
-Join the video call using this link:
-{{joinLink}}
-
-Best regards,
-SetTribe Engineering & HR Team`
-    },
-    {
-      id: 'final',
-      name: 'Final HR Round',
-      content: `Hi {{candidateName}},
-
-We are excited to invite you to the final HR discussion for the {{position}} position.
-This interview will take place on {{date}} at {{time}}.
-
-You can join the video call here:
-{{joinLink}}
-
-We look forward to speaking with you!
-
-Best regards,
-SetTribe HR Team`
-    }
-  ];
-
-  const [selectedTemplateId, setSelectedTemplateId] = useState(EMAIL_TEMPLATES[0].id);
-  const [emailTemplate, setEmailTemplate] = useState(EMAIL_TEMPLATES[0].content);
 
   useEffect(() => {
     (async () => {
@@ -162,61 +111,7 @@ SetTribe HR Team`
         relatedId: interviewId, relatedType: 'interview' });
     }
 
-    const frontendUrl = import.meta.env.VITE_FRONTEND_URL || 'https://settribe-task.onrender.com';
-    let internalLink = `${frontendUrl}${tokenLink}`;
-    // If the app is using a custom backend URL via localStorage, we must pass it to the candidate 
-    // so their device knows where to connect to the backend.
-    const storedApiBase = window.localStorage.getItem('settribe_api_base_url');
-    if (storedApiBase && !tokenLink.startsWith('http')) {
-      internalLink += `&apiBase=${encodeURIComponent(storedApiBase)}`;
-    }
-
-    const fullJoinLink = form.mode === 'online' 
-      ? (tokenLink.startsWith('http') ? tokenLink : internalLink)
-      : form.location || 'In Person';
-
-    let finalMessage = emailTemplate
-      .replace(/{{candidateName}}/g, form.candidateName)
-      .replace(/{{position}}/g, form.position)
-      .replace(/{{date}}/g, form.date)
-      .replace(/{{time}}/g, form.time)
-      .replace(/{{joinLink}}/g, fullJoinLink);
-      
-    const finalMessageHtml = finalMessage.replace(/\n/g, '<br/>');
-
-    // Send candidate email via EmailJS
-    const templateParams = {
-      candidate_name: form.candidateName,
-      candidate_email: form.candidateEmail,
-      interview_date: `${form.date} at ${form.time}`,
-      role: form.position,
-      join_link: fullJoinLink,
-      title: `Interview Invitation - ${form.position}`,
-      name: 'SetTribe HR Team',
-      email: currentUser?.email || 'hr@settribe.com',
-      custom_message: finalMessage,
-      custom_message_html: finalMessageHtml
-    };
-
-    try {
-      const { EMAIL_CONFIG } = await import('../utils/emailConfig');
-      const serviceId = EMAIL_CONFIG.SERVICE_ID;
-      const templateId = EMAIL_CONFIG.TEMPLATE_ID;
-      const publicKey = EMAIL_CONFIG.PUBLIC_KEY;
-      
-      console.log('Sending email with variables:', { serviceId, templateId, publicKey });
-      
-      await emailjs.send(
-        serviceId,
-        templateId,
-        templateParams,
-        publicKey
-      );
-      toast.success('Interview scheduled and invitation sent!');
-    } catch (err) {
-      console.error('EmailJS error:', err);
-      toast.error('Scheduled, but failed to send email.');
-    }
+    toast.success('Interview scheduled successfully!');
 
     navigate(`/interviews/${interviewId}`);
     setLoading(false);
@@ -302,48 +197,7 @@ SetTribe HR Team`
           </div>
         </div>
 
-        {/* Email Customization */}
-        <div>
-          <h2 className="font-semibold text-gray-100 mb-4 flex items-center gap-2">
-            <span className="w-5 h-5 bg-primary-600 rounded text-white text-xs flex items-center justify-center">4</span>
-            Email to Candidate
-          </h2>
-          
-          <div className="mb-4">
-            <Select 
-              label="Select a Template" 
-              value={selectedTemplateId}
-              onChange={e => {
-                const tmpl = EMAIL_TEMPLATES.find(t => t.id === e.target.value);
-                if (tmpl) {
-                  setSelectedTemplateId(tmpl.id);
-                  setEmailTemplate(tmpl.content);
-                } else if (e.target.value === 'custom') {
-                  setSelectedTemplateId('custom');
-                }
-              }}
-            >
-              {EMAIL_TEMPLATES.map(t => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-              <option value="custom">Custom Template</option>
-            </Select>
-          </div>
-
-          <div className="mb-2 text-xs text-gray-400">
-            Customize the email below. Placeholders like <code>{`{{candidateName}}`}</code>, <code>{`{{date}}`}</code>, and <code>{`{{joinLink}}`}</code> will be replaced automatically.
-          </div>
-          <Textarea 
-            label="Email Message" 
-            value={emailTemplate} 
-            onChange={e => {
-              setEmailTemplate(e.target.value);
-              setSelectedTemplateId('custom');
-            }} 
-            rows={10}
-          />
-        </div>
-
+        {/* Footer Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
           <Button variant="secondary" onClick={() => navigate(-1)}>Cancel</Button>
           <Button loading={loading} onClick={handleSubmit}><Plus size={14} />Schedule Interview</Button>

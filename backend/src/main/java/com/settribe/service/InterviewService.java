@@ -58,30 +58,83 @@ public class InterviewService {
         return repository.findByToken(token).map(InterviewMapper::toDTO);
     }
 
+    public InterviewDTO startInterview(String id) {
+        Interview interview = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Interview not found"));
+        interview.setJoinStatus("READY");
+        interview.setStatus("in_progress");
+        return InterviewMapper.toDTO(repository.save(interview));
+    }
+
+    public InterviewDTO endInterview(String id) {
+        Interview interview = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Interview not found"));
+        interview.setJoinStatus("COMPLETED");
+        interview.setStatus("completed");
+        return InterviewMapper.toDTO(repository.save(interview));
+    }
+
     public InterviewDTO validateToken(String token) {
         Interview interview = repository.findByToken(token)
                 .orElseThrow(() -> new RuntimeException("Invalid token"));
 
-        if (interview.getExpiryTimestamp() != null) {
-            long expiry = Long.parseLong(interview.getExpiryTimestamp());
-            if (System.currentTimeMillis() > expiry) {
-                interview.setJoinStatus("EXPIRED");
-                repository.save(interview);
-                throw new RuntimeException("Interview session has expired");
-            }
-            
-            // Allow joining up to 5 minutes early, else put in waiting room
-            try {
-                if (interview.getDate() != null && interview.getTime() != null) {
-                    java.time.LocalDateTime startDateTime = java.time.LocalDateTime.parse(interview.getDate() + "T" + interview.getTime());
-                    long startMillis = startDateTime.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
-                    if (System.currentTimeMillis() < startMillis - (5 * 60 * 1000)) {
-                        InterviewDTO dto = InterviewMapper.toDTO(interview);
-                        dto.setJoinStatus("WAITING_ROOM");
-                        return dto;
+        long currentMillis = System.currentTimeMillis();
+        boolean hasDateAndTime = interview.getDate() != null && !interview.getDate().isEmpty() &&
+                                 interview.getTime() != null && !interview.getTime().isEmpty();
+
+        try {
+            if (hasDateAndTime) {
+                java.time.LocalDateTime startDateTime = java.time.LocalDateTime.parse(interview.getDate() + "T" + interview.getTime());
+                long startMillis = startDateTime.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+                
+                int durationMinutes = 60; // default
+                if (interview.getDuration() != null && !interview.getDuration().isEmpty()) {
+                    try {
+                        durationMinutes = Integer.parseInt(interview.getDuration());
+                    } catch (NumberFormatException e) {
+                        // ignore
                     }
                 }
-            } catch (Exception e) {}
+                
+                long endMillis = startMillis + (durationMinutes * 60 * 1000L);
+                
+                if (currentMillis > endMillis) {
+                    interview.setJoinStatus("EXPIRED");
+                    repository.save(interview);
+                    throw new RuntimeException("Interview session has expired based on scheduled time");
+                }
+                
+                // Allow joining up to 5 minutes early, else put in waiting room
+                if (currentMillis < startMillis - (5 * 60 * 1000L)) {
+                    InterviewDTO dto = InterviewMapper.toDTO(interview);
+                    dto.setJoinStatus("WAITING_ROOM");
+                    return dto;
+                }
+                
+            } else if (interview.getExpiryTimestamp() != null) {
+                // Fallback to old logic if date/time are missing
+                long expiry = Long.parseLong(interview.getExpiryTimestamp());
+                if (currentMillis > expiry) {
+                    interview.setJoinStatus("EXPIRED");
+                    repository.save(interview);
+                    throw new RuntimeException("Interview session has expired");
+                }
+            }
+        } catch (Exception e) {
+            if (e instanceof RuntimeException && e.getMessage().contains("expired")) {
+                throw e; // rethrow expiration exception
+            }
+            // Fallback for parsing errors
+            if (interview.getExpiryTimestamp() != null) {
+                try {
+                    long expiry = Long.parseLong(interview.getExpiryTimestamp());
+                    if (currentMillis > expiry) {
+                        interview.setJoinStatus("EXPIRED");
+                        repository.save(interview);
+                        throw new RuntimeException("Interview session has expired");
+                    }
+                } catch (NumberFormatException nfe) {}
+            }
         }
         
         return InterviewMapper.toDTO(interview);

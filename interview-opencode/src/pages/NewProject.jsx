@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+   
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,7 +20,7 @@ export default function NewProject() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     title: '', description: '', clientName: '', category: 'Web', priority: 'medium', status: 'planning',
-    startDate: '', endDate: '', deadline: '', technologies: [], tags: [],
+    startDate: '', endDate: '', deadline: '', gitRepo: '', technologies: [], tags: [],
     ownerId: '', managerId: '', teamIds: [] });
   const [milestones, setMilestones] = useState([{ title: '', description: '', targetDate: '' }]);
 
@@ -32,6 +33,7 @@ export default function NewProject() {
       setForm(f => ({ ...f, ownerId: currentUser.id }));
     }
   })();
+   
   }, []);
 
   const addMilestone = () => setMilestones([...milestones, { title: '', description: '', targetDate: '' }]);
@@ -67,6 +69,7 @@ export default function NewProject() {
       startDate: form.startDate,
       endDate: form.endDate,
       deadline: form.deadline,
+      gitRepo: form.gitRepo,
       teamIds,
       progress: 0,
       createdAt: new Date().toISOString(),
@@ -145,6 +148,7 @@ export default function NewProject() {
             <Input label="Start Date *" type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
             <Input label="End Date *" type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
             <Input label="Hard Deadline" type="date" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} />
+            <Input label="Git Repo Link" type="url" placeholder="https://github.com/..." value={form.gitRepo} onChange={e => setForm({ ...form, gitRepo: e.target.value })} />
           </div>
           <TagInput label="Technology Stack" tags={form.technologies} onChange={techs => setForm({ ...form, technologies: techs })} placeholder="Add technology..." />
           <TagInput label="Tags" tags={form.tags} onChange={tags => setForm({ ...form, tags })} placeholder="Add tag..." />
