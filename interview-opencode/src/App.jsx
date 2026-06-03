@@ -36,6 +36,7 @@ import CandidateFeedback from './pages/CandidateFeedback';
 import MyProgress from './pages/MyProgress';
 import Leaderboard from './pages/Leaderboard';
 import TeamPerformance from './pages/TeamPerformance';
+import StandupData from './pages/StandupData';
 
 // Simple pending / denied pages
 function PendingApprovalPage() {
@@ -141,6 +142,9 @@ export default function App() {
                       <Route path="/interviews" element={<Interviews />} />
                       <Route path="/interviews/new" element={<RoleGuard allowedRoles={['admin', 'hr']}><NewInterview /></RoleGuard>} />
                       <Route path="/interviews/:id" element={<InterviewDetail />} />
+                      
+                      {/* Standup Data */}
+                      <Route path="/standup-data" element={<RoleGuard allowedRoles={['admin', 'manager']}><StandupData /></RoleGuard>} />
 
                       {/* User */}
                       <Route path="/profile" element={<Profile />} />

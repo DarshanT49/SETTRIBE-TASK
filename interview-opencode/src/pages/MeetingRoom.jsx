@@ -19,7 +19,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../contexts/AuthContext';
 import { Avatar, Button, Modal, EmptyState } from '../components/ui';
 import { KEYS, apiPut, asyncGet, asyncSet } from '../services/storage';
-import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft, getMeetingChat, postMeetingChat, saveStandupRecords } from '../services/meetings';
+import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft, getMeetingChat, postMeetingChat } from '../services/meetings';
+import { saveStandupRecord } from '../services/standup';
 import { createNotification } from '../services/notifications';
 import { getMeetingDateTime } from '../utils/dates';
 
@@ -84,7 +85,7 @@ export default function MeetingRoom() {
 
       const isHost = m.hostId === currentUser.id;
       const isAdmin = currentUser.role === 'admin';
-
+      // Admin and host bypass the waiting room entirely
       const isHostPresent = toArray(m.attendanceLogs).some(l => l.userId === m.hostId && !l.leaveTime);
 
       if (!isHost && !isAdmin && !isHostPresent) {
@@ -248,17 +249,30 @@ export default function MeetingRoom() {
   useEffect(() => {
     const currentChatCount = chatLogs.length;
     if (currentChatCount > previousChatCount.current && previousChatCount.current > 0) {
-      const latestMsg = chatLogs[currentChatCount - 1];
-      const isMine = (latestMsg.userId || latestMsg.senderId) === currentUser.id;
+      // Find new messages
+      const newMessages = chatLogs.slice(previousChatCount.current);
 
-      if (!isMine) {
-        if (chatAudioRef.current) {
-          chatAudioRef.current.play().catch(e => console.warn('Chat audio blocked', e));
+      let playAudio = false;
+      const mentionName = currentUser?.name?.replace(/\s+/g, '').toLowerCase();
+
+      newMessages.forEach(msg => {
+        const senderId = msg?.userId || msg?.senderId;
+        if (senderId !== currentUser.id) {
+          playAudio = true;
+
+          if (msg.mentions && msg.mentions.includes(currentUser.id)) {
+            const sender = users.find(u => u.id === senderId);
+            toast.success(`You were mentioned by ${sender?.name || 'Someone'}`);
+          } else if (msg?.text && mentionName) {
+            if (msg.text.toLowerCase().includes(`@${mentionName}`)) {
+              toast(`You were mentioned in the meeting chat!`, { icon: '🔔', duration: 4000 });
+            }
+          }
         }
-        if (latestMsg.mentions && latestMsg.mentions.includes(currentUser.id)) {
-          const sender = users.find(u => u.id === (latestMsg.userId || latestMsg.senderId));
-          toast.success(`You were mentioned by ${sender?.name || 'Someone'}`);
-        }
+      });
+
+      if (playAudio && chatAudioRef.current) {
+        chatAudioRef.current.play().catch(e => console.warn('Chat audio blocked', e));
       }
     }
     previousChatCount.current = currentChatCount;
@@ -349,8 +363,26 @@ export default function MeetingRoom() {
   const sendMessage = async () => {
     if (!message.trim() || !meeting) return;
 
-    const mentionedUsers = participants.filter(u => message.includes(`@${u.name}`));
-    const mentions = mentionedUsers.map(u => u.id);
+    // Detect mentions and send notifications
+    const mentionRegex = /@(\w+)/g;
+    const rawMentions = message.match(mentionRegex) || [];
+    const mentionedUserIds = [];
+
+    rawMentions.forEach(mention => {
+      const name = mention.substring(1).toLowerCase();
+      const user = participants.find(u => u.name.replace(/\s+/g, '').toLowerCase() === name);
+      if (user && !mentionedUserIds.includes(user.id)) {
+        mentionedUserIds.push(user.id);
+      }
+    });
+
+    participants.forEach(u => {
+      if (message.includes(`@${u.name}`) && !mentionedUserIds.includes(u.id)) {
+        mentionedUserIds.push(u.id);
+      }
+    });
+
+    const mentions = mentionedUserIds;
 
     const newMsg = {
       id: uuidv4(),
@@ -412,11 +444,21 @@ export default function MeetingRoom() {
     }
 
     try {
-      const records = validInputs.map(content => ({
+      const participant = participants.find(p => p.id === participantId);
+      const participantName = participant ? participant.name : 'Unknown';
+      const qna = validInputs.map((task, idx) => `Task ${idx + 1}: ${task}`).join('\n');
+      
+      const record = {
         userId: participantId,
-        content: content.trim()
-      }));
-      await saveStandupRecords(id, records);
+        userName: participantName,
+        meetingType: meeting.standupType === 'evening' ? 'Evening' : 'Morning',
+        meetingDate: new Date().toISOString().split('T')[0],
+        submissionTime: new Date().toLocaleTimeString('en-US', { hour12: false }),
+        questionsAndAnswers: qna,
+        status: 'Submitted'
+      };
+
+      await saveStandupRecord(record);
       toast.success('Standup records saved successfully');
       setDynamicStandupInputs({ ...dynamicStandupInputs, [participantId]: [''] }); // reset
     } catch (err) {
@@ -804,19 +846,22 @@ export default function MeetingRoom() {
               <div className="flex gap-2 border-t border-gray-800 p-3 relative">
                 {mentionQuery !== null && (
                   <div className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-gray-700 bg-gray-900 shadow-xl overflow-hidden z-10 max-h-48 overflow-y-auto">
-                    {participants.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase())).map((u, idx) => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors ${selectedMentionIdx === idx ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => handleMentionSelect(u)}
-                        onMouseEnter={() => setSelectedMentionIdx(idx)}
-                      >
-                        <Avatar name={u.name} size="xs" />
-                        <span className="text-sm text-gray-200">{u.name}</span>
-                      </button>
-                    ))}
+                    {participants
+                      .filter(u => onlineUsers.includes(u.id))
+                      .filter(u => u.name.replace(/\s+/g, '').toLowerCase().includes(mentionQuery.replace(/\s+/g, '').toLowerCase()))
+                      .map((u, idx) => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors ${selectedMentionIdx === idx ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleMentionSelect(u)}
+                          onMouseEnter={() => setSelectedMentionIdx(idx)}
+                        >
+                          <Avatar name={u.name} size="xs" />
+                          <span className="text-sm text-gray-200">{u.name}</span>
+                        </button>
+                      ))}
                   </div>
                 )}
                 <input
@@ -877,9 +922,7 @@ export default function MeetingRoom() {
             {[
               ['participants', 'People', Users],
               ['chat', 'Chat', MessageSquare],
-              ...(isHost ? [['lobby', 'Lobby', Clock]] : []),
-              ...(isHost && meeting.type === 'standup' ? [['standup', 'Standup', Grid3X3]] : []),
-              ...(isHost && meeting.type === 'project' ? [['tasks', 'Tasks', CheckSquare]] : [])
+              ...(isHost ? [['lobby', 'Lobby', Clock]] : [])
             ].map(([tab, label, Icon]) => (
               <button
                 key={tab}
