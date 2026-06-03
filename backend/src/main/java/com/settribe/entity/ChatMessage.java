@@ -22,17 +22,21 @@ public class ChatMessage {
     
     @Column(columnDefinition = "TEXT")
     private String text;
+
+    @Column(columnDefinition = "TEXT")
+    private String mentions;
     
     private String timestamp;
 
     public ChatMessage() {}
 
-    public ChatMessage(String id, String meetingId, String userId, String senderId, String text, String timestamp) {
+    public ChatMessage(String id, String meetingId, String userId, String senderId, String text, String mentions, String timestamp) {
         this.id = id;
         this.meetingId = meetingId;
         this.userId = userId;
         this.senderId = senderId;
         this.text = text;
+        this.mentions = mentions;
         this.timestamp = timestamp;
     }
 
@@ -50,6 +54,9 @@ public class ChatMessage {
     
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
+
+    public String getMentions() { return mentions; }
+    public void setMentions(String mentions) { this.mentions = mentions; }
     
     public String getTimestamp() { return timestamp; }
     public void setTimestamp(String timestamp) { this.timestamp = timestamp; }

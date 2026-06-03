@@ -241,3 +241,7 @@ body.light {
   }
 }
 
+/* Hide the default chat toggle button from LiveKit ControlBar since we have a custom chat panel */
+.lk-button.lk-chat-toggle {
+  display: none !important;
+}
