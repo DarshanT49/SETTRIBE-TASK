@@ -23,7 +23,6 @@ import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/meetings")
-@CrossOrigin(origins = "*") // Allow frontend to call
 public class MeetingController {
 
     @Autowired
@@ -55,9 +54,10 @@ public class MeetingController {
     @PostMapping("/{id}/join-token")
     public ResponseEntity<?> createJoinToken(
             @PathVariable String id,
-            @RequestBody MeetingJoinTokenRequest request,
             HttpServletRequest httpRequest
     ) {
+        String currentUserId = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+
         MeetingDTO meeting = service.findById(id).orElse(null);
         if (meeting == null) {
             return ResponseEntity.notFound().build();
@@ -65,7 +65,7 @@ public class MeetingController {
         if ("external".equalsIgnoreCase(meeting.getMeetingMode())) {
             return ResponseEntity.badRequest().body(Map.of("message", "External meetings do not use the internal meeting room"));
         }
-        UserDTO user = userService.findById(request.getUserId()).orElse(null);
+        UserDTO user = userService.findById(currentUserId).orElse(null);
         if (user == null || !Boolean.TRUE.equals(user.getIsActive()) || !Boolean.TRUE.equals(user.getIsApproved())) {
             return ResponseEntity.status(403).body(Map.of("message", "User is not allowed to join meetings"));
         }
@@ -80,30 +80,43 @@ public class MeetingController {
 
     @PostMapping("/{id}/attendance/join")
     public ResponseEntity<?> markJoined(@PathVariable String id, @RequestBody MeetingAttendanceRequest request) {
-        return updateAttendance(id, request.getUserId(), true);
+        String currentUserId = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        if (request.getUserId() != null && !request.getUserId().equals(currentUserId)) {
+            return ResponseEntity.status(403).body(Map.of("message", "Cannot mark attendance for another user"));
+        }
+        return updateAttendance(id, currentUserId, true);
     }
 
     @PostMapping("/{id}/attendance/leave")
     public ResponseEntity<?> markLeft(@PathVariable String id, @RequestBody MeetingAttendanceRequest request) {
-        return updateAttendance(id, request.getUserId(), false);
+        String currentUserId = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        if (request.getUserId() != null && !request.getUserId().equals(currentUserId)) {
+            return ResponseEntity.status(403).body(Map.of("message", "Cannot mark attendance for another user"));
+        }
+        return updateAttendance(id, currentUserId, false);
     }
 
     @PostMapping("/{id}/attendance/absent")
     public ResponseEntity<?> markAbsent(@PathVariable String id, @RequestBody MeetingAttendanceRequest request) {
+        String currentUserId = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        if (request.getUserId() != null && !request.getUserId().equals(currentUserId)) {
+            return ResponseEntity.status(403).body(Map.of("message", "Cannot mark attendance for another user"));
+        }
+        
         MeetingDTO meeting = service.findById(id).orElse(null);
         if (meeting == null) return ResponseEntity.notFound().build();
-        UserDTO user = userService.findById(request.getUserId()).orElse(null);
-        if (user == null || !canJoin(meeting, request.getUserId())) {
+        UserDTO user = userService.findById(currentUserId).orElse(null);
+        if (user == null || !canJoin(meeting, currentUserId)) {
             return ResponseEntity.status(403).body(Map.of("message", "User is not invited to this meeting"));
         }
         List<Map<String, Object>> logs = meeting.getAttendanceLogs() == null
                 ? new ArrayList<>()
                 : new ArrayList<>(meeting.getAttendanceLogs());
         // Only add if no existing entry for this user
-        boolean alreadyLogged = logs.stream().anyMatch(l -> request.getUserId().equals(String.valueOf(l.get("userId"))));
+        boolean alreadyLogged = logs.stream().anyMatch(l -> currentUserId.equals(String.valueOf(l.get("userId"))));
         if (!alreadyLogged) {
             java.util.LinkedHashMap<String, Object> absentLog = new java.util.LinkedHashMap<>();
-            absentLog.put("userId", request.getUserId());
+            absentLog.put("userId", currentUserId);
             absentLog.put("joinTime", null);
             absentLog.put("leaveTime", null);
             absentLog.put("durationMinutes", 0);

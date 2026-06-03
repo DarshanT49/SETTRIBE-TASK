@@ -4,29 +4,32 @@ import api from './api';
 
 export async function login(emailOrId, password) {
   try {
-    // Try login with email first
-    const response = await api.post('/sessions/login', { email: emailOrId, password });
-    const { token, currentUserId, user } = response.data;
+    // We send userId (as emailOrId) and password
+    const response = await api.post('/auth/login', { userId: emailOrId, password });
+    const { token, userId } = response.data;
+    
     // Store session locally
-    localStorage.setItem(KEYS.SESSIONS, JSON.stringify({ currentUserId, token }));
+    localStorage.setItem(KEYS.SESSIONS, JSON.stringify({ currentUserId: userId }));
+    localStorage.setItem('settribe_jwt_token', token);
+    localStorage.setItem('settribe_user_id', userId);
+
+    // Fetch user details since login only returns token and userId
+    const userResp = await api.get(`/users/${userId}`);
+    const user = userResp.data;
+
     return { success: true, user };
   } catch (err) {
-    if (err.response?.status === 401) {
-      // Check for pending_approval or deactivated
-      // Try fetching user to determine status
-      try {
-        const usersResp = await api.get('/users');
-        const users = usersResp.data || [];
-        const user = users.find(
-          u => (u.email === emailOrId || u.employeeId === emailOrId) && u.password === password
-        );
-        if (!user) return { success: false, error: 'Invalid credentials' };
-        if (!user.isApproved) return { success: false, error: 'pending_approval', userId: user.id };
-        if (!user.isActive) return { success: false, error: 'Account is deactivated. Please contact admin.' };
-      } catch {
-        // ignore
-      }
-      return { success: false, error: 'Invalid credentials' };
+    const status = err.response?.status;
+    const data = err.response?.data;
+
+    if (status === 403 && data?.message === 'pending_approval') {
+      return { success: false, error: 'pending_approval', userId: data.userId };
+    }
+    if (status === 403) {
+      return { success: false, error: data?.message || 'Account is deactivated. Contact your administrator.' };
+    }
+    if (status === 401) {
+      return { success: false, error: 'Invalid credentials. Please check your email/ID and password.' };
     }
     console.error('Login error:', err);
     return { success: false, error: 'Server error. Please try again.' };
@@ -35,6 +38,8 @@ export async function login(emailOrId, password) {
 
 export function logout() {
   localStorage.removeItem(KEYS.SESSIONS);
+  localStorage.removeItem('settribe_jwt_token');
+  localStorage.removeItem('settribe_user_id');
 }
 
 export async function getCurrentUser() {
@@ -92,12 +97,6 @@ export async function changePassword(userId, currentPassword, newPassword) {
 
 export async function registerUser(data) {
   try {
-    // Check for duplicate email or employeeId
-    const usersResp = await api.get('/users');
-    const users = usersResp.data || [];
-    if (users.find(u => u.email === data.email)) return { success: false, error: 'Email already registered' };
-    if (users.find(u => u.employeeId === data.employeeId)) return { success: false, error: 'Employee ID already taken' };
-
     const newUser = {
       id: uuidv4(),
       name: data.name,
@@ -132,6 +131,9 @@ export async function registerUser(data) {
 
     return { success: true, user: savedUser };
   } catch (e) {
+    if (e.response?.status === 409) {
+      return { success: false, error: 'Email or Employee ID already registered.' };
+    }
     console.error('registerUser error:', e);
     return { success: false, error: 'Registration failed. Please try again.' };
   }

@@ -11,7 +11,6 @@ import com.settribe.dto.MeetingRsvpDTO;
 
 @RestController
 @RequestMapping("/api/meetingRsvps")
-@CrossOrigin(origins = "*") // Allow frontend to call
 public class MeetingRsvpController {
 
     @Autowired

@@ -11,7 +11,6 @@ import com.settribe.dto.TaskHistoryDTO;
 
 @RestController
 @RequestMapping("/api/taskHistory")
-@CrossOrigin(origins = "*") // Allow frontend to call
 public class TaskHistoryController {
 
     @Autowired

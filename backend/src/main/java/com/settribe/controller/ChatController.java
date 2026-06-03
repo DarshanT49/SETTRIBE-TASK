@@ -13,7 +13,7 @@ import java.util.UUID;
 import java.time.Instant;
 
 @RestController
-@CrossOrigin(origins = "*")
+
 public class ChatController {
 
     @Autowired

@@ -14,7 +14,6 @@ import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/standup")
-@CrossOrigin(origins = "*") // Allow frontend to call
 public class StandupController {
 
     @Autowired

@@ -11,7 +11,6 @@ import com.settribe.dto.MilestoneDTO;
 
 @RestController
 @RequestMapping("/api/milestones")
-@CrossOrigin(origins = "*") // Allow frontend to call
 public class MilestoneController {
 
     @Autowired

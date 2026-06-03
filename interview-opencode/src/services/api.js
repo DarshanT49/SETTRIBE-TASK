@@ -1,57 +1,48 @@
 import axios from 'axios';
 
-const storageKey = 'settribe_api_base_url';
+// ─────────────────────────────────────────────────────────────────────────────
+// API Base URL Resolution
+//
+// LOCAL DEV  → VITE_API_BASE_URL is not set  → falls back to localhost:8080/api
+// PRODUCTION → VITE_API_BASE_URL=https://settribe-backend.onrender.com/api
+//
+// To switch: set VITE_API_BASE_URL in .env.production before building.
+// ─────────────────────────────────────────────────────────────────────────────
 
-const normalizeBaseUrl = (value) => {
-  if (!value) {
-    return '';
-  }
-
-  return value.trim().replace(/\/+$/, '');
-};
-
-const getQueryBaseUrl = () => {
-  if (typeof window === 'undefined') {
-    return '';
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  const value = params.get('apiBase');
-
-  if (!value) {
-    return '';
-  }
-
-  window.localStorage.setItem(storageKey, value);
-  return value;
-};
-
-const getStoredBaseUrl = () => {
-  if (typeof window === 'undefined') {
-    return '';
-  }
-
-  return window.localStorage.getItem(storageKey) || '';
-};
-
-const queryBaseUrl = getQueryBaseUrl();
-const storedBaseUrl = getStoredBaseUrl();
-const rawBaseUrl = import.meta.env.VITE_API_BASE_URL;
-const resolvedBaseUrl = normalizeBaseUrl(queryBaseUrl || storedBaseUrl || rawBaseUrl);
-// const fallbackBaseUrl = `http://10.116.218.98:8080/api`;
-
-// const fallbackBaseUrl = `http://localhost:8080/api`;
-const fallbackBaseUrl = `http://192.168.1.45:5173/api`;
-
-
-const baseURL = resolvedBaseUrl || fallbackBaseUrl;
-const shouldSkipNgrokWarning = /ngrok(-free)?\.dev|ngrok\.io/i.test(baseURL);
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/+$/, '') ||
+  'http://localhost:8080/api';
 
 const api = axios.create({
-  baseURL,
-  headers: shouldSkipNgrokWarning
-    ? { 'ngrok-skip-browser-warning': 'true' }
-    : undefined
+  baseURL: BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
+
+// ── Request interceptor — attach JWT token ────────────────────────────────────
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('settribe_jwt_token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ── Response interceptor — handle 401 globally ───────────────────────────────
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('settribe_jwt_token');
+      localStorage.removeItem('settribe_user_id');
+      window.dispatchEvent(new Event('auth-unauthorized'));
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

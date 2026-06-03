@@ -11,7 +11,6 @@ import com.settribe.dto.TaskDTO;
 
 @RestController
 @RequestMapping("/api/tasks")
-@CrossOrigin(origins = "*") // Allow frontend to call
 public class TaskController {
 
     @Autowired

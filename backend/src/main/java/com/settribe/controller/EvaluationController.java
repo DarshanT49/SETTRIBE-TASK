@@ -9,7 +9,7 @@ import com.settribe.dto.EvaluationDTO;
 
 @RestController
 @RequestMapping("/api/evaluations")
-@CrossOrigin(origins = "*")
+
 public class EvaluationController {
 
     @Autowired

@@ -11,7 +11,6 @@ import com.settribe.dto.InterviewDTO;
 
 @RestController
 @RequestMapping("/api/interviews")
-@CrossOrigin(origins = "*") // Allow frontend to call
 public class InterviewController {
 
     @Autowired

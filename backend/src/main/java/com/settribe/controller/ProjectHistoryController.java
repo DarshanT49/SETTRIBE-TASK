@@ -11,7 +11,6 @@ import com.settribe.dto.ProjectHistoryDTO;
 
 @RestController
 @RequestMapping("/api/projectHistory")
-@CrossOrigin(origins = "*") // Allow frontend to call
 public class ProjectHistoryController {
 
     @Autowired
