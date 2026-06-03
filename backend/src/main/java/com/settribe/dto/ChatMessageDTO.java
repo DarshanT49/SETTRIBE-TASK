@@ -1,21 +1,26 @@
 package com.settribe.dto;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ChatMessageDTO {
     private String id;
     private String meetingId;
     private String userId;
     private String senderId;
     private String text;
+    private List<String> mentions = new ArrayList<>();
     private String timestamp;
 
     public ChatMessageDTO() {}
 
-    public ChatMessageDTO(String id, String meetingId, String userId, String senderId, String text, String timestamp) {
+    public ChatMessageDTO(String id, String meetingId, String userId, String senderId, String text, List<String> mentions, String timestamp) {
         this.id = id;
         this.meetingId = meetingId;
         this.userId = userId;
         this.senderId = senderId;
         this.text = text;
+        this.mentions = mentions == null ? new ArrayList<>() : mentions;
         this.timestamp = timestamp;
     }
 
@@ -33,6 +38,9 @@ public class ChatMessageDTO {
     
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
+
+    public List<String> getMentions() { return mentions; }
+    public void setMentions(List<String> mentions) { this.mentions = mentions == null ? new ArrayList<>() : mentions; }
     
     public String getTimestamp() { return timestamp; }
     public void setTimestamp(String timestamp) { this.timestamp = timestamp; }
