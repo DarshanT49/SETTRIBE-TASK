@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, FolderKanban, CheckSquare, ClipboardList,
   Video, UserCheck, BarChart3, Bell, User, LogOut, ChevronLeft,
-  ChevronRight, Clock, Shield, Menu, X, Trophy, TrendingUp
+  ChevronRight, Clock, Shield, Menu, X, Trophy, TrendingUp, Database
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
@@ -20,6 +20,7 @@ const allNavLinks = [
   { to: '/tasks', icon: CheckSquare, label: 'My Tasks', roles: ['admin', 'manager', 'employee', 'intern'] },
   { to: '/self-tasks', icon: ClipboardList, label: 'My To-Dos', roles: ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'] },
   { to: '/meetings', icon: Video, label: 'Meetings', roles: ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'] },
+  { to: '/standup-data', icon: Database, label: 'Standup Data', roles: ['admin', 'manager'] },
   { to: '/interviews', icon: UserCheck, label: 'Interviews', roles: ['admin', 'hr', 'manager', 'employee', 'panel'] },
   { to: '/reports', icon: BarChart3, label: 'Reports', roles: ['admin', 'hr', 'manager', 'employee'] },
   { to: '/notifications', icon: Bell, label: 'Notifications', roles: ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'] },
