@@ -23,7 +23,6 @@ import { Avatar, Button, Modal, EmptyState } from '../components/ui';
 import { KEYS, apiPut, asyncGet, asyncSet } from '../services/storage';
 import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft, getMeetingChat, postMeetingChat } from '../services/meetings';
 import { saveStandupRecord } from '../services/standup';
-import { createNotification } from '../services/notifications';
 import { getMeetingDateTime } from '../utils/dates';
 
 export default function MeetingRoom() {
@@ -51,6 +50,8 @@ export default function MeetingRoom() {
   const [dynamicStandupInputs, setDynamicStandupInputs] = useState({});
   const [message, setMessage] = useState('');
   const [chatLogs, setChatLogs] = useState([]);
+  const [mentionNotifications, setMentionNotifications] = useState([]);
+  const [unreadMentionCount, setUnreadMentionCount] = useState(0);
   const [standupData, setStandupData] = useState({});
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [initialMedia, setInitialMedia] = useState({ audio: true, video: true });
@@ -71,6 +72,7 @@ export default function MeetingRoom() {
   const audioRef = useRef(null);
   const previousChatCount = useRef(0);
   const chatAudioRef = useRef(null);
+  const mentionAudioRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -224,8 +226,13 @@ export default function MeetingRoom() {
   const participants = [...new Set(activeUserIds)]
     .map(userId => users.find(user => user.id === userId))
     .filter(Boolean);
+  const presentParticipants = onlineUsers.length > 0
+    ? participants.filter(user => onlineUsers.includes(user.id))
+    : participants;
+  const presentParticipantIds = presentParticipants.map(user => user.id);
 
   const isHost = meeting?.hostId === currentUser.id;
+  const mentionSuggestions = mentionQuery !== null ? getMentionSuggestions(mentionQuery, presentParticipants) : [];
 
   useEffect(() => {
     if (!audioRef.current) {
@@ -233,6 +240,9 @@ export default function MeetingRoom() {
     }
     if (!chatAudioRef.current) {
       chatAudioRef.current = new Audio('/koiroylers-live-chat-353605.mp3');
+    }
+    if (!mentionAudioRef.current) {
+      mentionAudioRef.current = new Audio('/liecio-message-alert-190042.mp3');
     }
   }, []);
 
@@ -251,34 +261,49 @@ export default function MeetingRoom() {
   useEffect(() => {
     const currentChatCount = chatLogs.length;
     if (currentChatCount > previousChatCount.current && previousChatCount.current > 0) {
-      // Find new messages
       const newMessages = chatLogs.slice(previousChatCount.current);
-
-      let playAudio = false;
-      const mentionName = currentUser?.name?.replace(/\s+/g, '').toLowerCase();
+      let shouldPlayNormalSound = false;
+      let shouldPlayMentionSound = false;
+      const nextMentionNotifications = [];
 
       newMessages.forEach(msg => {
         const senderId = msg?.userId || msg?.senderId;
         if (senderId !== currentUser.id) {
-          playAudio = true;
-
-          if (msg.mentions && msg.mentions.includes(currentUser.id)) {
-            const sender = users.find(u => u.id === senderId);
-            toast.success(`You were mentioned by ${sender?.name || 'Someone'}`);
-          } else if (msg?.text && mentionName) {
-            if (msg.text.toLowerCase().includes(`@${mentionName}`)) {
-              toast(`You were mentioned in the meeting chat!`, { icon: '🔔', duration: 4000 });
-            }
+          const mentions = toArray(msg.mentions);
+          const wasMentioned = mentions.includes(currentUser.id);
+          if (wasMentioned) {
+            const sender = users.find(user => user.id === senderId);
+            shouldPlayMentionSound = true;
+            nextMentionNotifications.push({
+              id: msg.id || `${msg.timestamp}-${senderId}`,
+              senderName: sender?.name || 'Someone',
+              text: msg.text || '',
+              timestamp: msg.timestamp,
+              isAllMention: /(^|\s)@all\b/i.test(msg?.text || '')
+            });
+          } else {
+            shouldPlayNormalSound = true;
           }
         }
       });
 
-      if (playAudio && chatAudioRef.current) {
+      if (nextMentionNotifications.length > 0) {
+        window.setTimeout(() => {
+          setMentionNotifications(prev => [...nextMentionNotifications, ...prev].slice(0, 5));
+          if (sidePanel !== 'chat') {
+            setUnreadMentionCount(prev => prev + nextMentionNotifications.length);
+          }
+        }, 0);
+      }
+
+      if (shouldPlayMentionSound && mentionAudioRef.current) {
+        mentionAudioRef.current.play().catch(e => console.warn('Mention audio blocked', e));
+      } else if (shouldPlayNormalSound && chatAudioRef.current) {
         chatAudioRef.current.play().catch(e => console.warn('Chat audio blocked', e));
       }
     }
     previousChatCount.current = currentChatCount;
-  }, [chatLogs, currentUser.id, users]);
+  }, [chatLogs, currentUser.id, sidePanel, users]);
 
   const handlePermitAll = async () => {
     const updatedWait = toArray(meeting.waitingRoom).map(w => w.status === 'waiting' ? { ...w, status: 'approved' } : w);
@@ -356,8 +381,8 @@ export default function MeetingRoom() {
     setOnlineUsers(users);
   }, []);
 
-  const handleMentionSelect = (user) => {
-    const mentionName = user.name.replace(/\s+/g, '');
+  const handleMentionSelect = (mentionTarget) => {
+    const mentionName = mentionTarget.id === '__all__' ? 'all' : mentionTarget.name.replace(/\s+/g, '');
     setMessage(prev => prev.slice(0, prev.lastIndexOf('@')) + `@${mentionName} `);
     setMentionQuery(null);
   };
@@ -365,21 +390,31 @@ export default function MeetingRoom() {
   const sendMessage = async () => {
     if (!message.trim() || !meeting) return;
 
-    // Detect mentions and send notifications
+    const trimmedMessage = message.trim();
     const mentionRegex = /@(\w+)/g;
-    const rawMentions = message.match(mentionRegex) || [];
+    const rawMentions = trimmedMessage.match(mentionRegex) || [];
     const mentionedUserIds = [];
+    const hasAllMention = /(^|\s)@all\b/i.test(trimmedMessage);
+
+    if (hasAllMention) {
+      presentParticipantIds.forEach(userId => {
+        if (userId !== currentUser.id && !mentionedUserIds.includes(userId)) {
+          mentionedUserIds.push(userId);
+        }
+      });
+    }
 
     rawMentions.forEach(mention => {
       const name = mention.substring(1).toLowerCase();
-      const user = participants.find(u => u.name.replace(/\s+/g, '').toLowerCase() === name);
+      if (name === 'all') return;
+      const user = presentParticipants.find(u => u.name.replace(/\s+/g, '').toLowerCase() === name);
       if (user && !mentionedUserIds.includes(user.id)) {
         mentionedUserIds.push(user.id);
       }
     });
 
-    participants.forEach(u => {
-      if (message.includes(`@${u.name}`) && !mentionedUserIds.includes(u.id)) {
+    presentParticipants.forEach(u => {
+      if (trimmedMessage.toLowerCase().includes(`@${u.name}`.toLowerCase()) && !mentionedUserIds.includes(u.id)) {
         mentionedUserIds.push(u.id);
       }
     });
@@ -390,7 +425,7 @@ export default function MeetingRoom() {
       id: uuidv4(),
       userId: currentUser.id,
       senderId: currentUser.id,
-      text: message.trim(),
+      text: trimmedMessage,
       mentions: mentions,
       timestamp: new Date().toISOString()
     };
@@ -398,22 +433,6 @@ export default function MeetingRoom() {
     // Optimistic update
     setChatLogs(prev => [...prev, newMsg]);
     setMessage('');
-
-    // Global notifications
-    if (mentions.length > 0) {
-      mentions.forEach(uid => {
-        if (uid !== currentUser.id) {
-          createNotification({
-            userId: uid,
-            type: 'chat_mention',
-            title: `Mentioned in Chat`,
-            message: `${currentUser.name} mentioned you in ${meeting.title}`,
-            relatedId: id,
-            relatedType: 'meeting'
-          });
-        }
-      });
-    }
 
     try {
       const updatedLogs = await postMeetingChat(id, newMsg);
@@ -820,6 +839,27 @@ export default function MeetingRoom() {
 
           {sidePanel === 'chat' && (
             <div className="flex min-h-0 flex-1 flex-col">
+              {mentionNotifications.length > 0 && (
+                <div className="border-b border-amber-500/20 bg-amber-500/10 px-3 py-2">
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">Mentions</p>
+                    <span className="text-[10px] text-amber-200/70">{mentionNotifications.length}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {mentionNotifications.slice(0, 3).map(notification => (
+                      <div key={notification.id} className="rounded-md border border-amber-500/20 bg-gray-950/40 px-2 py-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-xs font-medium text-amber-100">
+                            {notification.isAllMention ? `${notification.senderName} mentioned everyone` : `${notification.senderName} mentioned you`}
+                          </p>
+                          <span className="shrink-0 text-[10px] text-amber-200/60">{formatChatTime(notification.timestamp)}</span>
+                        </div>
+                        <p className="mt-0.5 truncate text-xs text-amber-100/70">{notification.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex-1 space-y-3 overflow-y-auto p-3 relative">
                 {chatLogs.length === 0 ? (
                   <EmptyState
@@ -831,12 +871,19 @@ export default function MeetingRoom() {
                   chatLogs.map(msg => {
                     const sender = users.find(user => user.id === (msg.userId || msg.senderId));
                     const mine = (msg.userId || msg.senderId) === currentUser.id;
+                    const mentionedMe = !mine && toArray(msg.mentions).includes(currentUser.id);
                     return (
                       <div key={msg.id || msg.timestamp} className={`flex gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
                         <Avatar name={sender?.name || 'User'} size="xs" />
                         <div className={`max-w-[80%] ${mine ? 'items-end' : ''} flex flex-col`}>
                           <p className="mb-0.5 text-xs text-gray-500">{sender?.name?.split(' ')[0] || 'User'}</p>
-                          <div className={`rounded-lg px-3 py-2 text-sm ${mine ? 'bg-primary-700 text-white' : 'bg-gray-800 text-gray-200'}`}>
+                          <div className={`rounded-lg border px-3 py-2 text-sm ${
+                            mine
+                              ? 'border-primary-600 bg-primary-700 text-white'
+                              : mentionedMe
+                                ? 'border-amber-400/60 bg-amber-500/15 text-amber-50'
+                                : 'border-transparent bg-gray-800 text-gray-200'
+                          }`}>
                             {renderMessageText(msg.text, msg.mentions, users, mine)}
                           </div>
                         </div>
@@ -848,10 +895,10 @@ export default function MeetingRoom() {
               <div className="flex gap-2 border-t border-gray-800 p-3 relative">
                 {mentionQuery !== null && (
                   <div className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-gray-700 bg-gray-900 shadow-xl overflow-hidden z-10 max-h-48 overflow-y-auto">
-                    {participants
-                      .filter(u => onlineUsers.includes(u.id))
-                      .filter(u => u.name.replace(/\s+/g, '').toLowerCase().includes(mentionQuery.replace(/\s+/g, '').toLowerCase()))
-                      .map((u, idx) => (
+                    {mentionSuggestions.length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-gray-500">No present participants</div>
+                    ) : (
+                      mentionSuggestions.map((u, idx) => (
                         <button
                           key={u.id}
                           type="button"
@@ -860,10 +907,15 @@ export default function MeetingRoom() {
                           onClick={() => handleMentionSelect(u)}
                           onMouseEnter={() => setSelectedMentionIdx(idx)}
                         >
-                          <Avatar name={u.name} size="xs" />
+                          {u.id === '__all__' ? (
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/20 text-xs font-semibold text-amber-200">@</div>
+                          ) : (
+                            <Avatar name={u.name} size="xs" />
+                          )}
                           <span className="text-sm text-gray-200">{u.name}</span>
                         </button>
-                      ))}
+                      ))
+                    )}
                   </div>
                 )}
                 <input
@@ -880,12 +932,6 @@ export default function MeetingRoom() {
                     }
                   }}
                   onKeyDown={event => {
-                    const mentionSuggestions = mentionQuery !== null
-                      ? participants
-                        .filter(u => onlineUsers.includes(u.id))
-                        .filter(u => u.name.replace(/\s+/g, '').toLowerCase().includes(mentionQuery.replace(/\s+/g, '').toLowerCase()))
-                      : [];
-
                     if (mentionQuery !== null && mentionSuggestions.length > 0) {
                       if (event.key === 'Enter' || event.key === 'Tab') {
                         event.preventDefault();
@@ -942,7 +988,12 @@ export default function MeetingRoom() {
               <button
                 key={tab}
                 type="button"
-                onClick={() => setSidePanel(tab)}
+                onClick={() => {
+                  setSidePanel(tab);
+                  if (tab === 'chat') {
+                    setUnreadMentionCount(0);
+                  }
+                }}
                 className={`relative flex flex-1 items-center justify-center gap-1 py-3 text-xs font-medium ${sidePanel === tab
                     ? 'border-t-2 border-primary-500 text-primary-400 bg-gray-900 -mt-[1px]'
                     : 'border-t-2 border-transparent text-gray-500 hover:text-gray-300 hover:bg-gray-900/50 -mt-[1px]'
@@ -952,6 +1003,11 @@ export default function MeetingRoom() {
                 <span className="hidden sm:inline">{label}</span>
                 {tab === 'lobby' && toArray(meeting?.waitingRoom).filter(w => w.status === 'waiting').length > 0 && (
                   <span className="absolute right-2 top-2 flex h-2 w-2 rounded-full bg-red-500"></span>
+                )}
+                {tab === 'chat' && unreadMentionCount > 0 && sidePanel !== 'chat' && (
+                  <span className="absolute right-2 top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-gray-950">
+                    {unreadMentionCount > 9 ? '9+' : unreadMentionCount}
+                  </span>
                 )}
               </button>
             ))}
@@ -989,39 +1045,54 @@ function toArray(value) {
   return [];
 }
 
-function renderMessageText(text, mentions, users, isMine) {
-  if (!mentions || mentions.length === 0) return text;
+function getMentionSuggestions(query, presentParticipants) {
+  const normalizedQuery = (query || '').replace(/\s+/g, '').toLowerCase();
+  const suggestions = [];
 
-  let elements = [];
-  let remainingText = text;
-
-  const mentionedUsers = mentions.map(uid => users.find(u => u.id === uid)).filter(Boolean).sort((a, b) => b.name.length - a.name.length);
-
-  while (remainingText.length > 0) {
-    let foundMention = null;
-    let earliestIndex = remainingText.length;
-
-    for (const user of mentionedUsers) {
-      const mentionStr = `@${user.name}`;
-      const index = remainingText.indexOf(mentionStr);
-      if (index !== -1 && index < earliestIndex) {
-        earliestIndex = index;
-        foundMention = mentionStr;
-      }
-    }
-
-    if (foundMention) {
-      if (earliestIndex > 0) {
-        elements.push(remainingText.substring(0, earliestIndex));
-      }
-      elements.push(<span key={elements.length} className="bg-yellow-500/30 text-yellow-200 px-1.5 py-0.5 rounded-md font-medium mx-0.5">{foundMention}</span>);
-      remainingText = remainingText.substring(earliestIndex + foundMention.length);
-    } else {
-      elements.push(remainingText);
-      break;
-    }
+  if ('all'.includes(normalizedQuery)) {
+    suggestions.push({ id: '__all__', name: '@all' });
   }
-  return elements;
+
+  return [
+    ...suggestions,
+    ...presentParticipants.filter(user =>
+      user.name.replace(/\s+/g, '').toLowerCase().includes(normalizedQuery)
+    )
+  ];
+}
+
+function formatChatTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderMessageText(text, mentions, users, isMine) {
+  if (!text) return '';
+  const mentionIds = toArray(mentions);
+  if (mentionIds.length === 0 && !/(^|\s)@all\b/i.test(text)) return text;
+
+  const mentionedUsers = mentionIds.map(uid => users.find(u => u.id === uid)).filter(Boolean);
+  const mentionTokens = new Set(['@all']);
+  mentionedUsers.forEach(user => {
+    mentionTokens.add(`@${user.name}`.toLowerCase());
+    mentionTokens.add(`@${user.name.replace(/\s+/g, '')}`.toLowerCase());
+  });
+
+  return text.split(/(@\w+)/g).map((part, index) => {
+    if (!part.startsWith('@') || !mentionTokens.has(part.toLowerCase())) {
+      return part;
+    }
+    return (
+      <span
+        key={`${part}-${index}`}
+        className={`mx-0.5 rounded-md px-1.5 py-0.5 font-medium ${isMine ? 'bg-white/20 text-white' : 'bg-amber-400/25 text-amber-100'}`}
+      >
+        {part}
+      </span>
+    );
+  });
 }
 
 function ActiveParticipantsTracker({ onActiveParticipantsChange }) {
