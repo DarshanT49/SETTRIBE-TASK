@@ -9,7 +9,7 @@ import com.settribe.dto.SelfTaskDTO;
 
 @RestController
 @RequestMapping("/api/selfTasks")
-@CrossOrigin(origins = "*")
+
 public class SelfTaskController {
 
     @Autowired

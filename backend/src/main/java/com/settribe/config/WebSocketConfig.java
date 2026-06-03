@@ -6,9 +6,14 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+import org.springframework.beans.factory.annotation.Value;
+
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    @Value("${frontend.urls:http://localhost:5173,http://localhost:3000,http://192.168.1.45:5173}")
+    private String[] frontendUrls;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -18,6 +23,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws-chat").setAllowedOriginPatterns("*").withSockJS();
+        registry.addEndpoint("/ws-chat").setAllowedOrigins(frontendUrls).withSockJS();
     }
 }

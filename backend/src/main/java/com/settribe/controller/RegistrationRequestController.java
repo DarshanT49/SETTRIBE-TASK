@@ -9,7 +9,7 @@ import com.settribe.dto.RegistrationRequestDTO;
 
 @RestController
 @RequestMapping("/api/registrationRequests")
-@CrossOrigin(origins = "*")
+
 public class RegistrationRequestController {
 
     @Autowired

@@ -12,12 +12,21 @@ export function AuthProvider({ children }) {
 
   // On mount, restore session from localStorage if valid
   useEffect(() => {
+    const handleUnauthorized = () => {
+      authLogout();
+      setCurrentUser(null);
+    };
+    window.addEventListener('auth-unauthorized', handleUnauthorized);
+
     const session = getSessionSync();
     if (session?.currentUserId) {
       getCurrentUser().then(user => {
         if (user) {
           setCurrentUser(user);
           startReminderEngine(user.id);
+        } else {
+          // If getCurrentUser fails or returns null, clear the session so we don't end up with a broken state
+          authLogout();
         }
         setLoading(false);
       });
@@ -25,6 +34,10 @@ export function AuthProvider({ children }) {
    
       setLoading(false);
     }
+
+    return () => {
+      window.removeEventListener('auth-unauthorized', handleUnauthorized);
+    };
   }, []);
 
   const login = useCallback(async (emailOrId, password) => {

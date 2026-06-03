@@ -1,0 +1,16 @@
+target/
+*.iml
+.idea/
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+*.log
+*.md
+bin/
+generate.js
+fix_services.js
+refactor_to_dto.js
+remove_cross_origin.js
+remove_lombok.js

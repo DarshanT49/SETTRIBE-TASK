@@ -11,7 +11,6 @@ import com.settribe.dto.NotificationDTO;
 
 @RestController
 @RequestMapping("/api/notifications")
-@CrossOrigin(origins = "*") // Allow frontend to call
 public class NotificationController {
 
     @Autowired

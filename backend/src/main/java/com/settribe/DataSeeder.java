@@ -4,9 +4,11 @@ import com.settribe.entity.*;
 import com.settribe.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -18,10 +20,23 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired private TaskRepository taskRepository;
     @Autowired private MeetingRepository meetingRepository;
     @Autowired private InterviewRepository interviewRepository;
-    @Autowired private EmailTemplateRepository emailTemplateRepository;
+    @Autowired private PasswordEncoder passwordEncoder;
+
+    // Known plaintext passwords from old seeding — migrate these to BCrypt if found
+    private static final java.util.Map<String, String> KNOWN_PLAINTEXT = java.util.Map.of(
+        "Admin@1234", "Admin@1234",
+        "Hr@12345", "Hr@12345",
+        "Manager@123", "Manager@123",
+        "Employee@123", "Employee@123",
+        "Intern@1234", "Intern@1234",
+        "Panel@1234", "Panel@1234"
+    );
 
     @Override
     public void run(String... args) throws Exception {
+        // Migrate any existing plaintext passwords to BCrypt
+        migratePlaintextPasswords();
+
         if (userRepository.count() == 0) {
             String now = Instant.now().toString();
             String lastMonth = Instant.now().minus(30, ChronoUnit.DAYS).toString();
@@ -31,13 +46,13 @@ public class DataSeeder implements CommandLineRunner {
             String nextWeek = Instant.now().plus(7, ChronoUnit.DAYS).toString();
             String nextMonth = Instant.now().plus(30, ChronoUnit.DAYS).toString();
 
-            // Seed Users
-            userRepository.save(new User("user-admin-001", "Alex Thompson", "EMP001", "admin@settribe.com", "9876543210", "Management", "admin", true, true, null, now, lastMonth, null, "Admin@1234"));
-            userRepository.save(new User("user-hr-001", "Priya Sharma", "EMP002", "hr@settribe.com", "9876543211", "HR", "hr", true, true, "user-admin-001", lastMonth, lastMonth, null, "Hr@12345"));
-            userRepository.save(new User("user-manager-001", "Rajesh Kumar", "EMP003", "manager@settribe.com", "9876543212", "Engineering", "manager", true, true, "user-admin-001", lastMonth, lastMonth, null, "Manager@123"));
-            userRepository.save(new User("user-employee-001", "Ananya Patel", "EMP004", "employee@settribe.com", "9876543213", "Engineering", "employee", true, true, "user-admin-001", lastMonth, lastMonth, null, "Employee@123"));
-            userRepository.save(new User("user-intern-001", "Ravi Verma", "EMP005", "intern@settribe.com", "9876543214", "Engineering", "intern", true, true, "user-admin-001", lastMonth, lastMonth, null, "Intern@1234"));
-            userRepository.save(new User("user-panel-001", "Deepika Singh", "EMP006", "panel@settribe.com", "9876543215", "Engineering", "panel", true, true, "user-admin-001", lastMonth, lastMonth, null, "Panel@1234"));
+            // Seed Users — passwords are BCrypt-hashed
+            userRepository.save(new User("user-admin-001", "Alex Thompson", "EMP001", "admin@settribe.com", "9876543210", "Management", "admin", true, true, null, now, lastMonth, null, passwordEncoder.encode("Admin@1234")));
+            userRepository.save(new User("user-hr-001", "Priya Sharma", "EMP002", "hr@settribe.com", "9876543211", "HR", "hr", true, true, "user-admin-001", lastMonth, lastMonth, null, passwordEncoder.encode("Hr@12345")));
+            userRepository.save(new User("user-manager-001", "Rajesh Kumar", "EMP003", "manager@settribe.com", "9876543212", "Engineering", "manager", true, true, "user-admin-001", lastMonth, lastMonth, null, passwordEncoder.encode("Manager@123")));
+            userRepository.save(new User("user-employee-001", "Ananya Patel", "EMP004", "employee@settribe.com", "9876543213", "Engineering", "employee", true, true, "user-admin-001", lastMonth, lastMonth, null, passwordEncoder.encode("Employee@123")));
+            userRepository.save(new User("user-intern-001", "Ravi Verma", "EMP005", "intern@settribe.com", "9876543214", "Engineering", "intern", true, true, "user-admin-001", lastMonth, lastMonth, null, passwordEncoder.encode("Intern@1234")));
+            userRepository.save(new User("user-panel-001", "Deepika Singh", "EMP006", "panel@settribe.com", "9876543215", "Engineering", "panel", true, true, "user-admin-001", lastMonth, lastMonth, null, passwordEncoder.encode("Panel@1234")));
 
             // Seed Projects
             Project proj1 = new Project("proj-001", "E-Commerce Platform Redesign",
@@ -157,6 +172,29 @@ public class DataSeeder implements CommandLineRunner {
             }
 
             System.out.println("✅ Data Seeding Completed!");
+        }
+    }
+
+    /**
+     * Migrates any users whose password is still stored as plaintext
+     * (from the old json-server era) to a proper BCrypt hash.
+     * Safe to run on every startup — already-hashed passwords start with "$2a$"
+     * and will be left untouched.
+     */
+    private void migratePlaintextPasswords() {
+        List<User> users = userRepository.findAll();
+        boolean anyMigrated = false;
+        for (User user : users) {
+            String pwd = user.getPassword();
+            if (pwd != null && !pwd.startsWith("$2a$") && KNOWN_PLAINTEXT.containsKey(pwd)) {
+                user.setPassword(passwordEncoder.encode(pwd));
+                userRepository.save(user);
+                anyMigrated = true;
+                System.out.println("🔐 Migrated password for user: " + user.getEmail());
+            }
+        }
+        if (anyMigrated) {
+            System.out.println("✅ Password migration completed.");
         }
     }
 }

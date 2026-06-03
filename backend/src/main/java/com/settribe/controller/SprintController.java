@@ -11,7 +11,6 @@ import com.settribe.dto.SprintDTO;
 
 @RestController
 @RequestMapping("/api/sprints")
-@CrossOrigin(origins = "*") // Allow frontend to call
 public class SprintController {
 
     @Autowired

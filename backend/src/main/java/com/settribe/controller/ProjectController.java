@@ -11,7 +11,6 @@ import com.settribe.dto.ProjectDTO;
 
 @RestController
 @RequestMapping("/api/projects")
-@CrossOrigin(origins = "*") // Allow frontend to call
 public class ProjectController {
 
     @Autowired
