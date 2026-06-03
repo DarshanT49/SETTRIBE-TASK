@@ -20,6 +20,7 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired private TaskRepository taskRepository;
     @Autowired private MeetingRepository meetingRepository;
     @Autowired private InterviewRepository interviewRepository;
+    @Autowired private EmailTemplateRepository emailTemplateRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
     // Known plaintext passwords from old seeding — migrate these to BCrypt if found

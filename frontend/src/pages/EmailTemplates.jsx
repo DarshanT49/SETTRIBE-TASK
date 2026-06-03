@@ -4,8 +4,7 @@ import { KEYS, asyncGet, asyncSet, apiPost } from '../services/storage';
 import { Button, Input, Select } from '../components/ui';
 import { Plus, Edit2, Copy, Trash2, CheckCircle2, Star, Clock, Eye, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import RichTextEditor from '../components/RichTextEditor';
 
 const CATEGORIES = [
   'Interview Invitation',
@@ -223,23 +222,11 @@ export default function EmailTemplates() {
                 
                 <div>
                   <label className="label mb-2">Email Body</label>
-                  <div className="bg-white text-black rounded-lg overflow-hidden">
-                    <ReactQuill 
-                      theme="snow" 
-                      value={editingTemplate.htmlBody} 
-                      onChange={val => setEditingTemplate({...editingTemplate, htmlBody: val})}
-                      style={{ height: '300px' }}
-                      modules={{
-                        toolbar: [
-                          [{ 'header': [1, 2, 3, false] }],
-                          ['bold', 'italic', 'underline', 'strike'],
-                          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                          ['link', 'image'],
-                          ['clean']
-                        ]
-                      }}
-                    />
-                  </div>
+                  <RichTextEditor
+                    value={editingTemplate.htmlBody || ''}
+                    onChange={val => setEditingTemplate({ ...editingTemplate, htmlBody: val })}
+                    style={{ minHeight: '300px' }}
+                  />
                 </div>
               </div>
 

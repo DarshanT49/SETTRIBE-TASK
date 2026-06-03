@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$frontendPath = Join-Path $root "interview-opencode"
+$frontendPath = Join-Path $root "frontend"
 
 function Get-LanIp {
   $ip = [System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) |
