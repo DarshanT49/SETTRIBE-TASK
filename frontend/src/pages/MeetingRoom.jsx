@@ -44,7 +44,7 @@ export default function MeetingRoom() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [connectionError, setConnectionError] = useState('');
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [sidePanel, setSidePanel] = useState('participants');
   const [expandedUserId, setExpandedUserId] = useState(null);
   const [dynamicStandupInputs, setDynamicStandupInputs] = useState({});
@@ -54,7 +54,8 @@ export default function MeetingRoom() {
   const [unreadMentionCount, setUnreadMentionCount] = useState(0);
   const [standupData, setStandupData] = useState({});
   const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const [initialMedia, setInitialMedia] = useState({ audio: true, video: true });
+  const [initialMedia, setInitialMedia] = useState({ audio: false, video: false });
+  const [roomConnect, setRoomConnect] = useState(true);
   const [mentionQuery, setMentionQuery] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [selectedMentionIdx, setSelectedMentionIdx] = useState(0);
@@ -349,6 +350,7 @@ export default function MeetingRoom() {
 
   const handleDisconnected = useCallback(async () => {
     if (joinedRef.current) {
+      setRoomConnect(false);
       setShowLeaveModal(true);
     }
   }, []);
@@ -374,6 +376,7 @@ export default function MeetingRoom() {
 
   const cancelLeave = () => {
     setInitialMedia({ audio: false, video: false });
+    setRoomConnect(true);
     setShowLeaveModal(false);
   };
 
@@ -638,7 +641,7 @@ export default function MeetingRoom() {
         <LiveKitRoom
           token={roomConfig.token}
           serverUrl={roomConfig.url}
-          connect
+          connect={roomConnect}
           audio={initialMedia.audio}
           video={initialMedia.video}
           onConnected={handleConnected}
