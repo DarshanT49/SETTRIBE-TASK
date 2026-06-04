@@ -102,7 +102,7 @@ export function MeetingAlert() {
 
         const nextMeeting = meetings
           .filter(meeting => {
-            if (!meeting.participantIds?.includes(currentUser.id)) return false;
+            if (!meeting.participantIds?.some(id => String(id) === String(currentUser.id))) return false;
             if (acknowledged.includes(meeting.id)) return false;
             if (meeting.status === 'completed' || meeting.status === 'cancelled') return false;
 
