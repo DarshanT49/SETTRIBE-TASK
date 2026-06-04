@@ -82,9 +82,9 @@ export default function InterviewDetail() {
 
   const getUser = (uid) => users.find(u => u.id === uid);
   const interviewer = getUser(interview.interviewerId);
-  const isInterviewer = interview.interviewerId === currentUser.id || parsePanelIds(interview.panelIds).includes(currentUser.id);
-  const canEvaluate = isInterviewer || ['admin', 'hr'].includes(currentUser.role);
-  const hasEvaluation = !!interview.evaluation?.rating;
+  const isInterviewer = String(currentUser.id) === String(interview.interviewerId) || parsePanelIds(interview.panelIds).some(id => String(id) === String(currentUser.id));
+  const canEvaluate = isInterviewer;
+  const hasEvaluation = !!interview.evaluation?.rating || !!interview.evaluation?.overallScore;
 
   const handleSaveEval = async (payload) => {
     const ivs = await asyncGet(KEYS.INTERVIEWS) || [];
@@ -329,13 +329,13 @@ export default function InterviewDetail() {
               <div className="space-y-4">
                 {interview.evaluation.notes && (
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-300">Overall Feedback</h3>
+                    <h3 className="text-sm font-semibold text-gray-300">Candidate Feedback</h3>
                     <p className="text-sm text-gray-400 p-3 bg-gray-800/50 rounded-lg mt-1">{interview.evaluation.notes}</p>
                   </div>
                 )}
                 {interview.evaluation.candidateStrengths && (
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-300">Candidate Strengths</h3>
+                    <h3 className="text-sm font-semibold text-gray-300">Strengths</h3>
                     <p className="text-sm text-emerald-400/80 p-3 bg-emerald-900/10 border border-emerald-900/30 rounded-lg mt-1">{interview.evaluation.candidateStrengths}</p>
                   </div>
                 )}
@@ -347,7 +347,7 @@ export default function InterviewDetail() {
                 )}
                 {interview.evaluation.recommendedNextSteps && (
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-300">Recommended Next Steps</h3>
+                    <h3 className="text-sm font-semibold text-gray-300">Overall Remarks</h3>
                     <p className="text-sm text-blue-400/80 p-3 bg-blue-900/10 border border-blue-900/30 rounded-lg mt-1">{interview.evaluation.recommendedNextSteps}</p>
                   </div>
                 )}
