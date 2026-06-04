@@ -33,7 +33,13 @@ export default function Dashboard() {
 
     const meetings = await asyncGet(KEYS.MEETINGS) || [];
     const interviews = await asyncGet(KEYS.INTERVIEWS) || [];
-    const requests = await asyncGet(KEYS.REGISTRATION_REQUESTS) || [];
+    let requests = [];
+    try {
+      const resp = await api.get('/registrationRequests');
+      requests = resp.data || [];
+    } catch (e) {
+      console.warn('Could not fetch registration requests', e);
+    }
     const milestones = await asyncGet(KEYS.MILESTONES) || [];
     const selfTasks = await asyncGet(KEYS.SELF_TASKS) || [];
     const projectHistory = await asyncGet(KEYS.PROJECT_HISTORY) || [];
