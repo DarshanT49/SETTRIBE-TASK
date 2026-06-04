@@ -114,20 +114,23 @@ export async function registerUser(data) {
       password: data.password,
     };
 
-    const userResp = await api.post('/users', newUser);
-    const savedUser = userResp.data;
-
-    // Create registration request
     const regRequest = {
       id: uuidv4(),
-      userId: savedUser.id,
+      userId: newUser.id,
       status: 'pending',
       requestedAt: new Date().toISOString(),
       reviewedBy: null,
       reviewedAt: null,
       rejectionReason: '',
     };
-    await api.post('/registrationRequests', regRequest);
+
+    const payload = {
+      user: newUser,
+      registrationRequest: regRequest
+    };
+
+    const userResp = await api.post('/auth/register', payload);
+    const savedUser = userResp.data.user;
 
     return { success: true, user: savedUser };
   } catch (e) {
