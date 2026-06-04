@@ -23,11 +23,8 @@ export default function StandupData() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    // Only admins or managers should access this
-    if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager') {
-      navigate('/dashboard');
-      return;
-    }
+    // We no longer redirect here; all roles can access.
+    // If they are not admin/manager, we will force the filter below.
 
     const loadUsers = async () => {
       const allUsers = await asyncGet(KEYS.USERS);
@@ -41,7 +38,11 @@ export default function StandupData() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const result = await filterStandupData(filters);
+      const activeFilters = { ...filters };
+      if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager') {
+        activeFilters.hostId = currentUser.id;
+      }
+      const result = await filterStandupData(activeFilters);
       setData(result || []);
     } catch (error) {
       console.error("Failed to fetch standup data:", error);
@@ -58,7 +59,11 @@ export default function StandupData() {
   }, [filters]);
 
   const handleExport = () => {
-    exportStandupData(filters);
+    const activeFilters = { ...filters };
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager') {
+      activeFilters.hostId = currentUser.id;
+    }
+    exportStandupData(activeFilters);
   };
 
   const filteredData = data.filter(record => {

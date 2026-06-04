@@ -17,6 +17,7 @@ export async function filterStandupData(filters) {
   if (filters.meetingType) params.append('meetingType', filters.meetingType);
   if (filters.userId) params.append('userId', filters.userId);
   if (filters.status) params.append('status', filters.status);
+  if (filters.hostId) params.append('hostId', filters.hostId);
   
   const { data } = await api.get(`/standup/filter?${params.toString()}`);
   return data;
@@ -29,6 +30,7 @@ export async function exportStandupData(filters) {
   if (filters.meetingType) params.append('meetingType', filters.meetingType);
   if (filters.userId) params.append('userId', filters.userId);
   if (filters.status) params.append('status', filters.status);
+  if (filters.hostId) params.append('hostId', filters.hostId);
   
   try {
     const response = await api.get(`/standup/export?${params.toString()}`, {

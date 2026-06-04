@@ -54,6 +54,7 @@ export default function MeetingRoom() {
   const [unreadMentionCount, setUnreadMentionCount] = useState(0);
   const [standupData, setStandupData] = useState({});
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showEndMeetingModal, setShowEndMeetingModal] = useState(false);
   const [initialMedia, setInitialMedia] = useState({ audio: false, video: false });
   const [roomConnect, setRoomConnect] = useState(true);
   const [allocatedTasksMap, setAllocatedTasksMap] = useState({});
@@ -513,7 +514,8 @@ export default function MeetingRoom() {
         meetingDate: new Date().toISOString().split('T')[0],
         submissionTime: new Date().toLocaleTimeString('en-US', { hour12: false }),
         questionsAndAnswers: qna,
-        status: 'Submitted'
+        status: 'Submitted',
+        hostId: meeting.hostId
       };
 
       const savedRecord = await saveStandupRecord(record);
@@ -701,7 +703,7 @@ export default function MeetingRoom() {
         )}
         {isHost && (
           <button
-            onClick={handleEndMeeting}
+            onClick={() => setShowEndMeetingModal(true)}
             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-lg ring-1 ring-red-700 hover:bg-red-700 transition-colors"
           >
             End Meeting
@@ -1026,7 +1028,6 @@ export default function MeetingRoom() {
               ['chat', 'Chat', MessageSquare],
               ...(isHost ? [['lobby', 'Lobby', Clock]] : []),
               ...(isHost && meeting.type === 'interview' ? [['evaluate', 'Evaluate', ClipboardList]] : []),
-              ...(isHost && meeting.type === 'standup' ? [['standup', 'Standup', Grid3X3]] : []),
               ...(isHost && meeting.type === 'project' ? [['tasks', 'Tasks', CheckSquare]] : [])
             ].map(([tab, label, Icon]) => (
               <button
@@ -1060,14 +1061,21 @@ export default function MeetingRoom() {
       )}
 
       <Modal isOpen={showLeaveModal} onClose={cancelLeave} title="Leave Meeting" size="sm">
-        <div className="p-5 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-950 text-red-500">
-            <X size={24} />
-          </div>
-          <p className="mb-6 text-sm text-gray-300">Are you sure you want to leave this meeting?</p>
+        <div className="p-5">
+          <p className="text-gray-300 mb-6 text-sm">Are you sure you want to leave the meeting? You can rejoin later if it hasn't ended.</p>
           <div className="flex justify-end gap-3">
             <Button variant="secondary" onClick={cancelLeave}>Cancel</Button>
-            <Button variant="danger" className="w-full" onClick={() => { confirmLeave(); }}>Leave</Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white border-transparent" onClick={confirmLeave}>Leave Meeting</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={showEndMeetingModal} onClose={() => setShowEndMeetingModal(false)} title="End Meeting?" size="sm">
+        <div className="p-5">
+          <p className="text-gray-300 mb-6 text-sm">Are you sure you want to end this meeting for all participants? This action cannot be undone.</p>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setShowEndMeetingModal(false)}>Deny</Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white border-transparent" onClick={() => { setShowEndMeetingModal(false); handleEndMeeting(); }}>Confirm</Button>
           </div>
         </div>
       </Modal>

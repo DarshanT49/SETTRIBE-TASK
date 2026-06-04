@@ -30,7 +30,7 @@ public class StandupRecordService {
         return repository.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
-    public List<StandupRecordDTO> filter(String startDate, String endDate, String meetingType, String userId, String status) {
+    public List<StandupRecordDTO> filter(String startDate, String endDate, String meetingType, String userId, String status, String hostId) {
         Specification<StandupRecord> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (startDate != null && !startDate.isEmpty()) {
@@ -47,6 +47,9 @@ public class StandupRecordService {
             }
             if (status != null && !status.isEmpty()) {
                 predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (hostId != null && !hostId.isEmpty()) {
+                predicates.add(cb.equal(root.get("hostId"), hostId));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
@@ -172,6 +175,7 @@ public class StandupRecordService {
         dto.setStatus(entity.getStatus());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
+        dto.setHostId(entity.getHostId());
         return dto;
     }
 
@@ -187,6 +191,7 @@ public class StandupRecordService {
         entity.setStatus(dto.getStatus());
         entity.setCreatedAt(dto.getCreatedAt());
         entity.setUpdatedAt(dto.getUpdatedAt());
+        entity.setHostId(dto.getHostId());
         return entity;
     }
 }
