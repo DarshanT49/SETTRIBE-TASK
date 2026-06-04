@@ -47,13 +47,7 @@ export default function Register() {
       setLoading(false);
       return;
     }
-    await notifyAdminsAndHR({
-      type: 'registration_request',
-      title: 'New Registration Request',
-      message: `New registration from ${form.name} — ${form.role} — ${form.department}`,
-      relatedId: result.user.id,
-      relatedType: 'user',
-    });
+    // Notifications for registration should be handled by the backend securely.
     toast.success('Registration submitted! Waiting for approval.');
     navigate('/login');
     setLoading(false);

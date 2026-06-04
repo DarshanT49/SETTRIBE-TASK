@@ -27,6 +27,12 @@ public class AuthController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private com.settribe.repository.RegistrationRequestRepository registrationRequestRepository;
+
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@RequestBody Map<String, String> loginRequest) {
         String identifier = loginRequest.get("userId");
@@ -76,5 +82,49 @@ public class AuthController {
             "userId", actualUserId,
             "role", user.getRole()
         ));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@RequestBody Map<String, Object> payload) {
+        try {
+            Map<String, Object> userData = (Map<String, Object>) payload.get("user");
+            Map<String, Object> regData = (Map<String, Object>) payload.get("registrationRequest");
+
+            String email = (String) userData.get("email");
+            String employeeId = (String) userData.get("employeeId");
+
+            if (userRepository.findByEmail(email) != null || userRepository.findByEmployeeId(employeeId) != null) {
+                return ResponseEntity.status(409).body(Map.of("message", "Email or Employee ID already registered."));
+            }
+
+            User user = new User();
+            user.setId((String) userData.get("id"));
+            user.setName((String) userData.get("name"));
+            user.setEmployeeId(employeeId);
+            user.setEmail(email);
+            user.setMobile((String) userData.get("mobile"));
+            user.setDepartment((String) userData.get("department"));
+            user.setRole((String) userData.get("role"));
+            user.setIsActive((Boolean) userData.get("isActive"));
+            user.setIsApproved((Boolean) userData.get("isApproved"));
+            user.setCreatedAt((String) userData.get("createdAt"));
+            user.setPassword(passwordEncoder.encode((String) userData.get("password")));
+            
+            userRepository.save(user);
+
+            com.settribe.entity.RegistrationRequest req = new com.settribe.entity.RegistrationRequest();
+            req.setId((String) regData.get("id"));
+            req.setUserId((String) regData.get("userId"));
+            req.setStatus((String) regData.get("status"));
+            req.setRequestedAt((String) regData.get("requestedAt"));
+            req.setRejectionReason((String) regData.get("rejectionReason"));
+            
+            registrationRequestRepository.save(req);
+
+            return ResponseEntity.ok(Map.of("success", true, "user", user));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("message", "Registration failed"));
+        }
     }
 }

@@ -24,7 +24,7 @@ export function MainLayout({ children }) {
         <div className="lg:hidden fixed inset-0 z-50 flex print:hidden">
           <div className="fixed inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
           <div className="relative z-10">
-            <Sidebar collapsed={false} onCollapse={() => setMobileOpen(false)} />
+            <Sidebar collapsed={false} onCollapse={() => setMobileOpen(false)} onNavClick={() => setMobileOpen(false)} />
           </div>
         </div>
       )}
