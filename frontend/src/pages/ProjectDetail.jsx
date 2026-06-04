@@ -55,8 +55,10 @@ export default function ProjectDetail() {
     try {
       const members = await fetchProjectMembers(id);
       proj.teamIds = members.map(m => m.userId);
+      proj.projectMembers = members;
     } catch {
       proj.teamIds = [];
+      proj.projectMembers = [];
     }
     
     setProject(proj);
@@ -87,7 +89,8 @@ export default function ProjectDetail() {
   const isAdmin = currentUser.role === 'admin';
   const canManage = isAdmin || isOwner || isManager;
   const isLead = project.projectMembers?.find(m => String(m.userId) === String(currentUser.id))?.isLead;
-  const canManageTasks = canManage || isLead;
+  const isTeamMember = project.teamIds?.map(String).includes(String(currentUser.id));
+  const canManageTasks = canManage || isLead || isTeamMember;
 
   const handleMarkComplete = async (ms) => {
     const allMs = await asyncGet(KEYS.MILESTONES) || [];
@@ -292,9 +295,10 @@ function OverviewTab({ project, users, tasks, meetings, getUser, canManage, onAd
           {project.teamIds?.map(uid => {
             const u = getUser(uid);
             if (!u) return null;
-            const isOwnerMember = uid === project.ownerId;
+            const isOwnerMember = String(uid) === String(project.ownerId);
             const memberData = project.projectMembers?.find(m => String(m.userId) === String(uid));
             const isLead = memberData?.isLead;
+            const hasLead = project.projectMembers?.some(m => m.isLead && String(m.userId) !== String(project.ownerId));
             return (
               <div key={uid} className="flex items-center gap-3">
                 <Avatar name={u.name} size="sm" />
@@ -306,12 +310,14 @@ function OverviewTab({ project, users, tasks, meetings, getUser, canManage, onAd
                     {isLead && !isOwnerMember && <span className="text-xs text-blue-400">· Lead</span>}
                   </div>
                 </div>
-                {canManage && uid !== project.ownerId && uid !== currentUserId && (
+                {canManage && !isOwnerMember && String(uid) !== String(currentUserId) && (
                   <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <span className="text-xs text-gray-500">Lead</span>
-                      <Toggle enabled={!!isLead} onChange={() => handleToggleLead(uid, isLead)} />
-                    </label>
+                    {(!hasLead || isLead) && (
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <span className="text-xs text-gray-500">Lead</span>
+                        <Toggle checked={!!isLead} onChange={() => handleToggleLead(uid, !!isLead)} />
+                      </label>
+                    )}
                     <button onClick={() => handleRemoveMember(uid)} className="text-gray-600 hover:text-red-400 transition-colors"><Trash size={12} /></button>
                   </div>
                 )}

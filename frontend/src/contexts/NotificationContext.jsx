@@ -1,7 +1,6 @@
  
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { KEYS, asyncGet } from '../services/storage';
-import { markNotificationRead, markAllRead as markAllReadService, deleteNotification } from '../services/notifications';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { markNotificationRead, markAllRead as markAllReadService, deleteNotification, getUserNotifications, getUnreadCount as getUnreadCountService } from '../services/notifications';
 import { useAuth } from './AuthContext';
    
 import api from '../services/api';
@@ -12,14 +11,31 @@ export function NotificationProvider({ children }) {
   const { currentUser } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const prevNotifsRef = useRef(new Set());
+
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!currentUser) { setNotifications([]); setUnreadCount(0); return; }
-    const all = await asyncGet(KEYS.NOTIFICATIONS) || [];
-    const userNotifs = all.filter(n => n.userId === currentUser.id)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const userNotifs = await getUserNotifications(currentUser.id);
+    
+    if ('Notification' in window && Notification.permission === 'granted') {
+      if (prevNotifsRef.current.size > 0) {
+        userNotifs.forEach(notif => {
+          if (!notif.isRead && !prevNotifsRef.current.has(notif.id) && document.hidden) {
+            new Notification(notif.title, { body: notif.message });
+          }
+        });
+      }
+    }
+    prevNotifsRef.current = new Set(userNotifs.map(n => n.id));
+
     setNotifications(userNotifs);
-    setUnreadCount(userNotifs.filter(n => !n.isRead).length);
+    setUnreadCount(await getUnreadCountService(currentUser.id));
   }, [currentUser]);
 
   useEffect(() => {
@@ -48,8 +64,7 @@ export function NotificationProvider({ children }) {
   const clearAll = useCallback(async () => {
     if (!currentUser) return;
     // Delete all of current user's notifications one by one
-    const all = await asyncGet(KEYS.NOTIFICATIONS) || [];
-    const userNotifs = all.filter(n => n.userId === currentUser.id);
+    const userNotifs = await getUserNotifications(currentUser.id);
     await Promise.all(userNotifs.map(n => deleteNotification(n.id)));
     refresh();
   }, [currentUser, refresh]);

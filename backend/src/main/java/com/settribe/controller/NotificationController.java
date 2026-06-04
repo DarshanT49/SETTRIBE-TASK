@@ -17,7 +17,10 @@ public class NotificationController {
     private NotificationService service;
 
     @GetMapping
-    public List<NotificationDTO> getAll() {
+    public List<NotificationDTO> getAll(@RequestParam(required = false) String userId) {
+        if (userId != null && !userId.isEmpty()) {
+            return service.findByUserId(userId);
+        }
         return service.findAll();
     }
 

@@ -24,10 +24,10 @@ export default function Dashboard() {
     const users = await asyncGet(KEYS.USERS) || [];
     const projectsRaw = await fetchProjects();
     const tasksRaw = await fetchTasks();
-    
+
     const projResponses = await Promise.all(projectsRaw.map(p => fetchProjectMembers(p.id).catch(() => [])));
     const projects = projectsRaw.map((p, i) => ({ ...p, teamIds: projResponses[i].map(m => m.userId) }));
-    
+
     const taskResponses = await Promise.all(tasksRaw.map(t => fetchTaskAssignees(t.id).catch(() => [])));
     const tasks = tasksRaw.map((t, i) => ({ ...t, assigneeIds: taskResponses[i].map(a => a.userId) }));
 
@@ -43,7 +43,8 @@ export default function Dashboard() {
 
     setData({
       users, projects, tasks, meetings, interviews, requests, milestones, selfTasks, projectHistory,
-      today, thisWeek });
+      today, thisWeek
+    });
     setLoading(false);
   };
 
@@ -73,7 +74,8 @@ function StatCard({ icon: Icon, label, value, color = 'primary', sublabel, trend
     red: 'text-red-400 bg-red-900/20 border-red-800/30',
     blue: 'text-blue-400 bg-blue-900/20 border-blue-800/30',
     purple: 'text-purple-400 bg-purple-900/20 border-purple-800/30',
-    orange: 'text-orange-400 bg-orange-900/20 border-orange-800/30' };
+    orange: 'text-orange-400 bg-orange-900/20 border-orange-800/30'
+  };
   return (
     <div className="stat-card group hover:scale-[1.02] transition-transform">
       <div className="flex items-start justify-between">
@@ -335,23 +337,24 @@ function HRDashboard({ data, currentUser }) {
 
 function ManagerDashboard({ data, currentUser }) {
   const { users, projects, tasks, meetings, milestones } = data;
-  const myProjects = projects.filter(p => p.managerId === currentUser.id || p.ownerId === currentUser.id);
-  const myTasks = tasks.filter(t => t.assigneeIds.includes(currentUser.id));
+  const myProjects = projects.filter(p => String(p.managerId) === String(currentUser.id) || String(p.ownerId) === String(currentUser.id));
+  const myTasks = tasks.filter(t => (t.assigneeIds || []).map(String).includes(String(currentUser.id)));
   const teamTasks = tasks.filter(t => {
-    const myProjectIds = myProjects.map(p => p.id);
-    return myProjectIds.includes(t.projectId);
+    const myProjectIds = myProjects.map(p => String(p.id));
+    return myProjectIds.includes(String(t.projectId));
   });
   const pendingReviews = teamTasks.filter(t => t.status === 'in_review').length;
   const upcomingMeetings = meetings.filter(m => {
-    if (!m.participantIds?.some(id => String(id) === String(currentUser.id)) || m.date < data.today) return false;
+    if (!(m.participantIds || []).map(String).includes(String(currentUser.id)) || m.date < data.today) return false;
     const status = getMeetingStatus(m);
     return status === 'upcoming' || status === 'ongoing';
   });
 
   const teamProductivity = users.filter(u => ['employee', 'intern'].includes(u.role)).map(u => ({
     name: u.name.split(' ')[0],
-    completed: tasks.filter(t => t.assigneeIds.includes(u.id) && t.status === 'done').length,
-    pending: tasks.filter(t => t.assigneeIds.includes(u.id) && t.status !== 'done').length }));
+    completed: tasks.filter(t => (t.assigneeIds || []).map(String).includes(String(u.id)) && t.status === 'done').length,
+    pending: tasks.filter(t => (t.assigneeIds || []).map(String).includes(String(u.id)) && t.status !== 'done').length
+  }));
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -409,16 +412,16 @@ function ManagerDashboard({ data, currentUser }) {
 
 function EmployeeDashboard({ data, currentUser }) {
   const { users, projects, tasks, meetings } = data;
-  const myTasks = tasks.filter(t => t.assigneeIds.includes(currentUser.id));
+  const myTasks = tasks.filter(t => (t.assigneeIds || []).map(String).includes(String(currentUser.id)));
   const openTasks = myTasks.filter(t => !['done'].includes(t.status));
   const overdueTasks = myTasks.filter(t => !['done'].includes(t.status) && new Date(t.dueDate) < new Date());
   const completedThisWeek = myTasks.filter(t => t.status === 'done' && new Date(t.dueDate) >= new Date(Date.now() - 7 * 86400000)).length;
   const upcomingMeetings = meetings.filter(m => {
-    if (!m.participantIds?.some(id => String(id) === String(currentUser.id)) || m.date < data.today) return false;
+    if (!(m.participantIds || []).map(String).includes(String(currentUser.id)) || m.date < data.today) return false;
     const status = getMeetingStatus(m);
     return status === 'upcoming' || status === 'ongoing';
   });
-  const myProjects = projects.filter(p => p.teamIds.includes(currentUser.id));
+  const myProjects = projects.filter(p => (p.teamIds || []).map(String).includes(String(currentUser.id)));
 
   return (
     <div className="space-y-6 animate-fade-in">

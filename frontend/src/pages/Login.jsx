@@ -11,7 +11,7 @@ const DEMO_USERS = [
   { role: 'Manager', email: 'manager@settribe.com', password: 'Manager@123', color: 'bg-yellow-900/40 text-yellow-400 border-yellow-800/50 hover:bg-yellow-900/60' },
   { role: 'Employee', email: 'employee@settribe.com', password: 'Employee@123', color: 'bg-emerald-900/40 text-emerald-400 border-emerald-800/50 hover:bg-emerald-900/60' },
   { role: 'Intern', email: 'intern@settribe.com', password: 'Intern@1234', color: 'bg-blue-900/40 text-blue-400 border-blue-800/50 hover:bg-blue-900/60' },
-  { role: 'Panel', email: 'panel@settribe.com', password: 'Panel@1234', color: 'bg-purple-900/40 text-purple-400 border-purple-800/50 hover:bg-purple-900/60' },
+  // { role: 'Panel', email: 'panel@settribe.com', password: 'Panel@1234', color: 'bg-purple-900/40 text-purple-400 border-purple-800/50 hover:bg-purple-900/60' },
 ];
 
 export default function Login() {

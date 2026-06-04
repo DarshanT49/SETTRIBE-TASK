@@ -1,6 +1,6 @@
-   
+
 import { useState } from 'react';
-   
+
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, FolderKanban, CheckSquare, ClipboardList,
@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
-   
+
 import { Avatar, Badge } from '../ui';
 
 const allNavLinks = [
@@ -24,9 +24,9 @@ const allNavLinks = [
   { to: '/self-tasks', icon: ClipboardList, label: 'My To-Dos', roles: ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'] },
   { to: '/groups', icon: Users, label: 'My Groups', roles: ['admin', 'hr', 'manager'] },
   { to: '/meetings', icon: Video, label: 'Meetings', roles: ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'] },
-  { to: '/standup-data', icon: Database, label: 'Standup Data', roles: ['admin', 'hr', 'manager', 'employee', 'panel', 'intern'] },
+  { to: '/standup-data', icon: Database, label: 'Standup Data', roles: ['admin', 'hr', 'manager', 'employee'] },
   { to: '/interviews', icon: UserCheck, label: 'Interviews', roles: ['admin', 'hr', 'manager', 'employee', 'panel'] },
-  { to: '/email-templates', icon: Mail, label: 'Email Templates', roles: ['admin', 'hr'] },
+  { to: '/email-templates', icon: Mail, label: 'Email Templates', roles: ['hr'] },
   { to: '/reports', icon: BarChart3, label: 'Reports', roles: ['admin', 'hr', 'manager', 'employee'] },
   { to: '/notifications', icon: Bell, label: 'Notifications', roles: ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'] },
   { to: '/profile', icon: User, label: 'Profile', roles: ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'] },
