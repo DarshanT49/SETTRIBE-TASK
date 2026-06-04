@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { asyncGet, KEYS } from '../services/storage';
 import { getMeetingDateTime, formatDateTime } from '../utils/dates';
-import { Bell, Volume2 } from 'lucide-react';
+import { Bell, Volume2, Video } from 'lucide-react';
 
-const ALERT_AUDIO_SRC = '/bbmusic-friendly-melody-14015.mp3';
+const ALERT_AUDIO_SRC = '/faespencer-monday-marimba-194523.mp3';
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
 export function MeetingAlert() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [activeAlert, setActiveAlert] = useState(null);
   const [isAudioBlocked, setIsAudioBlocked] = useState(false);
   const audioRef = useRef(null);
@@ -68,6 +70,14 @@ export function MeetingAlert() {
     stopBeep();
     setActiveAlert(null);
     setIsAudioBlocked(false);
+  };
+
+  const handleJoinMeeting = () => {
+    if (activeAlert) {
+      const meetingId = activeAlert.id;
+      acknowledgeAlert();
+      navigate(`/meetings/${meetingId}/room`);
+    }
   };
 
   const manuallyPlayAudio = () => {
@@ -167,12 +177,22 @@ export function MeetingAlert() {
           </button>
         )}
 
-        <button
-          onClick={acknowledgeAlert}
-          className="w-full py-3 px-4 bg-primary-600 hover:bg-primary-500 text-white rounded-xl font-medium transition-colors shadow-lg shadow-primary-500/20"
-        >
-          Acknowledge & Mute
-        </button>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={handleJoinMeeting}
+            className="w-full py-3 px-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-medium transition-colors shadow-lg shadow-green-500/20 flex items-center justify-center gap-2"
+          >
+            <Video className="w-5 h-5" />
+            Join Meeting
+          </button>
+          
+          <button
+            onClick={acknowledgeAlert}
+            className="w-full py-3 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-medium transition-colors shadow-lg shadow-gray-900/20"
+          >
+            Acknowledge & Mute
+          </button>
+        </div>
       </div>
     </div>
   );

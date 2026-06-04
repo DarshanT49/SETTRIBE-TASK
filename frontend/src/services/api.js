@@ -1,9 +1,9 @@
 import axios from 'axios';
 
 
-const BASE_URL = 'https://settribe-task-nudz.onrender.com';
+const BASE_URL = 'https://settribe-task-nudz.onrender.com/api';
 
-// const BASE_URL = 'https://localhost:8080';
+// const BASE_URL = 'https://localhost:8080/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
