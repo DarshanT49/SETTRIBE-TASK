@@ -421,7 +421,23 @@ function EmployeeDashboard({ data, currentUser }) {
     const status = getMeetingStatus(m);
     return status === 'upcoming' || status === 'ongoing';
   });
+  const parsePanelIds = (panelIds) => {
+    if (!panelIds) return [];
+    if (Array.isArray(panelIds)) return panelIds;
+    if (typeof panelIds === 'string') {
+      try {
+        const parsed = JSON.parse(panelIds);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return panelIds.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+    return [];
+  };
+
   const myProjects = projects.filter(p => (p.teamIds || []).map(String).includes(String(currentUser.id)));
+  const { interviews } = data;
+  const myInterviews = interviews ? interviews.filter(i => String(i.interviewerId) === String(currentUser.id) || parsePanelIds(i.panelIds).some(id => String(id) === String(currentUser.id))) : [];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -479,6 +495,27 @@ function EmployeeDashboard({ data, currentUser }) {
             <div className="text-center py-6 text-gray-500 text-sm">No upcoming meetings</div>
           ) : upcomingMeetings.slice(0, 3).map(m => <MeetingCard key={m.id} meeting={m} users={users} />)}
         </div>
+        
+        {/* Assigned Interviews */}
+        {(myInterviews.length > 0 || currentUser.role === 'employee') && (
+          <div className="card p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-gray-100">Assigned Interviews</h2>
+              <Link to="/interviews" className="text-xs text-primary-400">View all →</Link>
+            </div>
+            {myInterviews.length === 0 ? (
+              <div className="text-center py-6 text-gray-500 text-sm">No interviews assigned</div>
+            ) : myInterviews.slice(0, 3).map(i => (
+              <Link key={i.id} to={`/interviews/${i.id}`} className="flex items-center justify-between p-3 bg-gray-800/50 border border-gray-700 rounded-lg mb-3 hover:border-gray-600 transition-colors">
+                <div>
+                  <p className="text-sm font-medium text-gray-200">{i.candidateName}</p>
+                  <p className="text-xs text-gray-500">{i.position} · {i.date} {i.time}</p>
+                </div>
+                <StatusBadge status={i.status} />
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

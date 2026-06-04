@@ -1,60 +1,65 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Save, Star, AlertCircle, FileText } from 'lucide-react';
+import { Save, Star, AlertCircle, FileText, Plus, X, Check } from 'lucide-react';
 import { Button, Select, Textarea } from './ui';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
-const TECHNICAL_CRITERIA = ['HTML/CSS', 'JavaScript', 'React.js', 'Java', 'Spring Boot', 'PHP', 'Database (MySQL/PostgreSQL)', 'API Development', 'Problem Solving', 'System Design', 'Communication Skills'];
-const TESTING_CRITERIA = ['Manual Testing', 'Automation Testing', 'Test Case Writing', 'Bug Reporting', 'API Testing', 'Selenium', 'Performance Testing', 'QA Processes', 'Communication Skills'];
-const HR_CRITERIA = ['Communication Skills', 'Team Fit', 'Leadership Potential', 'Adaptability', 'Problem Solving'];
-const MANAGERIAL_CRITERIA = ['Project Management', 'Team Leadership', 'Strategic Thinking', 'Conflict Resolution', 'Communication Skills'];
-const DESIGN_CRITERIA = ['UI/UX Principles', 'Prototyping', 'Design Tools (Figma)', 'User Research', 'Creativity', 'Communication Skills'];
-const DEFAULT_CRITERIA = ['Technical Skills', 'Communication', 'Problem Solving', 'Culture Fit', 'Experience Level'];
+const DEFAULT_TECH_STACKS = ['Java', 'Python', 'Spring Boot', 'React', 'Angular', 'Node.js', 'AWS', 'SQL'];
+
+const TECHNICAL_CRITERIA = ['Technical Skills', 'Problem Solving', 'Communication Skills'];
+const HR_CRITERIA = ['Communication Skills', 'Team Fit', 'Leadership Potential', 'Adaptability'];
+const DEFAULT_CRITERIA = ['Technical Skills', 'Communication', 'Problem Solving'];
 
 const RECOMMENDATIONS = ['Strongly Recommend', 'Recommend', 'Hold', 'Not Recommended', 'Reject'];
 
 export default function InterviewEvaluationPanel({ meeting, currentUser, onSaved }) {
   const [loading, setLoading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('');
   
-  // Determine Criteria Based on Interview Round/Type
-  const criteriaList = useMemo(() => {
+  const storageKey = `evaluation_draft_${meeting?.id}_${currentUser?.id}`;
+
+  const defaultCriteria = useMemo(() => {
     const round = (meeting?.round || meeting?.interviewType || '').toLowerCase();
     if (round.includes('technical')) return TECHNICAL_CRITERIA;
-    if (round.includes('testing') || round.includes('qa')) return TESTING_CRITERIA;
     if (round.includes('hr')) return HR_CRITERIA;
-    if (round.includes('manager')) return MANAGERIAL_CRITERIA;
-    if (round.includes('design')) return DESIGN_CRITERIA;
     return DEFAULT_CRITERIA;
   }, [meeting]);
-
-  const storageKey = `evaluation_draft_${meeting?.id}_${currentUser?.id}`;
 
   const [form, setForm] = useState(() => {
     const savedDraft = localStorage.getItem(storageKey);
     if (savedDraft) {
       try {
-        return JSON.parse(savedDraft);
+        const parsed = JSON.parse(savedDraft);
+        if (parsed.criteria) return parsed; // ensure it's the new format
       } catch (e) {
         console.error("Failed to parse draft", e);
       }
     }
     const initialMarks = {};
-    criteriaList.forEach(c => initialMarks[c] = 0);
+    defaultCriteria.forEach(c => initialMarks[c] = 0);
     return {
+      criteria: [...defaultCriteria],
       marks: initialMarks,
-      overallFeedback: '',
-      candidateStrengths: '',
+      candidateFeedback: '',
+      strengths: '',
       areasForImprovement: '',
-      recommendedNextSteps: '',
+      overallRemarks: '',
       recommendation: ''
     };
   });
 
+  const [newSkill, setNewSkill] = useState('');
+
   // Auto-save Draft
   useEffect(() => {
+    setSaveStatus('Saving...');
     const timeoutId = setTimeout(() => {
       localStorage.setItem(storageKey, JSON.stringify(form));
-    }, 1000); // 1-second debounce
+      setSaveStatus('Draft auto-saved');
+      
+      const hideTimeout = setTimeout(() => setSaveStatus(''), 2000);
+      return () => clearTimeout(hideTimeout);
+    }, 800); // debounce
     return () => clearTimeout(timeoutId);
   }, [form, storageKey]);
 
@@ -69,13 +74,37 @@ export default function InterviewEvaluationPanel({ meeting, currentUser, onSaved
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleAddSkill = () => {
+    const skill = newSkill.trim();
+    if (skill && !form.criteria.includes(skill)) {
+      setForm(prev => ({
+        ...prev,
+        criteria: [...prev.criteria, skill],
+        marks: { ...prev.marks, [skill]: 0 }
+      }));
+    }
+    setNewSkill('');
+  };
+
+  const handleRemoveSkill = (skill) => {
+    setForm(prev => {
+      const newMarks = { ...prev.marks };
+      delete newMarks[skill];
+      return {
+        ...prev,
+        criteria: prev.criteria.filter(c => c !== skill),
+        marks: newMarks
+      };
+    });
+  };
+
   const scoreData = useMemo(() => {
     const totalMarks = Object.values(form.marks).reduce((sum, val) => sum + val, 0);
-    const maxMarks = criteriaList.length * 5;
+    const maxMarks = form.criteria.length * 5;
     const percentage = maxMarks > 0 ? (totalMarks / maxMarks) * 100 : 0;
     const overallScore = maxMarks > 0 ? Math.round((totalMarks / maxMarks) * 5) : 0;
     return { totalMarks, maxMarks, percentage, overallScore };
-  }, [form.marks, criteriaList]);
+  }, [form.marks, form.criteria]);
 
   const handleSubmit = async () => {
     if (!form.recommendation) {
@@ -84,7 +113,7 @@ export default function InterviewEvaluationPanel({ meeting, currentUser, onSaved
     }
     setLoading(true);
     try {
-      const criteriaArray = criteriaList.map(topic => ({
+      const criteriaArray = form.criteria.map(topic => ({
         topic,
         marks: form.marks[topic] || 0,
         max: 5
@@ -98,20 +127,20 @@ export default function InterviewEvaluationPanel({ meeting, currentUser, onSaved
         overallScore: scoreData.overallScore,
         percentage: parseFloat(scoreData.percentage.toFixed(2)),
         recommendation: form.recommendation,
-        notes: form.overallFeedback,
-        candidateStrengths: form.candidateStrengths,
+        notes: form.candidateFeedback,
+        candidateStrengths: form.strengths,
         areasForImprovement: form.areasForImprovement,
-        recommendedNextSteps: form.recommendedNextSteps,
+        recommendedNextSteps: form.overallRemarks,
         skillsAssessed: JSON.stringify(criteriaArray)
       };
       
       await api.post('/evaluations', payload);
-      toast.success('Evaluation saved successfully!');
-      localStorage.removeItem(storageKey); // Clear draft after successful save
+      toast.success('Evaluation submitted successfully!');
+      localStorage.removeItem(storageKey);
       if (onSaved) onSaved(payload);
     } catch (err) {
       console.error(err);
-      toast.error('Failed to save evaluation.');
+      toast.error('Failed to submit evaluation.');
     } finally {
       setLoading(false);
     }
@@ -119,15 +148,23 @@ export default function InterviewEvaluationPanel({ meeting, currentUser, onSaved
 
   return (
     <div className="bg-gray-900 border-l border-gray-800 flex flex-col h-full overflow-hidden w-full">
-      <div className="p-4 border-b border-gray-800 shrink-0 bg-gray-800/50">
-        <h2 className="font-semibold text-gray-100 flex items-center gap-2">
-          <FileText size={18} className="text-primary-400" />
-          Live Evaluation
-        </h2>
-        <p className="text-xs text-gray-500 mt-1 capitalize">{meeting?.round || meeting?.interviewType || 'General'} Round - Marks Based (0-5)</p>
+      <div className="p-4 border-b border-gray-800 shrink-0 bg-gray-800/50 flex justify-between items-center">
+        <div>
+          <h2 className="font-semibold text-gray-100 flex items-center gap-2">
+            <FileText size={18} className="text-primary-400" />
+            Live Evaluation
+          </h2>
+          <p className="text-xs text-gray-500 mt-1 capitalize">{meeting?.round || meeting?.interviewType || 'General'} Round - Marks Based (0-5)</p>
+        </div>
+        {saveStatus && (
+          <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md animate-fade-in">
+            {saveStatus === 'Saving...' ? <div className="w-3 h-3 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" /> : <Check size={12} />}
+            {saveStatus}
+          </div>
+        )}
       </div>
 
-      <div className="p-4 overflow-y-auto flex-1 space-y-6">
+      <div className="p-4 overflow-y-auto flex-1 space-y-6 pb-20">
         
         {/* Live Score Display */}
         <div className="bg-primary-900/20 border border-primary-800/30 rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
@@ -156,62 +193,91 @@ export default function InterviewEvaluationPanel({ meeting, currentUser, onSaved
           </div>
         </div>
 
-        {/* Dynamic Criteria */}
+        {/* Dynamic Criteria / Tech Stack */}
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-gray-200 border-b border-gray-800 pb-2">Evaluation Criteria</h3>
-          {criteriaList.map(criterion => (
-            <div key={criterion} className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg border border-gray-800">
-              <span className="text-sm font-medium text-gray-300 w-2/3">{criterion}</span>
-              <div className="w-1/3 max-w-[100px]">
-                <Select 
-                  value={form.marks[criterion] || 0}
-                  onChange={(e) => handleMarkChange(criterion, e.target.value)}
-                  className="h-8 text-sm bg-gray-900"
-                >
-                  {[0, 1, 2, 3, 4, 5].map(val => (
-                    <option key={val} value={val}>{val}</option>
-                  ))}
-                </Select>
+          <div className="flex items-center justify-between border-b border-gray-800 pb-2">
+            <h3 className="text-sm font-semibold text-gray-200">Tech Stack & Skills</h3>
+          </div>
+          
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              value={newSkill} 
+              onChange={e => setNewSkill(e.target.value)} 
+              onKeyDown={e => e.key === 'Enter' && handleAddSkill()}
+              placeholder="e.g. Java, Python, React..." 
+              className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-primary-500"
+              list="tech-stacks"
+            />
+            <datalist id="tech-stacks">
+              {DEFAULT_TECH_STACKS.map(ts => <option key={ts} value={ts} />)}
+            </datalist>
+            <Button size="sm" onClick={handleAddSkill} disabled={!newSkill.trim()}>
+              <Plus size={16} /> Add
+            </Button>
+          </div>
+
+          <div className="space-y-2 mt-3">
+            {form.criteria.map(criterion => (
+              <div key={criterion} className="flex items-center justify-between p-2.5 bg-gray-800/30 rounded-lg border border-gray-800 group">
+                <span className="text-sm font-medium text-gray-300 flex-1 truncate pr-2">{criterion}</span>
+                <div className="flex items-center gap-3">
+                  <Select 
+                    value={form.marks[criterion] || 0}
+                    onChange={(e) => handleMarkChange(criterion, e.target.value)}
+                    className="h-8 w-20 text-sm bg-gray-900"
+                  >
+                    {[0, 1, 2, 3, 4, 5].map(val => (
+                      <option key={val} value={val}>{val}</option>
+                    ))}
+                  </Select>
+                  <button onClick={() => handleRemoveSkill(criterion)} className="text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <X size={16} />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+            {form.criteria.length === 0 && (
+              <p className="text-xs text-gray-500 text-center py-2">No skills added yet. Add some to begin evaluating.</p>
+            )}
+          </div>
         </div>
 
         {/* Feedback Section */}
-        <div className="space-y-4">
+        <div className="space-y-4 pt-2">
           <h3 className="text-sm font-semibold text-gray-200 border-b border-gray-800 pb-2">Interview Feedback</h3>
           
           <Textarea 
-            label="Overall Feedback"
-            value={form.overallFeedback}
-            onChange={(e) => handleFieldChange('overallFeedback', e.target.value)}
+            label="Candidate feedback"
+            value={form.candidateFeedback}
+            onChange={(e) => handleFieldChange('candidateFeedback', e.target.value)}
             rows={3}
             placeholder="General assessment of the candidate..."
           />
           <Textarea 
-            label="Candidate Strengths"
-            value={form.candidateStrengths}
-            onChange={(e) => handleFieldChange('candidateStrengths', e.target.value)}
+            label="Strengths"
+            value={form.strengths}
+            onChange={(e) => handleFieldChange('strengths', e.target.value)}
             rows={2}
             placeholder="What did they do well?"
           />
           <Textarea 
-            label="Areas for Improvement"
+            label="Areas for improvement"
             value={form.areasForImprovement}
             onChange={(e) => handleFieldChange('areasForImprovement', e.target.value)}
             rows={2}
             placeholder="Where did they struggle?"
           />
           <Textarea 
-            label="Recommended Next Steps"
-            value={form.recommendedNextSteps}
-            onChange={(e) => handleFieldChange('recommendedNextSteps', e.target.value)}
+            label="Overall remarks"
+            value={form.overallRemarks}
+            onChange={(e) => handleFieldChange('overallRemarks', e.target.value)}
             rows={2}
-            placeholder="e.g., Proceed to HR round, Needs another technical screening"
+            placeholder="Any other observations?"
           />
 
           <Select 
-            label="Final Recommendation *" 
+            label="Final recommendation *" 
             value={form.recommendation} 
             onChange={e => handleFieldChange('recommendation', e.target.value)}
           >
@@ -222,11 +288,11 @@ export default function InterviewEvaluationPanel({ meeting, currentUser, onSaved
 
         <div className="flex items-start gap-2 p-3 bg-blue-900/20 text-blue-400 rounded-lg text-xs">
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
-          <p>Your inputs are auto-saved locally. If you lose connection, they will be restored when you return.</p>
+          <p>Your progress is auto-saved locally. Do not forget to submit the evaluation when finished.</p>
         </div>
       </div>
 
-      <div className="p-4 border-t border-gray-800 shrink-0 bg-gray-900">
+      <div className="p-4 border-t border-gray-800 shrink-0 bg-gray-900 absolute bottom-0 left-0 right-0">
         <Button loading={loading} onClick={handleSubmit} className="w-full h-11">
             <Save size={18} className="mr-2" /> Submit Evaluation
         </Button>
@@ -234,5 +300,3 @@ export default function InterviewEvaluationPanel({ meeting, currentUser, onSaved
     </div>
   );
 }
-
-
