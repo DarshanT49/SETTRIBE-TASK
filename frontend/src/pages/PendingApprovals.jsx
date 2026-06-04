@@ -17,12 +17,21 @@ export default function PendingApprovals() {
   const [rejectReason, setRejectReason] = useState('');
 
   const load = async () => {
-    await new Promise(r => setTimeout(r, 200));
-    const reqs = await asyncGet(KEYS.REGISTRATION_REQUESTS) || [];
-    const users = await asyncGet(KEYS.USERS) || [];
-    const enriched = reqs.map(r => ({ ...r, user: users.find(u => u.id === r.userId) })).filter(r => r.user);
-    setRequests(enriched);
-    setLoading(false);
+    try {
+      const [reqsResp, usersResp] = await Promise.all([
+        api.get('/registrationRequests'),
+        api.get('/users')
+      ]);
+      const reqs = reqsResp.data || [];
+      const users = usersResp.data || [];
+      const enriched = reqs.map(r => ({ ...r, user: users.find(u => u.id === r.userId) })).filter(r => r.user);
+      setRequests(enriched);
+    } catch (error) {
+      console.error('Error loading pending approvals:', error);
+      toast.error('Failed to load pending approvals');
+    } finally {
+      setLoading(false);
+    }
   };
 
    
