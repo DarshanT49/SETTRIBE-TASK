@@ -1,17 +1,9 @@
 import axios from 'axios';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// API Base URL Resolution
-//
-// LOCAL DEV  → VITE_API_BASE_URL is not set  → falls back to localhost:8080/api
-// PRODUCTION → VITE_API_BASE_URL=https://settribe-backend.onrender.com/api
-//
-// To switch: set VITE_API_BASE_URL in .env.production before building.
-// ─────────────────────────────────────────────────────────────────────────────
 
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/+$/, '') ||
-  'http://localhost:8080/api';
+const BASE_URL = 'https://settribe-task-nudz.onrender.com/api';
+
+// const BASE_URL = 'https://localhost:8080/api';
 
 const api = axios.create({
   baseURL: BASE_URL,

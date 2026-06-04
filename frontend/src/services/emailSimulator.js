@@ -1,5 +1,6 @@
 export function generateInterviewEmail({ candidateName, position, interviewType, date, time, token }) {
-  const candidateLink = `${window.location.origin}/candidate/${token}`;
+  const frontendUrl = import.meta.env.VITE_FRONTEND_URL || 'https://settribe-task-1.onrender.com';
+  const candidateLink = `${frontendUrl}/candidate/${token}`;
   const typeLabel = { technical: 'Technical', hr: 'HR Round', final: 'Final Round' }[interviewType] || interviewType;
 
   return {
