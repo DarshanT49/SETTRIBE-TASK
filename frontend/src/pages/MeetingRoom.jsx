@@ -22,7 +22,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Avatar, Button, Modal, EmptyState } from '../components/ui';
 import { KEYS, apiPut, asyncGet, asyncSet } from '../services/storage';
 import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft, getMeetingChat, postMeetingChat } from '../services/meetings';
-import { saveStandupRecord } from '../services/standup';
+import { saveStandupRecord, filterStandupData } from '../services/standup';
 import { getMeetingDateTime } from '../utils/dates';
 
 export default function MeetingRoom() {
@@ -56,6 +56,8 @@ export default function MeetingRoom() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [initialMedia, setInitialMedia] = useState({ audio: false, video: false });
   const [roomConnect, setRoomConnect] = useState(true);
+  const [allocatedTasksMap, setAllocatedTasksMap] = useState({});
+  const [standupRecordIds, setStandupRecordIds] = useState({});
   const [mentionQuery, setMentionQuery] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [selectedMentionIdx, setSelectedMentionIdx] = useState(0);
@@ -160,6 +162,35 @@ export default function MeetingRoom() {
         setProjects(allProjects || []);
         setMeeting(foundMeeting);
         setChatLogs(toArray(foundMeeting.chatLogs));
+
+        if (foundMeeting && foundMeeting.type === 'standup' && foundMeeting.hostId === currentUser.id) {
+          try {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const typeStr = foundMeeting.standupType === 'evening' ? 'Evening' : 'Morning';
+            const records = await filterStandupData({ meetingDate: todayStr, meetingType: typeStr });
+            
+            if (records && records.length > 0) {
+              const loadedAllocated = {};
+              const loadedIds = {};
+              const loadedInputs = {};
+              
+              records.forEach(r => {
+                loadedAllocated[r.userId] = true;
+                loadedIds[r.userId] = r.id;
+                const lines = (r.questionsAndAnswers || '').split('\n').map(line => {
+                  return line.replace(/^Task \d+: /, '');
+                });
+                loadedInputs[r.userId] = lines.length > 0 ? lines : [''];
+              });
+              
+              setAllocatedTasksMap(loadedAllocated);
+              setStandupRecordIds(loadedIds);
+              setDynamicStandupInputs(loadedInputs);
+            }
+          } catch (e) {
+            console.error("Failed to load existing standup records", e);
+          }
+        }
 
         await checkWaitingRoomStatus(foundMeeting);
       } catch (err) {
@@ -472,7 +503,10 @@ export default function MeetingRoom() {
       const participantName = participant ? participant.name : 'Unknown';
       const qna = validInputs.map((task, idx) => `Task ${idx + 1}: ${task}`).join('\n');
       
+      const existingRecordId = standupRecordIds[participantId];
+      
       const record = {
+        ...(existingRecordId ? { id: existingRecordId } : {}),
         userId: participantId,
         userName: participantName,
         meetingType: meeting.standupType === 'evening' ? 'Evening' : 'Morning',
@@ -482,9 +516,10 @@ export default function MeetingRoom() {
         status: 'Submitted'
       };
 
-      await saveStandupRecord(record);
+      const savedRecord = await saveStandupRecord(record);
       toast.success('Standup records saved successfully');
-      setDynamicStandupInputs({ ...dynamicStandupInputs, [participantId]: [''] }); // reset
+      setStandupRecordIds(prev => ({ ...prev, [participantId]: savedRecord.id }));
+      setAllocatedTasksMap(prev => ({ ...prev, [participantId]: true }));
     } catch (err) {
       toast.error('Failed to save standup records');
     }
@@ -524,6 +559,7 @@ export default function MeetingRoom() {
     await apiPut(KEYS.MEETINGS, id, updatedMeeting);
     setTaskForm({ title: '', description: '', assigneeIds: [], projectId: '', priority: 'medium', dueDate: '' });
     toast.success('Task assigned to participant');
+    setAllocatedTasksMap(prev => ({ ...prev, [participantId]: true }));
   };
 
   if (loading) {
@@ -709,12 +745,19 @@ export default function MeetingRoom() {
                         <p className="truncate text-sm text-gray-200">
                           {user.name} {user.id === meeting.hostId && <span className="text-xs text-primary-400">(Host)</span>}
                         </p>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <p className="text-xs capitalize text-gray-500">{user.role}</p>
                           {onlineUsers.includes(user.id) ? (
                             <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-full font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> In Meeting</span>
                           ) : (
                             <span className="flex items-center gap-1 text-[10px] text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded-full font-medium"><span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span> Offline</span>
+                          )}
+                          {showAccordion && (
+                            allocatedTasksMap[user.id] ? (
+                              <span className="flex items-center gap-1 text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded-full font-medium">Task allocated</span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-[10px] text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded-full font-medium">Task Unallocated</span>
+                            )
                           )}
                         </div>
                       </div>
@@ -740,6 +783,12 @@ export default function MeetingRoom() {
                                 placeholder={`Task ${idx + 1}...`}
                                 value={val}
                                 onChange={(e) => handleStandupInputChange(user.id, idx, e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSubmitStandup(user.id);
+                                  }
+                                }}
                               />
                             ))}
 
@@ -749,14 +798,6 @@ export default function MeetingRoom() {
                               className="text-xs text-primary-400 hover:text-primary-300 mb-2 flex items-center gap-1"
                             >
                               <Plus size={12} /> Add another task
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleSubmitStandup(user.id)}
-                              className="w-full rounded-lg bg-primary-600 py-1.5 text-xs text-white hover:bg-primary-700"
-                            >
-                              Save Standup Records
                             </button>
                           </div>
                         )}

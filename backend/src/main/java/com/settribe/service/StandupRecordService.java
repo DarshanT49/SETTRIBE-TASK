@@ -96,7 +96,7 @@ public class StandupRecordService {
 
             // Row 0: Date Headers
             Row dateRow = sheet.createRow(0);
-            int colIndex = 3;
+            int colIndex = 2;
             for (LocalDate date : uniqueDates) {
                 Cell cell = dateRow.createCell(colIndex);
                 cell.setCellValue("Date: " + date.toString());
@@ -107,14 +107,14 @@ public class StandupRecordService {
             
             // Row 1: Sub Headers
             Row subHeaderRow = sheet.createRow(1);
-            String[] fixedCols = {"Id", "Name", "Task"};
+            String[] fixedCols = {"Id", "Name"};
             for (int i = 0; i < fixedCols.length; i++) {
                 Cell cell = subHeaderRow.createCell(i);
                 cell.setCellValue(fixedCols[i]);
                 cell.setCellStyle(headerStyle);
             }
             
-            int subColIndex = 3;
+            int subColIndex = 2;
             for (LocalDate date : uniqueDates) {
                 Cell morningCell = subHeaderRow.createCell(subColIndex++);
                 morningCell.setCellValue("Morning");
@@ -136,9 +136,8 @@ public class StandupRecordService {
                 
                 row.createCell(0).setCellValue(sample.getUserId());
                 row.createCell(1).setCellValue(sample.getUserName() != null ? sample.getUserName() : "");
-                row.createCell(2).setCellValue(""); // Task left blank
                 
-                int dataColIndex = 3;
+                int dataColIndex = 2;
                 for (LocalDate date : uniqueDates) {
                     Optional<StandupRecordDTO> morningRec = userRecords.stream()
                         .filter(r -> date.equals(r.getMeetingDate()) && "Morning".equalsIgnoreCase(r.getMeetingType()))

@@ -22,7 +22,7 @@ export async function filterStandupData(filters) {
   return data;
 }
 
-export function exportStandupData(filters) {
+export async function exportStandupData(filters) {
   const params = new URLSearchParams();
   if (filters.startDate) params.append('startDate', filters.startDate);
   if (filters.endDate) params.append('endDate', filters.endDate);
@@ -30,7 +30,20 @@ export function exportStandupData(filters) {
   if (filters.userId) params.append('userId', filters.userId);
   if (filters.status) params.append('status', filters.status);
   
-  // Use window.open or link click to trigger download
-  const url = `${api.defaults.baseURL}/standup/export?${params.toString()}`;
-  window.open(url, '_blank');
+  try {
+    const response = await api.get(`/standup/export?${params.toString()}`, {
+      responseType: 'blob'
+    });
+    
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'standup-report.xlsx');
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Export failed", error);
+  }
 }
