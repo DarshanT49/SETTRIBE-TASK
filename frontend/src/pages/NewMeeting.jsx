@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet, apiPost } from '../services/storage';
+import { getGroups } from '../services/participantGroups';
 import { createBulkNotifications } from '../services/notifications';
 import { Button, Input, Select, Textarea, Toggle, Avatar } from '../components/ui';
 import toast from 'react-hot-toast';
@@ -14,6 +15,7 @@ export default function NewMeeting() {
   const [searchParams] = useSearchParams();
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [myGroups, setMyGroups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     title: '', agenda: '', date: '', time: '', duration: '60',
@@ -23,13 +25,33 @@ export default function NewMeeting() {
 
   useEffect(() => {
     (async () => {
-    setUsers(await asyncGet(KEYS.USERS) || []);
-    setProjects(await asyncGet(KEYS.PROJECTS) || []);
-    // Auto-include current user
-    setForm(f => ({ ...f, participantIds: [currentUser.id] }));
-  })();
-   
-  }, []);
+      setUsers(await asyncGet(KEYS.USERS) || []);
+      setProjects(await asyncGet(KEYS.PROJECTS) || []);
+      
+      try {
+        const fetchedGroups = await getGroups(currentUser.id);
+        setMyGroups(fetchedGroups || []);
+      } catch (err) {
+        console.error("Failed to fetch groups", err);
+      }
+
+      // Auto-include current user
+      setForm(f => ({ ...f, participantIds: [currentUser.id] }));
+    })();
+  }, [currentUser.id]);
+
+  const applyGroup = (groupId) => {
+    if (!groupId) return;
+    const group = myGroups.find(g => g.id === Number(groupId));
+    if (group && group.participantIds) {
+      setForm(f => {
+        // Merge without duplicates
+        const updatedIds = [...new Set([...f.participantIds, ...group.participantIds])];
+        return { ...f, participantIds: updatedIds };
+      });
+      toast.success(`Added members of ${group.name}`);
+    }
+  };
 
   const toggleParticipant = (uid) => {
     setForm(f => ({ ...f, participantIds: f.participantIds.includes(uid) ? f.participantIds.filter(id => id !== uid) : [...f.participantIds, uid] }));
@@ -148,7 +170,21 @@ export default function NewMeeting() {
 
         {/* Participants */}
         <div>
-          <label className="label mb-3">Participants</label>
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 gap-2">
+            <label className="label">Participants</label>
+            {myGroups.length > 0 && (
+              <select 
+                className="input-field text-xs md:w-64" 
+                onChange={(e) => applyGroup(e.target.value)}
+                defaultValue=""
+              >
+                <option value="" disabled>Apply a Group...</option>
+                {myGroups.map(g => (
+                  <option key={g.id} value={g.id}>{g.name} ({g.participantIds?.length || 0})</option>
+                ))}
+              </select>
+            )}
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
             {activeUsers.map(u => (
               <label key={u.id} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${form.participantIds.includes(u.id) ? 'bg-primary-900/30 border border-primary-800/50' : 'hover:bg-gray-800 border border-transparent'}`}>

@@ -35,8 +35,9 @@ public class StandupController {
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String meetingType,
             @RequestParam(required = false) String userId,
-            @RequestParam(required = false) String status) {
-        return ResponseEntity.ok(service.filter(startDate, endDate, meetingType, userId, status));
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String hostId) {
+        return ResponseEntity.ok(service.filter(startDate, endDate, meetingType, userId, status, hostId));
     }
 
     @GetMapping("/export")
@@ -45,9 +46,10 @@ public class StandupController {
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String meetingType,
             @RequestParam(required = false) String userId,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String hostId) {
         try {
-            List<StandupRecordDTO> records = service.filter(startDate, endDate, meetingType, userId, status);
+            List<StandupRecordDTO> records = service.filter(startDate, endDate, meetingType, userId, status, hostId);
             byte[] excelData = service.generateExcelReport(records);
             
             String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));

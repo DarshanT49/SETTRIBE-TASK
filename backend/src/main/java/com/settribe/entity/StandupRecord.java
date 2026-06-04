@@ -44,6 +44,9 @@ public class StandupRecord {
     @Column(name = "updated_at")
     private String updatedAt;
 
+    @Column(name = "host_id")
+    private String hostId;
+
     public StandupRecord() {}
 
     public Long getId() { return id; }
@@ -75,4 +78,7 @@ public class StandupRecord {
 
     public String getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getHostId() { return hostId; }
+    public void setHostId(String hostId) { this.hostId = hostId; }
 }

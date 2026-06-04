@@ -15,6 +15,7 @@ public class StandupRecordDTO {
     private String status;
     private String createdAt;
     private String updatedAt;
+    private String hostId;
 
     public StandupRecordDTO() {}
 
@@ -47,4 +48,7 @@ public class StandupRecordDTO {
 
     public String getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getHostId() { return hostId; }
+    public void setHostId(String hostId) { this.hostId = hostId; }
 }
