@@ -45,7 +45,7 @@ export default function Projects() {
 
       // Non-admin users only see their projects
       if (!['admin', 'hr'].includes(currentUser.role)) {
-        projs = projs.filter(p => (p.teamIds || []).includes(currentUser.id) || p.ownerId === currentUser.id || p.managerId === currentUser.id);
+        projs = projs.filter(p => (p.teamIds || []).includes(String(currentUser.id)) || p.ownerId === String(currentUser.id) || p.managerId === String(currentUser.id));
       }
       setProjects(projs);
       setUsers(us);

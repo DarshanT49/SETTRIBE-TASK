@@ -248,15 +248,16 @@ function TaskCardContent({ task, users, getUser }) {
       </div>
 
       {(task.assigneeIds || []).length > 0 && (
-        <div className="flex -space-x-2 mb-3">
+        <div className="flex flex-wrap gap-2 mb-3">
           {(task.assigneeIds || []).slice(0, 3).map(id => (
-            <div key={id} className="rounded-full ring-2 ring-gray-800 transition-transform hover:scale-110 hover:z-10">
-              <Avatar name={getUser(id)?.name} size="sm" />
+            <div key={id} className="flex items-center gap-1.5 bg-gray-800/40 pr-2.5 pl-1 py-1 rounded-full border border-gray-700/50 transition-colors hover:bg-gray-700/50">
+              <Avatar name={getUser(id)?.name} size="xs" />
+              <span className="text-xs text-gray-300 font-medium">{getUser(id)?.name}</span>
             </div>
           ))}
           {(task.assigneeIds || []).length > 3 && (
-            <div className="w-8 h-8 rounded-full bg-gray-700 ring-2 ring-gray-800 flex items-center justify-center text-xs font-medium text-gray-300 hover:scale-110 hover:z-10 transition-transform">
-              +{(task.assigneeIds || []).length - 3}
+            <div className="flex items-center justify-center px-2.5 py-1 bg-gray-800/40 rounded-full border border-gray-700/50 text-[11px] font-medium text-gray-400">
+              +{(task.assigneeIds || []).length - 3} more
             </div>
           )}
         </div>
@@ -618,7 +619,7 @@ function AddTaskModal({ project, defaultStatus, users, currentUser, onClose, onS
             {teamMembers.map(u => (
               <button key={u.id} type="button" onClick={() => toggleAssignee(u.id)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border transition-colors ${form.assigneeIds.includes(u.id) ? 'bg-primary-900/40 border-primary-700 text-primary-300' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'}`}>
-                <Avatar name={u.name} size="xs" />{u.name.split(' ')[0]}
+                <Avatar name={u.name} size="xs" />{u.name}
               </button>
             ))}
           </div>

@@ -40,8 +40,8 @@ export async function markNotificationRead(notificationId) {
 
 export async function markAllRead(userId) {
   try {
-    const notifications = await asyncGet(KEYS.NOTIFICATIONS) || [];
-    const unread = notifications.filter(n => n.userId === userId && !n.isRead);
+    const { data: notifications } = await api.get(`/notifications?userId=${userId}`);
+    const unread = notifications.filter(n => !n.isRead);
     await Promise.all(unread.map(n =>
       api.put(`/notifications/${n.id}`, { ...n, isRead: true })
     ));
@@ -51,13 +51,23 @@ export async function markAllRead(userId) {
 }
 
 export async function getUnreadCount(userId) {
-  const notifications = await asyncGet(KEYS.NOTIFICATIONS) || [];
-  return notifications.filter(n => n.userId === userId && !n.isRead).length;
+  try {
+    const { data: notifications } = await api.get(`/notifications?userId=${userId}`);
+    return notifications.filter(n => !n.isRead).length;
+  } catch (e) {
+    console.error('getUnreadCount error:', e);
+    return 0;
+  }
 }
 
 export async function getUserNotifications(userId) {
-  const notifications = await asyncGet(KEYS.NOTIFICATIONS) || [];
-  return notifications.filter(n => n.userId === userId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  try {
+    const { data: notifications } = await api.get(`/notifications?userId=${userId}`);
+    return notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  } catch (e) {
+    console.error('getUserNotifications error:', e);
+    return [];
+  }
 }
 
 export async function deleteNotification(notificationId) {
@@ -71,7 +81,7 @@ export async function deleteNotification(notificationId) {
 // Notify all admin and hr users
 export async function notifyAdminsAndHR(data) {
   try {
-    const users = await asyncGet(KEYS.USERS) || [];
+    const { data: users } = await api.get('/users');
     const adminHR = users.filter(u => ['admin', 'hr'].includes(u.role) && u.isActive);
     adminHR.forEach(u => createNotification({ userId: u.id, ...data }));
   } catch (e) {

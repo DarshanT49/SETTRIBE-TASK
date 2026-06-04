@@ -52,6 +52,7 @@ export default function SelfTasks() {
         toast.success('Task updated!');
       } else {
         await createSelfTask({
+          id: uuidv4(),
           userId: String(currentUser.id),
           ...form,
           status: 'pending',

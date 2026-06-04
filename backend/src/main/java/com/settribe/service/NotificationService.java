@@ -21,6 +21,10 @@ public class NotificationService {
         return repository.findAll().stream().map(NotificationMapper::toDTO).collect(Collectors.toList());
     }
 
+    public List<NotificationDTO> findByUserId(String userId) {
+        return repository.findByUserId(userId).stream().map(NotificationMapper::toDTO).collect(Collectors.toList());
+    }
+
     public Optional<NotificationDTO> findById(String id) {
         return repository.findById(id).map(NotificationMapper::toDTO);
     }

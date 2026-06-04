@@ -67,7 +67,7 @@ export default function Notifications() {
                         <p className={`text-sm font-medium ${n.isRead ? 'text-gray-400' : 'text-gray-100'}`}>{n.title}</p>
                         <span className="text-xs text-gray-600 flex-shrink-0">{formatRelativeTime(n.createdAt)}</span>
                       </div>
-                      <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{n.message}</p>
+                      <p className="text-sm text-gray-500 mt-0.5 whitespace-pre-wrap">{n.message}</p>
                     </div>
                     {!n.isRead && <div className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0 mt-2" />}
                   </button>
