@@ -1,7 +1,7 @@
 package com.settribe.dto;
 
 public class UserDTO {
-    private String id;
+    private Long id;
     private String name;
     private String employeeId;
     private String email;
@@ -18,7 +18,7 @@ public class UserDTO {
 
     public UserDTO() {}
 
-    public UserDTO(String id, String name, String employeeId, String email, String mobile, String department, String role, Boolean isActive, Boolean isApproved, String approvedBy, String approvedAt, String createdAt, String profilePhoto, String password) {
+    public UserDTO(Long id, String name, String employeeId, String email, String mobile, String department, String role, Boolean isActive, Boolean isApproved, String approvedBy, String approvedAt, String createdAt, String profilePhoto, String password) {
         this.id = id;
         this.name = name;
         this.employeeId = employeeId;
@@ -35,11 +35,11 @@ public class UserDTO {
         this.password = password;
     }
 
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

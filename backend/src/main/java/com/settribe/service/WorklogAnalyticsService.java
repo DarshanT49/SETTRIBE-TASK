@@ -86,10 +86,12 @@ public class WorklogAnalyticsService {
             pDto.setProjectId(entry.getKey());
             pDto.setTotalHoursContributed(entry.getValue());
             
-            projectRepository.findById(entry.getKey()).ifPresent(p -> {
-                pDto.setProjectName(p.getTitle());
-                pDto.setProjectStatus(p.getStatus());
-            });
+            try {
+                projectRepository.findById(Long.parseLong(entry.getKey())).ifPresent(p -> {
+                    pDto.setProjectName(p.getTitle());
+                    pDto.setProjectStatus(p.getStatus());
+                });
+            } catch (NumberFormatException e) {}
             
             pDto.setProjectContributionPercentage(totalHours > 0 ? (entry.getValue() / totalHours) * 100 : 0);
             // Count unique tasks
@@ -119,17 +121,19 @@ public class WorklogAnalyticsService {
             double actual = entry.getValue().stream().mapToDouble(Worklog::getLoggedHours).sum();
             tDto.setActualHoursWorked(actual);
             
-            taskRepository.findById(entry.getKey()).ifPresent(t -> {
-                tDto.setTaskName(t.getTitle());
-                tDto.setAssignedDate(t.getStartDate());
-                tDto.setDueDate(t.getDueDate());
-                tDto.setTaskStatus(t.getStatus());
-                if (t.getEstimatedHours() != null) {
-                    tDto.setEstimatedHours(t.getEstimatedHours());
-                    tDto.setEfficiencyPercentage(t.getEstimatedHours() > 0 ? (actual / t.getEstimatedHours()) * 100 : 0);
-                    tDto.setTimeDifference(actual - t.getEstimatedHours()); // Overrun if > 0, Saved if < 0
-                }
-            });
+            try {
+                taskRepository.findById(Long.parseLong(entry.getKey())).ifPresent(t -> {
+                    tDto.setTaskName(t.getTitle());
+                    tDto.setAssignedDate(t.getStartDate());
+                    tDto.setDueDate(t.getDueDate());
+                    tDto.setTaskStatus(t.getStatus());
+                    if (t.getEstimatedHours() != null) {
+                        tDto.setEstimatedHours(t.getEstimatedHours());
+                        tDto.setEfficiencyPercentage(t.getEstimatedHours() > 0 ? (actual / t.getEstimatedHours()) * 100 : 0);
+                        tDto.setTimeDifference(actual - t.getEstimatedHours()); // Overrun if > 0, Saved if < 0
+                    }
+                });
+            } catch (NumberFormatException e) {}
             
             taskAnalytics.add(tDto);
             

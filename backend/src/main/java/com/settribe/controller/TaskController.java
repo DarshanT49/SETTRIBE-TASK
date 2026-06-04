@@ -22,7 +22,7 @@ public class TaskController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TaskDTO> getById(@PathVariable String id) {
+    public ResponseEntity<TaskDTO> getById(@PathVariable Long id) {
         return service.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -34,7 +34,7 @@ public class TaskController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TaskDTO> update(@PathVariable String id, @RequestBody TaskDTO entity) {
+    public ResponseEntity<TaskDTO> update(@PathVariable Long id, @RequestBody TaskDTO entity) {
         try {
             // Ensure ID is matched, you might need to set entity.setId(id) depending on structure
             return ResponseEntity.ok(service.update(id, entity));
@@ -44,8 +44,23 @@ public class TaskController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/assignees")
+    public ResponseEntity<List<com.settribe.entity.TaskAssignee>> getAssignees(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getAssignees(id));
+    }
+
+    @PostMapping("/{id}/assignees")
+    public ResponseEntity<com.settribe.entity.TaskAssignee> addAssignee(@PathVariable Long id, @RequestParam Long userId) {
+        return ResponseEntity.ok(service.addAssignee(id, userId));
+    }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<List<com.settribe.entity.TaskStatusHistory>> getHistory(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getHistory(id));
     }
 }

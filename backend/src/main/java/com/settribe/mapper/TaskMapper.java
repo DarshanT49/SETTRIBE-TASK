@@ -2,13 +2,7 @@ package com.settribe.mapper;
 
 import com.settribe.entity.Task;
 import com.settribe.dto.TaskDTO;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.ArrayList;
-import java.util.List;
-
 public class TaskMapper {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public static TaskDTO toDTO(Task entity) {
         if (entity == null) return null;
@@ -29,7 +23,6 @@ public class TaskMapper {
         dto.setNewDueDate(entity.getNewDueDate());
         dto.setIsDelayed(entity.getIsDelayed());
         dto.setCreatedAt(entity.getCreatedAt());
-        dto.setAssigneeIds(parseJsonArray(entity.getAssigneeIds()));
         return dto;
     }
 
@@ -52,25 +45,6 @@ public class TaskMapper {
         entity.setNewDueDate(dto.getNewDueDate());
         entity.setIsDelayed(dto.getIsDelayed());
         entity.setCreatedAt(dto.getCreatedAt());
-        entity.setAssigneeIds(toJsonArray(dto.getAssigneeIds()));
         return entity;
-    }
-
-    private static List<String> parseJsonArray(String json) {
-        if (json == null || json.isBlank()) return new ArrayList<>();
-        try {
-            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
-    }
-
-    private static String toJsonArray(List<String> list) {
-        if (list == null) return "[]";
-        try {
-            return objectMapper.writeValueAsString(list);
-        } catch (Exception e) {
-            return "[]";
-        }
     }
 }

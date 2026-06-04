@@ -291,31 +291,7 @@ export default function JoinInterview() {
                   placeholder="Enter your name"
                 />
               </div>
-              <div>
-                <label className="text-xs text-gray-500 font-medium mb-1 block">Join As</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="role" 
-                      value="candidate" 
-                      checked={userRole === 'candidate'}
-                      onChange={(e) => setUserRole(e.target.value)}
-                      className="text-primary-500"
-                    /> Candidate
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="role" 
-                      value="interviewer" 
-                      checked={userRole === 'interviewer'}
-                      onChange={(e) => setUserRole(e.target.value)}
-                      className="text-primary-500"
-                    /> Interviewer
-                  </label>
-                </div>
-              </div>
+
             </div>
           </div>
 

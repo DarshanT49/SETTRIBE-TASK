@@ -3,12 +3,15 @@ package com.settribe.entity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 
 @Entity
 @Table(name = "users")
 public class User {
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     private String name;
     private String employeeId;
     private String email;
@@ -26,7 +29,7 @@ public class User {
     public User() {
     }
 
-    public User(String id, String name, String employeeId, String email, String mobile, String department, String role, Boolean isActive, Boolean isApproved, String approvedBy, String approvedAt, String createdAt, String profilePhoto, String password) {
+    public User(Long id, String name, String employeeId, String email, String mobile, String department, String role, Boolean isActive, Boolean isApproved, String approvedBy, String approvedAt, String createdAt, String profilePhoto, String password) {
         this.id = id;
         this.name = name;
         this.employeeId = employeeId;
@@ -43,11 +46,11 @@ public class User {
         this.password = password;
     }
 
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

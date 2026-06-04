@@ -65,16 +65,21 @@ public class MeetingController {
         if ("external".equalsIgnoreCase(meeting.getMeetingMode())) {
             return ResponseEntity.badRequest().body(Map.of("message", "External meetings do not use the internal meeting room"));
         }
-        UserDTO user = userService.findById(currentUserId).orElse(null);
+        UserDTO user = null;
+        try {
+            user = userService.findById(Long.parseLong(currentUserId)).orElse(null);
+        } catch (NumberFormatException e) {
+            // ignore
+        }
         if (user == null || !Boolean.TRUE.equals(user.getIsActive()) || !Boolean.TRUE.equals(user.getIsApproved())) {
             return ResponseEntity.status(403).body(Map.of("message", "User is not allowed to join meetings"));
         }
-        if (!canJoin(meeting, user.getId())) {
+        if (!canJoin(meeting, String.valueOf(user.getId()))) {
             return ResponseEntity.status(403).body(Map.of("message", "User is not invited to this meeting"));
         }
 
         String roomName = "meeting-" + id;
-        String token = liveKitTokenService.createJoinToken(roomName, user.getId(), user.getName());
+        String token = liveKitTokenService.createJoinToken(roomName, String.valueOf(user.getId()), user.getName());
         return ResponseEntity.ok(new MeetingJoinTokenResponse(resolveClientLiveKitUrl(httpRequest), token, roomName));
     }
 
@@ -105,7 +110,10 @@ public class MeetingController {
         
         MeetingDTO meeting = service.findById(id).orElse(null);
         if (meeting == null) return ResponseEntity.notFound().build();
-        UserDTO user = userService.findById(currentUserId).orElse(null);
+        UserDTO user = null;
+        try {
+            user = userService.findById(Long.parseLong(currentUserId)).orElse(null);
+        } catch (NumberFormatException e) {}
         if (user == null || !canJoin(meeting, currentUserId)) {
             return ResponseEntity.status(403).body(Map.of("message", "User is not invited to this meeting"));
         }
@@ -216,7 +224,10 @@ public class MeetingController {
         if (meeting == null) {
             return ResponseEntity.notFound().build();
         }
-        UserDTO user = userService.findById(userId).orElse(null);
+        UserDTO user = null;
+        try {
+            user = userService.findById(Long.parseLong(userId)).orElse(null);
+        } catch (NumberFormatException e) {}
         if (user == null || !canJoin(meeting, userId)) {
             return ResponseEntity.status(403).body(Map.of("message", "User is not invited to this meeting"));
         }

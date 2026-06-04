@@ -28,7 +28,11 @@ public class CustomUserDetailsService implements UserDetailsService {
         }
 
         if (user == null) {
-            user = userRepository.findById(identifier).orElse(null);
+            try {
+                user = userRepository.findById(Long.parseLong(identifier)).orElse(null);
+            } catch (NumberFormatException e) {
+                // Ignore
+            }
         }
 
         if (user == null) {
@@ -43,7 +47,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         // Return Spring Security UserDetails using the User's UUID as the principal name
         // This ensures the JWT subject is always the UUID, never the email
         return new org.springframework.security.core.userdetails.User(
-                user.getId(),
+                String.valueOf(user.getId()),
                 user.getPassword() != null ? user.getPassword() : "",
                 authorities
         );

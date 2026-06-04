@@ -2,13 +2,7 @@ package com.settribe.mapper;
 
 import com.settribe.entity.Project;
 import com.settribe.dto.ProjectDTO;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.ArrayList;
-import java.util.List;
-
 public class ProjectMapper {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public static ProjectDTO toDTO(Project entity) {
         if (entity == null) return null;
@@ -28,7 +22,6 @@ public class ProjectMapper {
         dto.setRepoLink(entity.getRepoLink());
         dto.setProgress(entity.getProgress());
         dto.setCreatedAt(entity.getCreatedAt());
-        dto.setTeamIds(parseJsonArray(entity.getTeamIds()));
         return dto;
     }
 
@@ -50,25 +43,6 @@ public class ProjectMapper {
         entity.setRepoLink(dto.getRepoLink());
         entity.setProgress(dto.getProgress());
         entity.setCreatedAt(dto.getCreatedAt());
-        entity.setTeamIds(toJsonArray(dto.getTeamIds()));
         return entity;
-    }
-
-    private static List<String> parseJsonArray(String json) {
-        if (json == null || json.isBlank()) return new ArrayList<>();
-        try {
-            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
-    }
-
-    private static String toJsonArray(List<String> list) {
-        if (list == null) return "[]";
-        try {
-            return objectMapper.writeValueAsString(list);
-        } catch (Exception e) {
-            return "[]";
-        }
     }
 }

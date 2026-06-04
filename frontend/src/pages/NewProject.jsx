@@ -5,6 +5,7 @@ import { ArrowLeft, Plus, Trash } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet, apiPost } from '../services/storage';
 import { createBulkNotifications } from '../services/notifications';
+import { createProject, addProjectMember } from '../services/projectApi';
 import { Button, Input, Select, Textarea, TagInput } from '../components/ui';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
@@ -53,29 +54,32 @@ export default function NewProject() {
     setLoading(true);
     await new Promise(r => setTimeout(r, 300));
 
-    const projectId = uuidv4();
     const teamIds = [...new Set([...(form.teamIds), form.ownerId, form.managerId].filter(Boolean))];
 
     const project = {
-      id: projectId,
       title: form.title,
       description: form.description,
       clientName: form.clientName,
       category: form.category,
       priority: form.priority,
       status: form.status,
-      ownerId: form.ownerId,
-      managerId: form.managerId,
+      ownerId: form.ownerId ? Number(form.ownerId) : null,
+      managerId: form.managerId ? Number(form.managerId) : null,
       startDate: form.startDate,
       endDate: form.endDate,
       deadline: form.deadline,
       gitRepo: form.gitRepo,
-      teamIds,
       progress: 0,
       createdAt: new Date().toISOString(),
     };
 
-    await apiPost(KEYS.PROJECTS, project);
+    const createdProject = await createProject(project);
+    const projectId = String(createdProject.id);
+    
+    // Create team members
+    for (const uid of teamIds) {
+      await addProjectMember(projectId, uid, false);
+    }
 
     // Create milestones
     await Promise.all(

@@ -57,7 +57,12 @@ public class AuthController {
         String actualUserId = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal()).getUsername();
 
         // Step 3: Check approval and active status
-        User user = userRepository.findById(actualUserId).orElse(null);
+        User user = null;
+        try {
+            user = userRepository.findById(Long.parseLong(actualUserId)).orElse(null);
+        } catch (NumberFormatException e) {
+            // ignore
+        }
         if (user == null) {
             return ResponseEntity.status(401).body(Map.of("message", "User not found"));
         }
@@ -98,7 +103,6 @@ public class AuthController {
             }
 
             User user = new User();
-            user.setId((String) userData.get("id"));
             user.setName((String) userData.get("name"));
             user.setEmployeeId(employeeId);
             user.setEmail(email);
@@ -114,7 +118,7 @@ public class AuthController {
 
             com.settribe.entity.RegistrationRequest req = new com.settribe.entity.RegistrationRequest();
             req.setId((String) regData.get("id"));
-            req.setUserId((String) regData.get("userId"));
+            req.setUserId(String.valueOf(user.getId()));
             req.setStatus((String) regData.get("status"));
             req.setRequestedAt((String) regData.get("requestedAt"));
             req.setRejectionReason((String) regData.get("rejectionReason"));

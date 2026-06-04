@@ -79,11 +79,11 @@ export default function MeetingDetail() {
   if (loading) return <Skeleton className="h-96" />;
   if (!meeting) return null;
 
-  const getUser = (uid) => users.find(u => u.id === uid);
+  const getUser = (uid) => users.find(u => String(u.id) === String(uid));
   const host = getUser(meeting.hostId);
-  const isHost = meeting.hostId === currentUser.id;
-  const isParticipant = meeting.participantIds.includes(currentUser.id);
-  const myRsvp = rsvps.find(r => r.meetingId === id && r.userId === currentUser.id);
+  const isHost = String(meeting.hostId) === String(currentUser.id);
+  const isParticipant = meeting.participantIds.map(String).includes(String(currentUser.id));
+  const myRsvp = rsvps.find(r => String(r.meetingId) === String(id) && String(r.userId) === String(currentUser.id));
 
   const canJoin = canStartMeeting(meeting);
   const relatedProject = projects.find(p => p.id === meeting.projectId);
@@ -107,7 +107,7 @@ export default function MeetingDetail() {
 
   const handleCantAttend = async () => {
     const allRsvps = await asyncGet(KEYS.MEETING_RSVPS) || [];
-    const existing = allRsvps.findIndex(r => r.meetingId === id && r.userId === currentUser.id);
+    const existing = allRsvps.findIndex(r => String(r.meetingId) === String(id) && String(r.userId) === String(currentUser.id));
     const rsvpEntry = { meetingId: id, userId: currentUser.id, status: 'declined', reason: cantAttendForm.reason, timestamp: new Date().toISOString(), notes: cantAttendForm.notes };
     if (existing !== -1) allRsvps[existing] = rsvpEntry;
     else allRsvps.push(rsvpEntry);
@@ -135,8 +135,8 @@ export default function MeetingDetail() {
 
   const handleJoinApproval = async (userId, approve) => {
     const updatedMeeting = { ...meeting };
-    updatedMeeting.joinRequests = (updatedMeeting.joinRequests || []).map(r => r.userId === userId ? { ...r, status: approve ? 'approved' : 'rejected' } : r);
-    if (approve && !updatedMeeting.participantIds.includes(userId)) {
+    updatedMeeting.joinRequests = (updatedMeeting.joinRequests || []).map(r => String(r.userId) === String(userId) ? { ...r, status: approve ? 'approved' : 'rejected' } : r);
+    if (approve && !updatedMeeting.participantIds.map(String).includes(String(userId))) {
       updatedMeeting.participantIds = [...updatedMeeting.participantIds, userId];
     }
     await apiPut(KEYS.MEETINGS, id, updatedMeeting);
@@ -256,13 +256,13 @@ export default function MeetingDetail() {
               {isParticipant && myRsvp?.status !== 'declined' && effectiveStatus === 'upcoming' && (
                 <Button variant="danger" size="sm" onClick={() => setShowCantAttend(true)}>Can't Attend</Button>
               )}
-              {!isParticipant && meeting.allowJoinRequests && !(meeting.joinRequests || []).find(r => r.userId === currentUser.id) && (
+              {!isParticipant && meeting.allowJoinRequests && !(meeting.joinRequests || []).find(r => String(r.userId) === String(currentUser.id)) && (
                 <Button variant="secondary" size="sm" onClick={handleJoinRequest}><UserPlus size={14} />Request to Join</Button>
               )}
 
               {/* I Missed This Meeting button for participants after completion if not in logs */}
               {effectiveStatus === 'completed' && isParticipant &&
-                !attendanceLogs.some(l => l.userId === currentUser.id) && (
+                !attendanceLogs.some(l => String(l.userId) === String(currentUser.id)) && (
                   <Button variant="secondary" size="sm" onClick={handleMissedMeeting} className="w-full justify-center border-red-900/50 text-red-400 hover:bg-red-900/20">
                     <XCircle size={14} /> I Missed This Meeting
                   </Button>
@@ -443,8 +443,8 @@ export default function MeetingDetail() {
 
                     const roster = allInvited.map(uid => {
                       const u = getUser(uid);
-                      const log = attendanceLogs.find(l => l.userId === uid);
-                      const rsvp = rsvps.find(r => r.meetingId === id && r.userId === uid);
+                      const log = attendanceLogs.find(l => String(l.userId) === String(uid));
+                      const rsvp = rsvps.find(r => String(r.meetingId) === String(id) && String(r.userId) === String(uid));
 
                       let status = 'absent';
                       let durationMinutes = 0;
@@ -567,7 +567,7 @@ export default function MeetingDetail() {
               {meeting.participantIds.filter(id => id !== meeting.hostId).map(uid => {
                 const u = getUser(uid);
                 if (!u) return null;
-                const rsvp = rsvps.find(r => r.meetingId === id && r.userId === uid);
+                const rsvp = rsvps.find(r => String(r.meetingId) === String(id) && String(r.userId) === String(uid));
                 const status = rsvp?.status || 'no_response';
                 const s = rsvpStatus[status];
 

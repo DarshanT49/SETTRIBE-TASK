@@ -11,6 +11,7 @@ import com.settribe.entity.EmailTemplate;
 import java.util.Map;
 
 import jakarta.mail.internet.MimeMessage;
+import org.springframework.scheduling.annotation.Async;
 
 @Service
 public class EmailService {
@@ -36,6 +37,7 @@ public class EmailService {
         return compiled;
     }
 
+    @Async
     public void sendInterviewInvitation(InterviewDTO interview) {
         if (interview.getEmail() == null || interview.getEmail().isEmpty()) {
             return; // No email provided

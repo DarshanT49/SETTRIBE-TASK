@@ -22,6 +22,8 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired private InterviewRepository interviewRepository;
     @Autowired private EmailTemplateRepository emailTemplateRepository;
     @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private ProjectMemberRepository projectMemberRepository;
+    @Autowired private TaskAssigneeRepository taskAssigneeRepository;
 
     // Known plaintext passwords from old seeding — migrate these to BCrypt if found
     private static final java.util.Map<String, String> KNOWN_PLAINTEXT = java.util.Map.of(
@@ -48,88 +50,45 @@ public class DataSeeder implements CommandLineRunner {
             String nextMonth = Instant.now().plus(30, ChronoUnit.DAYS).toString();
 
             // Seed Users — passwords are BCrypt-hashed
-            userRepository.save(new User("user-admin-001", "Alex Thompson", "EMP001", "admin@settribe.com", "9876543210", "Management", "admin", true, true, null, now, lastMonth, null, passwordEncoder.encode("Admin@1234")));
-            userRepository.save(new User("user-hr-001", "Priya Sharma", "EMP002", "hr@settribe.com", "9876543211", "HR", "hr", true, true, "user-admin-001", lastMonth, lastMonth, null, passwordEncoder.encode("Hr@12345")));
-            userRepository.save(new User("user-manager-001", "Rajesh Kumar", "EMP003", "manager@settribe.com", "9876543212", "Engineering", "manager", true, true, "user-admin-001", lastMonth, lastMonth, null, passwordEncoder.encode("Manager@123")));
-            userRepository.save(new User("user-employee-001", "Ananya Patel", "EMP004", "employee@settribe.com", "9876543213", "Engineering", "employee", true, true, "user-admin-001", lastMonth, lastMonth, null, passwordEncoder.encode("Employee@123")));
-            userRepository.save(new User("user-intern-001", "Ravi Verma", "EMP005", "intern@settribe.com", "9876543214", "Engineering", "intern", true, true, "user-admin-001", lastMonth, lastMonth, null, passwordEncoder.encode("Intern@1234")));
-            userRepository.save(new User("user-panel-001", "Deepika Singh", "EMP006", "panel@settribe.com", "9876543215", "Engineering", "panel", true, true, "user-admin-001", lastMonth, lastMonth, null, passwordEncoder.encode("Panel@1234")));
+            User admin = userRepository.save(new User(null, "Alex Thompson", "EMP001", "admin@settribe.com", "9876543210", "Management", "admin", true, true, null, now, lastMonth, null, passwordEncoder.encode("Admin@1234")));
+            User hr = userRepository.save(new User(null, "Priya Sharma", "EMP002", "hr@settribe.com", "9876543211", "HR", "hr", true, true, String.valueOf(admin.getId()), lastMonth, lastMonth, null, passwordEncoder.encode("Hr@12345")));
+            User manager = userRepository.save(new User(null, "Rajesh Kumar", "EMP003", "manager@settribe.com", "9876543212", "Engineering", "manager", true, true, String.valueOf(admin.getId()), lastMonth, lastMonth, null, passwordEncoder.encode("Manager@123")));
+            User employee = userRepository.save(new User(null, "Ananya Patel", "EMP004", "employee@settribe.com", "9876543213", "Engineering", "employee", true, true, String.valueOf(admin.getId()), lastMonth, lastMonth, null, passwordEncoder.encode("Employee@123")));
+            User intern = userRepository.save(new User(null, "Ravi Verma", "EMP005", "intern@settribe.com", "9876543214", "Engineering", "intern", true, true, String.valueOf(admin.getId()), lastMonth, lastMonth, null, passwordEncoder.encode("Intern@1234")));
+            User panel = userRepository.save(new User(null, "Deepika Singh", "EMP006", "panel@settribe.com", "9876543215", "Engineering", "panel", true, true, String.valueOf(admin.getId()), lastMonth, lastMonth, null, passwordEncoder.encode("Panel@1234")));
 
             // Seed Projects
-            Project proj1 = new Project("proj-001", "E-Commerce Platform Redesign",
+            Project proj1 = projectRepository.save(new Project(null, "E-Commerce Platform Redesign",
                 "Complete redesign and rebuild of the existing e-commerce platform.", "TechMart Inc.",
-                "Web", "high", "active", "user-employee-001", "user-manager-001",
-                lastMonth, nextMonth, nextMonth, "https://github.com/settribe/ecommerce", 45, lastMonth);
-            proj1.setTeamIds("[\"user-employee-001\",\"user-intern-001\",\"user-manager-001\"]");
-            projectRepository.save(proj1);
+                "Web", "high", "active", employee.getId(), manager.getId(),
+                lastMonth, nextMonth, nextMonth, "https://github.com/settribe/ecommerce", 45, lastMonth));
+            projectMemberRepository.save(new ProjectMember(proj1.getId(), employee.getId(), false, "ACTIVE", now, null));
+            projectMemberRepository.save(new ProjectMember(proj1.getId(), intern.getId(), false, "ACTIVE", now, null));
+            projectMemberRepository.save(new ProjectMember(proj1.getId(), manager.getId(), true, "ACTIVE", now, null));
 
-            Project proj2 = new Project("proj-002", "HR Analytics Dashboard",
+            Project proj2 = projectRepository.save(new Project(null, "HR Analytics Dashboard",
                 "Internal analytics dashboard for HR.", "Internal",
-                "Internal", "medium", "completed", "user-manager-001", "user-manager-001",
+                "Internal", "medium", "completed", manager.getId(), manager.getId(),
                 Instant.now().minus(60, ChronoUnit.DAYS).toString(), yesterday, yesterday, "", 100,
-                Instant.now().minus(60, ChronoUnit.DAYS).toString());
-            proj2.setTeamIds("[\"user-manager-001\",\"user-employee-001\"]");
-            projectRepository.save(proj2);
-
-            // Seed Milestones
-            milestoneRepository.save(new Milestone("ms-001", "proj-001", "UI/UX Design & Prototyping",
-                "Complete Figma designs and prototypes.", yesterday, twoDaysAgo, "completed",
-                true, 0, "", null, null, 100, 1));
-            milestoneRepository.save(new Milestone("ms-002", "proj-001", "Frontend Development",
-                "Implement all UI components.", nextWeek, null, "active",
-                true, 0, "", null, null, 60, 2));
-            milestoneRepository.save(new Milestone("ms-003", "proj-001", "Backend API Development",
-                "Build REST APIs.", Instant.now().plus(21, ChronoUnit.DAYS).toString(), null, "upcoming",
-                false, 0, "", null, null, 0, 3));
-            milestoneRepository.save(new Milestone("ms-004", "proj-001", "QA Testing & Deployment",
-                "End-to-end testing and deployment.", Instant.now().plus(28, ChronoUnit.DAYS).toString(), null, "upcoming",
-                false, 0, "", null, null, 0, 4));
-
-            // Seed Sprints
-            sprintRepository.save(new com.settribe.entity.Sprint("sprint-001", "proj-001", "Sprint 1", "Setup & Design", lastMonth, yesterday, "completed"));
-            sprintRepository.save(new com.settribe.entity.Sprint("sprint-002", "proj-001", "Sprint 2", "Core Components", now, nextWeek, "active"));
+                Instant.now().minus(60, ChronoUnit.DAYS).toString()));
+            projectMemberRepository.save(new ProjectMember(proj2.getId(), manager.getId(), true, "ACTIVE", now, null));
+            projectMemberRepository.save(new ProjectMember(proj2.getId(), employee.getId(), false, "ACTIVE", now, null));
 
             // Seed Tasks
-            Task task1 = new Task("task-001", "proj-001", "ms-002", "sprint-002",
+            Task task1 = taskRepository.save(new Task(null, proj1.getId(), "ms-002", "sprint-002",
                 "Implement product listing page with filters",
                 "Create a responsive product listing page with search, category filter.", "high",
-                "user-manager-001", "user-manager-001", "in_progress", now,
-                Instant.now().plus(5, ChronoUnit.DAYS).toString(), "", null, false, now, 5.0);
-            task1.setAssigneeIds("[\"user-employee-001\"]");
-            taskRepository.save(task1);
+                manager.getId(), manager.getId(), "in_progress", now,
+                Instant.now().plus(5, ChronoUnit.DAYS).toString(), "", null, false, now, 5.0));
+            taskAssigneeRepository.save(new TaskAssignee(task1.getId(), employee.getId(), "ACTIVE", now, null));
 
-            Task task2 = new Task("task-002", "proj-001", "ms-002", "sprint-002",
+            Task task2 = taskRepository.save(new Task(null, proj1.getId(), "ms-002", "sprint-002",
                 "Shopping cart with localStorage persistence",
                 "Implement full cart functionality.", "high",
-                "user-manager-001", "user-manager-001", "todo", tomorrow,
-                Instant.now().plus(7, ChronoUnit.DAYS).toString(), "", null, false, now, 8.0);
-            task2.setAssigneeIds("[\"user-employee-001\",\"user-intern-001\"]");
-            taskRepository.save(task2);
-
-            Task task3 = new Task("task-003", "proj-001", "ms-002", "sprint-002",
-                "User authentication UI",
-                "Design and implement all auth pages.", "critical",
-                "user-employee-001", "user-employee-001", "in_review", twoDaysAgo, tomorrow,
-                "", null, false, twoDaysAgo, 10.0);
-            task3.setAssigneeIds("[\"user-intern-001\"]");
-            taskRepository.save(task3);
-
-            Task task4 = new Task("task-004", "proj-001", "ms-002", "sprint-002",
-                "Setup Tailwind design system",
-                "Create base design tokens and reusable components.", "medium",
-                "user-manager-001", "user-manager-001", "done", lastMonth, yesterday,
-                "", null, false, lastMonth, 4.0);
-            task4.setAssigneeIds("[\"user-employee-001\"]");
-            taskRepository.save(task4);
-
-            Task task5 = new Task("task-005", "proj-002", null, null,
-                "Build employee performance dashboard",
-                "HR analytics charts.", "medium",
-                "user-manager-001", "user-manager-001", "done",
-                Instant.now().minus(50, ChronoUnit.DAYS).toString(), yesterday,
-                "", null, false, Instant.now().minus(50, ChronoUnit.DAYS).toString(), 15.0);
-            task5.setAssigneeIds("[\"user-employee-001\"]");
-            taskRepository.save(task5);
+                manager.getId(), manager.getId(), "todo", tomorrow,
+                Instant.now().plus(7, ChronoUnit.DAYS).toString(), "", null, false, now, 8.0));
+            taskAssigneeRepository.save(new TaskAssignee(task2.getId(), employee.getId(), "ACTIVE", now, null));
+            taskAssigneeRepository.save(new TaskAssignee(task2.getId(), intern.getId(), "ACTIVE", now, null));
 
             // Seed Meetings
             String todayDateStr = Instant.now().toString().substring(0, 10);

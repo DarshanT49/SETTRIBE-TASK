@@ -3,15 +3,15 @@ package com.settribe.dto;
 import java.util.List;
 
 public class TaskDTO {
-    private String id;
-    private String projectId;
+    private Long id;
+    private Long projectId;
     private String milestoneId;
     private String sprintId;
     private String title;
     private String description;
     private String priority;
-    private String creatorId;
-    private String assignedBy;
+    private Long creatorId;
+    private Long assignedBy;
     private String status;
     private String startDate;
     private String dueDate;
@@ -19,11 +19,10 @@ public class TaskDTO {
     private String newDueDate;
     private Boolean isDelayed;
     private String createdAt;
-    private List<String> assigneeIds;
 
     public TaskDTO() {}
 
-    public TaskDTO(String id, String projectId, String milestoneId, String sprintId, String title, String description, String priority, String creatorId, String assignedBy, String status, String startDate, String dueDate, String delayReason, String newDueDate, Boolean isDelayed, String createdAt) {
+    public TaskDTO(Long id, Long projectId, String milestoneId, String sprintId, String title, String description, String priority, Long creatorId, Long assignedBy, String status, String startDate, String dueDate, String delayReason, String newDueDate, Boolean isDelayed, String createdAt) {
         this.id = id;
         this.projectId = projectId;
         this.milestoneId = milestoneId;
@@ -42,19 +41,19 @@ public class TaskDTO {
         this.createdAt = createdAt;
     }
 
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
-    public String getProjectId() {
+    public Long getProjectId() {
         return projectId;
     }
 
-    public void setProjectId(String projectId) {
+    public void setProjectId(Long projectId) {
         this.projectId = projectId;
     }
 
@@ -98,19 +97,19 @@ public class TaskDTO {
         this.priority = priority;
     }
 
-    public String getCreatorId() {
+    public Long getCreatorId() {
         return creatorId;
     }
 
-    public void setCreatorId(String creatorId) {
+    public void setCreatorId(Long creatorId) {
         this.creatorId = creatorId;
     }
 
-    public String getAssignedBy() {
+    public Long getAssignedBy() {
         return assignedBy;
     }
 
-    public void setAssignedBy(String assignedBy) {
+    public void setAssignedBy(Long assignedBy) {
         this.assignedBy = assignedBy;
     }
 
@@ -168,13 +167,5 @@ public class TaskDTO {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public List<String> getAssigneeIds() {
-        return assigneeIds;
-    }
-
-    public void setAssigneeIds(List<String> assigneeIds) {
-        this.assigneeIds = assigneeIds;
     }
 }

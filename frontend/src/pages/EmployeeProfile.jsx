@@ -3,6 +3,10 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone, Building, Calendar, Edit2, Save, X, Download, Clock, Laptop, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet, asyncSet } from '../services/storage';
+import { fetchProjectMembers } from '../services/projectApi';
+import { fetchTaskAssignees } from '../services/taskApi';
+import { fetchProjects } from '../services/projectApi';
+import { fetchTasks } from '../services/taskApi';
 import { Avatar, Button, Input, Select, StatusBadge, PriorityBadge, Skeleton } from '../components/ui';
 import { formatDate } from '../utils/dates';
 import toast from 'react-hot-toast';
@@ -181,16 +185,20 @@ export default function EmployeeProfile() {
           employeeId: emp.employeeId 
         });
 
-        const allTasks = await asyncGet(KEYS.TASKS) || [];
-        const empTasks = allTasks.filter(t => t.assigneeIds.includes(id));
+        const allTasks = await fetchTasks();
+        const taskResponses = await Promise.all(allTasks.map(t => fetchTaskAssignees(t.id).catch(() => [])));
+        const tasksWithAssignees = allTasks.map((t, idx) => ({ ...t, assigneeIds: taskResponses[idx].map(a => a.userId) }));
+        const empTasks = tasksWithAssignees.filter(t => t.assigneeIds.includes(id));
         setTasks(empTasks);
 
         const allMeetings = await asyncGet(KEYS.MEETINGS) || [];
         const empMeetings = allMeetings.filter(m => m.participantIds.includes(id));
         setMeetings(empMeetings);
 
-        const allProjects = await asyncGet(KEYS.PROJECTS) || [];
-        const empProjects = allProjects.filter(p => p.teamIds.includes(id));
+        const allProjects = await fetchProjects();
+        const projResponses = await Promise.all(allProjects.map(p => fetchProjectMembers(p.id).catch(() => [])));
+        const projectsWithMembers = allProjects.map((p, idx) => ({ ...p, teamIds: projResponses[idx].map(m => m.userId) }));
+        const empProjects = projectsWithMembers.filter(p => p.teamIds.includes(id));
         setProjects(empProjects);
         
         // Generate Dashboard Metrics

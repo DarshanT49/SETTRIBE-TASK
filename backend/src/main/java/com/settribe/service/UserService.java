@@ -18,7 +18,7 @@ public class UserService {
         return repository.findAll().stream().map(UserMapper::toDTO).collect(Collectors.toList());
     }
 
-    public Optional<UserDTO> findById(String id) {
+    public Optional<UserDTO> findById(Long id) {
         return repository.findById(id).map(UserMapper::toDTO);
     }
 
@@ -27,7 +27,7 @@ public class UserService {
         return UserMapper.toDTO(repository.save(entity));
     }
 
-    public UserDTO update(String id, UserDTO dto) {
+    public UserDTO update(Long id, UserDTO dto) {
         if (repository.existsById(id)) {
             User entity = UserMapper.toEntity(dto);
             entity.setId(id);
@@ -36,7 +36,7 @@ public class UserService {
         throw new RuntimeException("Entity not found");
     }
 
-    public void deleteById(String id) {
+    public void deleteById(Long id) {
         repository.deleteById(id);
     }
 

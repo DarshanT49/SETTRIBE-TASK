@@ -24,7 +24,7 @@ public class UserController {
 
     // Any authenticated user can view their own or others' profiles
     @GetMapping("/{id}")
-    public ResponseEntity<UserDTO> getById(@PathVariable String id) {
+    public ResponseEntity<UserDTO> getById(@PathVariable Long id) {
         return service.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -40,7 +40,7 @@ public class UserController {
     // Any authenticated user can update (used for self-profile edits);
     // Sensitive field locks (role, approval) are enforced in service layer
     @PutMapping("/{id}")
-    public ResponseEntity<UserDTO> update(@PathVariable String id, @RequestBody UserDTO entity) {
+    public ResponseEntity<UserDTO> update(@PathVariable Long id, @RequestBody UserDTO entity) {
         try {
             return ResponseEntity.ok(service.update(id, entity));
         } catch (RuntimeException e) {
@@ -51,7 +51,7 @@ public class UserController {
     // Only Admin can permanently delete users
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.deleteById(id);
         return ResponseEntity.noContent().build();
     }
