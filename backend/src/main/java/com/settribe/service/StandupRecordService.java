@@ -30,7 +30,7 @@ public class StandupRecordService {
         return repository.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
-    public List<StandupRecordDTO> filter(String startDate, String endDate, String meetingType, String userId, String status) {
+    public List<StandupRecordDTO> filter(String startDate, String endDate, String meetingType, String userId, String status, String hostId) {
         Specification<StandupRecord> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (startDate != null && !startDate.isEmpty()) {
@@ -47,6 +47,9 @@ public class StandupRecordService {
             }
             if (status != null && !status.isEmpty()) {
                 predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (hostId != null && !hostId.isEmpty()) {
+                predicates.add(cb.equal(root.get("hostId"), hostId));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
@@ -96,7 +99,7 @@ public class StandupRecordService {
 
             // Row 0: Date Headers
             Row dateRow = sheet.createRow(0);
-            int colIndex = 3;
+            int colIndex = 2;
             for (LocalDate date : uniqueDates) {
                 Cell cell = dateRow.createCell(colIndex);
                 cell.setCellValue("Date: " + date.toString());
@@ -107,14 +110,14 @@ public class StandupRecordService {
             
             // Row 1: Sub Headers
             Row subHeaderRow = sheet.createRow(1);
-            String[] fixedCols = {"Id", "Name", "Task"};
+            String[] fixedCols = {"Id", "Name"};
             for (int i = 0; i < fixedCols.length; i++) {
                 Cell cell = subHeaderRow.createCell(i);
                 cell.setCellValue(fixedCols[i]);
                 cell.setCellStyle(headerStyle);
             }
             
-            int subColIndex = 3;
+            int subColIndex = 2;
             for (LocalDate date : uniqueDates) {
                 Cell morningCell = subHeaderRow.createCell(subColIndex++);
                 morningCell.setCellValue("Morning");
@@ -136,9 +139,8 @@ public class StandupRecordService {
                 
                 row.createCell(0).setCellValue(sample.getUserId());
                 row.createCell(1).setCellValue(sample.getUserName() != null ? sample.getUserName() : "");
-                row.createCell(2).setCellValue(""); // Task left blank
                 
-                int dataColIndex = 3;
+                int dataColIndex = 2;
                 for (LocalDate date : uniqueDates) {
                     Optional<StandupRecordDTO> morningRec = userRecords.stream()
                         .filter(r -> date.equals(r.getMeetingDate()) && "Morning".equalsIgnoreCase(r.getMeetingType()))
@@ -173,6 +175,7 @@ public class StandupRecordService {
         dto.setStatus(entity.getStatus());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
+        dto.setHostId(entity.getHostId());
         return dto;
     }
 
@@ -188,6 +191,7 @@ public class StandupRecordService {
         entity.setStatus(dto.getStatus());
         entity.setCreatedAt(dto.getCreatedAt());
         entity.setUpdatedAt(dto.getUpdatedAt());
+        entity.setHostId(dto.getHostId());
         return entity;
     }
 }

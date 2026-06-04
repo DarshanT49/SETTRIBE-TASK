@@ -38,6 +38,7 @@ import MyProgress from './pages/MyProgress';
 import Leaderboard from './pages/Leaderboard';
 import TeamPerformance from './pages/TeamPerformance';
 import StandupData from './pages/StandupData';
+import Groups from './pages/Groups';
 
 // Simple pending / denied pages
 function PendingApprovalPage() {
@@ -119,6 +120,7 @@ export default function App() {
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/progress" element={<MyProgress />} />
                       <Route path="/leaderboard" element={<Leaderboard />} />
+                      <Route path="/groups" element={<Groups />} />
                       <Route path="/team-performance" element={<RoleGuard allowedRoles={['admin', 'hr', 'manager', 'employee', 'panel']}><TeamPerformance /></RoleGuard>} />
 
                       {/* Employees */}
@@ -145,7 +147,7 @@ export default function App() {
                       <Route path="/interviews/new" element={<RoleGuard allowedRoles={['admin', 'hr']}><NewInterview /></RoleGuard>} />
                       <Route path="/interviews/:id" element={<InterviewDetail />} />
                       {/* Standup Data */}
-                      <Route path="/standup-data" element={<RoleGuard allowedRoles={['admin', 'manager']}><StandupData /></RoleGuard>} />
+                      <Route path="/standup-data" element={<RoleGuard allowedRoles={['admin', 'hr', 'manager', 'employee', 'panel', 'intern']}><StandupData /></RoleGuard>} />
                       <Route path="/email-templates" element={<RoleGuard allowedRoles={['admin', 'hr']}><EmailTemplates /></RoleGuard>} />
 
                       {/* User */}

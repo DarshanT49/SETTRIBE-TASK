@@ -23,11 +23,8 @@ export default function StandupData() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    // Only admins or managers should access this
-    if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager') {
-      navigate('/dashboard');
-      return;
-    }
+    // We no longer redirect here; all roles can access.
+    // If they are not admin/manager, we will force the filter below.
 
     const loadUsers = async () => {
       const allUsers = await asyncGet(KEYS.USERS);
@@ -41,7 +38,11 @@ export default function StandupData() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const result = await filterStandupData(filters);
+      const activeFilters = { ...filters };
+      if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager') {
+        activeFilters.hostId = currentUser.id;
+      }
+      const result = await filterStandupData(activeFilters);
       setData(result || []);
     } catch (error) {
       console.error("Failed to fetch standup data:", error);
@@ -58,7 +59,11 @@ export default function StandupData() {
   }, [filters]);
 
   const handleExport = () => {
-    exportStandupData(filters);
+    const activeFilters = { ...filters };
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager') {
+      activeFilters.hostId = currentUser.id;
+    }
+    exportStandupData(activeFilters);
   };
 
   const filteredData = data.filter(record => {
@@ -159,7 +164,6 @@ export default function StandupData() {
               <tr>
                 <th className="p-4 font-semibold sticky left-0 top-0 bg-gray-950 z-30 border-b border-r border-gray-800 min-w-[120px]">Id</th>
                 <th className="p-4 font-semibold sticky left-[120px] top-0 bg-gray-950 z-30 border-b border-r border-gray-800 min-w-[200px]">Name</th>
-                <th className="p-4 font-semibold sticky left-[320px] top-0 bg-gray-950 z-30 border-b border-r border-gray-800 min-w-[100px]">Task</th>
                 {uniqueDates.map(date => (
                   <th key={date} colSpan="2" className="p-3 text-center border-b border-gray-800 bg-gradient-to-r from-gray-900 to-gray-950 font-bold text-gray-200">
                     <div className="flex items-center justify-center gap-2">
@@ -173,7 +177,6 @@ export default function StandupData() {
               <tr>
                 <th className="p-3 sticky left-0 top-[53px] bg-gray-950/95 z-30 border-b border-r border-gray-800"></th>
                 <th className="p-3 sticky left-[120px] top-[53px] bg-gray-950/95 z-30 border-b border-r border-gray-800"></th>
-                <th className="p-3 sticky left-[320px] top-[53px] bg-gray-950/95 z-30 border-b border-r border-gray-800"></th>
                 {uniqueDates.map(date => (
                   <React.Fragment key={`${date}-sub`}>
                     <th className="p-3 font-medium bg-gray-900/50 border-b border-r border-gray-800/50 min-w-[250px] text-blue-400 text-center">Morning</th>
@@ -186,7 +189,7 @@ export default function StandupData() {
             <tbody>
               {pivotedData.length === 0 ? (
                 <tr>
-                  <td colSpan={3 + (uniqueDates.length * 2) || 4} className="p-16 text-center text-gray-500">
+                  <td colSpan={2 + (uniqueDates.length * 2) || 3} className="p-16 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center gap-4">
                       <Filter size={36} className="opacity-20" />
                       <p className="text-lg">No standup records found for the selected filters.</p>
@@ -204,9 +207,6 @@ export default function StandupData() {
                         <Avatar name={userRow.userName} size="sm" className="ring-2 ring-gray-800" />
                         <span className="font-medium text-gray-200">{userRow.userName}</span>
                       </div>
-                    </td>
-                    <td className="p-4 align-top sticky left-[320px] bg-gray-950/80 backdrop-blur z-10 border-b border-r border-gray-800/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] text-center text-gray-600">
-                      -
                     </td>
                     {uniqueDates.map(date => {
                       const morningRec = userRow.records[`${date}_Morning`];
