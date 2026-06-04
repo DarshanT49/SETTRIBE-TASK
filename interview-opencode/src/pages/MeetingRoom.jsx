@@ -50,7 +50,7 @@ export default function MeetingRoom() {
   const [dynamicStandupInputs, setDynamicStandupInputs] = useState({});
   const [message, setMessage] = useState('');
   const [chatLogs, setChatLogs] = useState([]);
-  const [standupData, setStandupData] = useState({});
+
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [mentionQuery, setMentionQuery] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
@@ -845,14 +845,3 @@ function toArray(value) {
   }
   return [];
 }
-
-
-const RemoteVideo = ({ stream, isMuted, ...props }) => {
-  const videoRef = useRef(null);
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream]);
-  return <video ref={videoRef} autoPlay playsInline muted={isMuted} {...props} />;
-};

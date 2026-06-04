@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Plus, MessageSquare, Paperclip, AlertCircle, CheckCircle, X } from 'lucide-react';
+import { Plus, MessageSquare, Paperclip, AlertCircle, CheckCircle, X, Bold, Italic, Heading, List, ListOrdered, CheckSquare, Code, Link as LinkIcon, Quote, AtSign, Image as ImageIcon, UploadCloud, CircleDot, ChevronDown } from 'lucide-react';
 import { KEYS, asyncGet, asyncSet, syncGet } from '../../services/storage';
 import { createBulkNotifications } from '../../services/notifications';
-import { Avatar, Button, Modal, Input, Select, Textarea, PriorityBadge, StatusBadge } from '../ui';
+import { Avatar, Button, Modal, Input, Select, Textarea, PriorityBadge, StatusBadge, TagInput } from '../ui';
 import { formatDate, formatRelativeTime, isOverdue } from '../../utils/dates';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
@@ -24,6 +24,7 @@ export function KanbanBoard({ project, tasks, users, currentUser, canManage, onR
   const [activeId, setActiveId] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showAddTask, setShowAddTask] = useState(null);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(null);
   const [filterAssignee, setFilterAssignee] = useState('');
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
@@ -109,7 +110,7 @@ export function KanbanBoard({ project, tasks, users, currentUser, canManage, onR
                 users={users}
                 getUser={getUser}
                 onTaskClick={setSelectedTask}
-                onAddTask={canManage ? () => setShowAddTask(col.id) : null}
+                onAddTask={canManage ? () => setShowTemplateSelector(col.id) : null}
               />
             );
           })}
@@ -139,7 +140,20 @@ export function KanbanBoard({ project, tasks, users, currentUser, canManage, onR
           users={users}
           currentUser={currentUser}
           onClose={() => setShowAddTask(null)}
-          onSave={() => { setShowAddTask(null); onRefresh(); }}
+          onSave={(shouldClose = true) => { onRefresh(); if (shouldClose) setShowAddTask(null); }}
+        />
+      )}
+
+      {/* Task Template Selector */}
+      {showTemplateSelector && (
+        <TaskTemplateModal
+          project={project}
+          defaultStatus={showTemplateSelector}
+          onClose={() => setShowTemplateSelector(null)}
+          onSelectBlank={(status) => {
+            setShowTemplateSelector(null);
+            setShowAddTask(status);
+          }}
         />
       )}
     </div>
@@ -203,6 +217,9 @@ function TaskCardDragging({ task, users }) {
 
 function TaskCardContent({ task, users, getUser }) {
   const overdue = isOverdue(task.dueDate) && !['done'].includes(task.status);
+  
+  // Get assignee name for the first assignee (since we now enforce single assignee per task in UI)
+  const assignee = task.assigneeIds?.length > 0 ? getUser(task.assigneeIds[0]) : null;
 
   return (
     <>
@@ -213,26 +230,40 @@ function TaskCardContent({ task, users, getUser }) {
         </div>
       </div>
 
-      {task.assigneeIds?.length > 0 && (
-        <div className="flex -space-x-2 mb-3">
-          {task.assigneeIds.slice(0, 3).map(id => (
-            <div key={id} className="rounded-full ring-2 ring-gray-800 transition-transform hover:scale-110 hover:z-10">
-              <Avatar name={getUser(id)?.name} size="sm" />
-            </div>
+      {/* Labels / Tags */}
+      {task.tags?.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {task.tags.map(tag => (
+            <span key={tag} className="px-1.5 py-0.5 bg-primary-900/30 text-primary-400 border border-primary-800/30 rounded text-[10px] font-medium">
+              {tag}
+            </span>
           ))}
-          {task.assigneeIds.length > 3 && (
-            <div className="w-8 h-8 rounded-full bg-gray-700 ring-2 ring-gray-800 flex items-center justify-center text-xs font-medium text-gray-300 hover:scale-110 hover:z-10 transition-transform">
-              +{task.assigneeIds.length - 3}
-            </div>
-          )}
         </div>
       )}
 
+      {/* Assignee & Status */}
+      <div className="flex items-center justify-between mb-3">
+        {assignee ? (
+          <div className="flex items-center gap-2">
+            <Avatar name={assignee.name} size="sm" />
+            <span className="text-xs text-gray-300 font-medium truncate max-w-[100px]">{assignee.name}</span>
+          </div>
+        ) : (
+          <div className="text-xs text-gray-500 italic">Unassigned</div>
+        )}
+        <StatusBadge status={task.status} />
+      </div>
+
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-700/50">
-        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-md ${overdue ? 'bg-red-950/50 text-red-400 border border-red-900/50' : 'bg-gray-900/50 text-gray-400 border border-gray-800'} flex items-center gap-1.5`}>
-          {overdue ? <AlertCircle size={10} /> : null}
-          {formatDate(task.dueDate, 'dd MMM')}
-        </span>
+        {task.dueDate ? (
+          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-md ${overdue ? 'bg-red-950/50 text-red-400 border border-red-900/50' : 'bg-gray-900/50 text-gray-400 border border-gray-800'} flex items-center gap-1.5`}>
+            {overdue ? <AlertCircle size={10} /> : null}
+            {formatDate(task.dueDate, 'dd MMM')}
+          </span>
+        ) : (
+          <span className="text-[11px] text-gray-600 font-medium">No Due Date</span>
+        )}
+        
         <div className="flex items-center gap-3 text-gray-500 text-xs font-medium">
           {task.comments?.length > 0 && <span className="flex items-center gap-1 hover:text-gray-300 transition-colors"><MessageSquare size={12} />{task.comments.length}</span>}
           {task.attachments?.length > 0 && <span className="flex items-center gap-1 hover:text-gray-300 transition-colors"><Paperclip size={12} />{task.attachments.length}</span>}
@@ -445,19 +476,83 @@ function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefres
 
 function AddTaskModal({ project, defaultStatus, users, currentUser, onClose, onSave }) {
   const milestones = (syncGet(KEYS.MILESTONES) || []).filter(m => m.projectId === project.id);
-  const sprints = (syncGet(KEYS.SPRINTS) || []).filter(s => s.projectId === project.id);
   const teamMembers = users.filter(u => project.teamIds?.includes(u.id));
 
+  const PREDEFINED_LABELS = [
+    'BE(backend)', 'FE(frontend)', 'feature', 'P0', 'P1', 'P2', 'ppt', 'purchase', 'test', 'treaning', 'documentation'
+  ];
+
   const [form, setForm] = useState({
-    title: '', description: '', priority: 'medium', status: defaultStatus,
-    assigneeIds: [], milestoneId: '', sprintId: '', startDate: '', dueDate: '' });
+    title: '', description: '', priority: 'medium', status: defaultStatus || 'todo',
+    assigneeId: '', milestoneId: '', dueDate: '', tags: [], estimatedHours: ''
+  });
   const [formErrors, setFormErrors] = useState({});
+  const [assigneeDropdownOpen, setAssigneeDropdownOpen] = useState(false);
+  const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
+  const [milestoneDropdownOpen, setMilestoneDropdownOpen] = useState(false);
+  const [createMore, setCreateMore] = useState(false);
+  const [isPreview, setIsPreview] = useState(false);
+  const [attachments, setAttachments] = useState([]);
+  const textareaRef = useRef(null);
+  const assigneeDropdownRef = useRef(null);
+  const labelDropdownRef = useRef(null);
+  const statusDropdownRef = useRef(null);
+  const priorityDropdownRef = useRef(null);
+  const milestoneDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (assigneeDropdownRef.current && !assigneeDropdownRef.current.contains(event.target)) {
+        setAssigneeDropdownOpen(false);
+      }
+      if (labelDropdownRef.current && !labelDropdownRef.current.contains(event.target)) {
+        setLabelDropdownOpen(false);
+      }
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+        setStatusDropdownOpen(false);
+      }
+      if (priorityDropdownRef.current && !priorityDropdownRef.current.contains(event.target)) {
+        setPriorityDropdownOpen(false);
+      }
+      if (milestoneDropdownRef.current && !milestoneDropdownRef.current.contains(event.target)) {
+        setMilestoneDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const insertMarkdown = (prefix, suffix = '') => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const text = form.description;
+    const before = text.substring(0, start);
+    const selected = text.substring(start, end);
+    const after = text.substring(end, text.length);
+    
+    setForm({ ...form, description: before + prefix + selected + suffix + after });
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + prefix.length, end + prefix.length);
+    }, 0);
+  };
+
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const newAttachments = files.map(f => ({ name: f.name, size: (f.size / 1024).toFixed(1) + ' KB' }));
+    setAttachments([...attachments, ...newAttachments]);
+  };
 
   const handleSave = async () => {
     const errors = {};
-    if (!form.title) errors.title = 'Title is required';
-    if (!form.startDate) errors.startDate = 'Start date is required';
-    if (!form.dueDate) errors.dueDate = 'Due date is required';
+    if (!form.title.trim()) errors.title = 'Title is required';
+    if (!form.assigneeId) errors.assigneeId = 'Assignee is required';
+    if (!form.status) errors.status = 'Status is required';
+    
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
@@ -468,77 +563,389 @@ function AddTaskModal({ project, defaultStatus, users, currentUser, onClose, onS
     const newTask = {
       id: uuidv4(),
       projectId: project.id,
-      ...form,
+      title: form.title.trim(),
+      description: form.description.trim(),
+      priority: form.priority,
+      status: form.status,
+      assigneeIds: [form.assigneeId],
+      milestoneId: form.milestoneId || null,
+      dueDate: form.dueDate || null,
+      tags: form.tags,
+      estimatedHours: parseFloat(form.estimatedHours) || 0,
       creatorId: currentUser.id,
       assignedBy: currentUser.id,
-      attachments: [],
+      attachments: attachments,
       comments: [],
       activityLog: [],
       delayReason: '',
       newDueDate: null,
       isDelayed: false,
       createdAt: new Date().toISOString(),
-      tags: [] };
+      startDate: new Date().toISOString().split('T')[0] // Auto-set start date to today
+    };
+    
     allTasks.push(newTask);
     asyncSet(KEYS.TASKS, allTasks);
-    if (form.assigneeIds.length > 0) {
-      createBulkNotifications(form.assigneeIds, { type: 'task_assigned', title: 'New Task Assigned', message: `"${form.title}" has been assigned to you. Due: ${formatDate(form.dueDate)}`, relatedId: newTask.id, relatedType: 'task' });
-    }
+    
+    createBulkNotifications([form.assigneeId], { 
+      type: 'task_assigned', 
+      title: 'New Task Assigned', 
+      message: `"${newTask.title}" has been assigned to you.`, 
+      relatedId: newTask.id, 
+      relatedType: 'task' 
+    });
+    
     const history = await asyncGet(KEYS.TASK_HISTORY) || [];
-    history.push({ id: uuidv4(), taskId: newTask.id, projectId: project.id, action: 'created', performedBy: currentUser.id, fromStatus: null, toStatus: form.status, details: `Task created and assigned`, timestamp: new Date().toISOString() });
+    history.push({ 
+      id: uuidv4(), 
+      taskId: newTask.id, 
+      projectId: project.id, 
+      action: 'created', 
+      performedBy: currentUser.id, 
+      fromStatus: null, 
+      toStatus: form.status, 
+      details: `Task created and assigned`, 
+      timestamp: new Date().toISOString() 
+    });
     asyncSet(KEYS.TASK_HISTORY, history);
-    toast.success('Task created!');
-    onSave();
+    
+    toast.success('Task created successfully!');
+    if (createMore) {
+       setForm({ ...form, title: '', description: '', estimatedHours: '', tags: [] });
+       setAttachments([]);
+       onSave(false);
+    } else {
+       onSave(true);
+    }
   };
 
-  const toggleAssignee = (uid) => {
-    setForm(f => ({ ...f, assigneeIds: f.assigneeIds.includes(uid) ? f.assigneeIds.filter(id => id !== uid) : [...f.assigneeIds, uid] }));
-  };
+  const selectedAssignee = teamMembers.find(u => u.id === form.assigneeId);
 
   return (
-    <Modal isOpen title="Add Task" onClose={onClose} size="lg">
-      <div className="p-5 space-y-4">
-        <Input label="Task Title *" error={formErrors.title} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-        <Textarea label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-        <div className="grid grid-cols-2 gap-4">
-          <Select label="Priority" value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })}>
-            {['low', 'medium', 'high', 'critical'].map(p => <option key={p} value={p} className="capitalize">{p}</option>)}
-          </Select>
-          <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-            {['backlog', 'todo', 'in_progress'].map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-          </Select>
-          <Input label="Start Date *" type="date" error={formErrors.startDate} value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
-          <Input label="Due Date *" type="date" error={formErrors.dueDate} value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />
-          {milestones.length > 0 && (
-            <Select label="Milestone" value={form.milestoneId} onChange={e => setForm({ ...form, milestoneId: e.target.value })}>
-              <option value="">No milestone</option>
-              {milestones.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
-            </Select>
-          )}
-          {sprints.length > 0 && (
-            <Select label="Sprint" value={form.sprintId} onChange={e => setForm({ ...form, sprintId: e.target.value })}>
-              <option value="">No sprint</option>
-              {sprints.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </Select>
-          )}
-        </div>
+    <Modal isOpen title="Create new task" onClose={onClose} size="xl" className="p-0 bg-gray-900 border border-gray-800 overflow-hidden flex flex-col h-[90vh]">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        {/* Main Content */}
+        <div className="flex-1 p-6 space-y-6 flex flex-col overflow-y-auto">
+          <div>
+            <input 
+              type="text" 
+              placeholder="Task title" 
+              className={`w-full bg-transparent text-2xl font-semibold text-gray-100 placeholder-gray-600 outline-none border-b border-transparent focus:border-primary-500 pb-2 transition-colors ${formErrors.title ? 'border-red-500' : ''}`}
+              value={form.title}
+              onChange={e => setForm({ ...form, title: e.target.value })}
+              autoFocus
+            />
+            {formErrors.title && <p className="text-xs text-red-400 mt-1">{formErrors.title}</p>}
+          </div>
 
-        {/* Assignees */}
-        <div>
-          <label className="label">Assign To</label>
-          <div className="flex flex-wrap gap-2">
-            {teamMembers.map(u => (
-              <button key={u.id} type="button" onClick={() => toggleAssignee(u.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border transition-colors ${form.assigneeIds.includes(u.id) ? 'bg-primary-900/40 border-primary-700 text-primary-300' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'}`}>
-                <Avatar name={u.name} size="xs" />{u.name.split(' ')[0]}
-              </button>
-            ))}
+          <div className="flex-1 flex flex-col min-h-[300px]">
+            <div className="flex items-center justify-between border border-gray-700 bg-gray-800/50 rounded-t-lg px-2 py-1">
+              <div className="flex items-center gap-1">
+                <button onClick={() => setIsPreview(false)} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${!isPreview ? 'bg-gray-700 text-gray-100' : 'text-gray-400 hover:text-gray-200'}`}>Write</button>
+                <button onClick={() => setIsPreview(true)} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${isPreview ? 'bg-gray-700 text-gray-100' : 'text-gray-400 hover:text-gray-200'}`}>Preview</button>
+              </div>
+              
+              {!isPreview && (
+                <div className="flex flex-wrap items-center gap-1 border-l border-gray-700 pl-2">
+                  <button onClick={() => insertMarkdown('**', '**')} className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded" title="Bold"><Bold size={14}/></button>
+                  <button onClick={() => insertMarkdown('*', '*')} className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded" title="Italic"><Italic size={14}/></button>
+                  <button onClick={() => insertMarkdown('### ')} className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded" title="Heading"><Heading size={14}/></button>
+                  <div className="w-px h-4 bg-gray-700 mx-1"></div>
+                  <button onClick={() => insertMarkdown('- ')} className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded" title="Bullet List"><List size={14}/></button>
+                  <button onClick={() => insertMarkdown('1. ')} className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded" title="Numbered List"><ListOrdered size={14}/></button>
+                  <button onClick={() => insertMarkdown('- [ ] ')} className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded" title="Checklist"><CheckSquare size={14}/></button>
+                  <div className="w-px h-4 bg-gray-700 mx-1"></div>
+                  <button onClick={() => insertMarkdown('```\n', '\n```')} className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded" title="Code Block"><Code size={14}/></button>
+                  <button onClick={() => insertMarkdown('[', '](url)')} className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded" title="Link"><LinkIcon size={14}/></button>
+                  <button onClick={() => insertMarkdown('> ')} className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded" title="Quote"><Quote size={14}/></button>
+                  <div className="w-px h-4 bg-gray-700 mx-1"></div>
+                  <button onClick={() => insertMarkdown('@')} className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded" title="Mention User"><AtSign size={14}/></button>
+                </div>
+              )}
+            </div>
+
+            {!isPreview ? (
+              <textarea
+                ref={textareaRef}
+                className="flex-1 w-full bg-gray-900 border border-t-0 border-gray-700 rounded-b-lg p-4 text-sm text-gray-200 resize-none focus:outline-none focus:border-primary-500 transition-colors"
+                placeholder="Add a description..."
+                value={form.description}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+              />
+            ) : (
+              <div className="flex-1 w-full bg-gray-900 border border-t-0 border-gray-700 rounded-b-lg p-4 text-sm text-gray-300 overflow-y-auto whitespace-pre-wrap">
+                {form.description || <span className="text-gray-600 italic">Nothing to preview</span>}
+              </div>
+            )}
+          </div>
+
+          <div className="border border-dashed border-gray-700 rounded-lg p-4 flex flex-col items-center justify-center text-center bg-gray-900/50 hover:bg-gray-800 transition-colors relative mt-4">
+             <input type="file" multiple className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleFileUpload} />
+             <UploadCloud size={24} className="text-gray-500 mb-2" />
+             <p className="text-sm text-gray-400">Attach files by dragging & dropping, selecting or pasting them.</p>
+          </div>
+
+          {attachments.length > 0 && (
+             <div className="space-y-2 mt-4">
+               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Attachments</p>
+               <div className="flex flex-wrap gap-2">
+                 {attachments.map((a, idx) => (
+                    <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-xs text-gray-300">
+                      <ImageIcon size={12} className="text-gray-500" />
+                      <span>{a.name}</span>
+                      <span className="text-gray-500">({a.size})</span>
+                      <button onClick={() => setAttachments(attachments.filter((_, i) => i !== idx))} className="ml-2 hover:text-red-400">×</button>
+                    </div>
+                 ))}
+               </div>
+             </div>
+          )}
+
+          {/* Horizontal Metadata Buttons */}
+          <div className="pt-4 mt-2">
+            <div className="flex flex-wrap gap-2 items-center">
+              
+              {/* Assignee Button */}
+              <div className="relative" ref={assigneeDropdownRef}>
+                <button 
+                  onClick={() => setAssigneeDropdownOpen(!assigneeDropdownOpen)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 border hover:bg-gray-700 rounded-md text-xs font-medium transition-colors ${formErrors.assigneeId ? 'border-red-500 text-red-400' : 'border-gray-700 text-gray-300'}`}
+                >
+                  <span className="text-gray-500 font-normal">Assignee</span>
+                  {selectedAssignee ? (
+                    <div className="flex items-center gap-1 ml-1">
+                      <Avatar name={selectedAssignee.name} size="xs" />
+                      <span className="text-gray-200">{selectedAssignee.name}</span>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">Unassigned</span>
+                  )}
+                </button>
+                {assigneeDropdownOpen && (
+                  <div className="absolute z-50 mt-1 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto left-0 bottom-[100%] mb-1">
+                    <div className="p-1">
+                      {teamMembers.map(opt => (
+                        <div 
+                          key={opt.id} 
+                          className="flex items-center gap-2 px-3 py-2 hover:bg-gray-700 cursor-pointer rounded-md"
+                          onClick={() => { setForm({ ...form, assigneeId: opt.id }); setAssigneeDropdownOpen(false); setFormErrors({ ...formErrors, assigneeId: null }); }}
+                        >
+                          <Avatar name={opt.name} size="xs" />
+                          <span className="text-sm text-gray-200">{opt.name}</span>
+                        </div>
+                      ))}
+                      {teamMembers.length === 0 && <div className="px-3 py-2 text-sm text-gray-500">No members.</div>}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Status Button */}
+              <div className="relative" ref={statusDropdownRef}>
+                <button 
+                  onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 rounded-md text-xs font-medium text-gray-300 transition-colors"
+                >
+                  <span className="text-gray-500 font-normal">Status</span>
+                  <span className="text-gray-200 ml-1">{COLUMNS.find(c => c.id === form.status)?.label || 'None'}</span>
+                </button>
+                {statusDropdownOpen && (
+                  <div className="absolute z-50 mt-1 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto left-0 bottom-[100%] mb-1">
+                    <div className="p-1">
+                      {COLUMNS.map(c => (
+                        <div 
+                          key={c.id} 
+                          className="px-3 py-1.5 hover:bg-gray-700 cursor-pointer text-sm text-gray-200 rounded-md"
+                          onClick={() => { setForm({ ...form, status: c.id }); setStatusDropdownOpen(false); }}
+                        >
+                          {c.label}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Priority Button */}
+              <div className="relative" ref={priorityDropdownRef}>
+                <button 
+                  onClick={() => setPriorityDropdownOpen(!priorityDropdownOpen)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 rounded-md text-xs font-medium text-gray-300 transition-colors"
+                >
+                  <span className="text-gray-500 font-normal">Priority</span>
+                  <span className="text-gray-200 ml-1 capitalize">{form.priority}</span>
+                </button>
+                {priorityDropdownOpen && (
+                  <div className="absolute z-50 mt-1 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl left-0 bottom-[100%] mb-1">
+                    <div className="p-1">
+                      {['low', 'medium', 'high', 'critical'].map(p => (
+                        <div 
+                          key={p} 
+                          className="px-3 py-1.5 hover:bg-gray-700 cursor-pointer text-sm text-gray-200 rounded-md capitalize"
+                          onClick={() => { setForm({ ...form, priority: p }); setPriorityDropdownOpen(false); }}
+                        >
+                          {p}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Due Date pseudo-button */}
+              <div className="flex items-center bg-gray-800 border border-gray-700 rounded-md px-3 py-1 hover:border-gray-500 transition-colors focus-within:border-primary-500">
+                <span className="text-gray-500 text-xs mr-2">Due Date</span>
+                <input 
+                  type="date" 
+                  value={form.dueDate} 
+                  onChange={e => setForm({ ...form, dueDate: e.target.value })} 
+                  className="bg-transparent text-xs text-gray-200 outline-none w-[110px] cursor-pointer" 
+                />
+              </div>
+
+              {/* Estimate pseudo-button */}
+              <div className="flex items-center bg-gray-800 border border-gray-700 rounded-md px-3 py-1 hover:border-gray-500 transition-colors focus-within:border-primary-500">
+                <span className="text-gray-500 text-xs mr-2">Estimate</span>
+                <input 
+                  type="number" 
+                  min="0" step="0.5" 
+                  placeholder="0" 
+                  value={form.estimatedHours} 
+                  onChange={e => setForm({ ...form, estimatedHours: e.target.value })} 
+                  className="bg-transparent text-xs text-gray-200 outline-none w-12 text-center" 
+                />
+                <span className="text-gray-500 text-xs ml-1">hrs</span>
+              </div>
+
+              {/* Milestone Button (if any) */}
+              {milestones.length > 0 && (
+                <div className="relative" ref={milestoneDropdownRef}>
+                  <button 
+                    onClick={() => setMilestoneDropdownOpen(!milestoneDropdownOpen)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 rounded-md text-xs font-medium text-gray-300 transition-colors"
+                  >
+                    <span className="text-gray-500 font-normal">Milestone</span>
+                    <span className="text-gray-200 ml-1">{milestones.find(m => m.id === form.milestoneId)?.title || 'None'}</span>
+                  </button>
+                  {milestoneDropdownOpen && (
+                    <div className="absolute z-50 mt-1 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto left-0 bottom-[100%] mb-1">
+                      <div className="p-1">
+                        <div 
+                          className="px-3 py-1.5 hover:bg-gray-700 cursor-pointer text-sm text-gray-400 rounded-md italic"
+                          onClick={() => { setForm({ ...form, milestoneId: '' }); setMilestoneDropdownOpen(false); }}
+                        >
+                          Clear milestone
+                        </div>
+                        {milestones.map(m => (
+                          <div 
+                            key={m.id} 
+                            className="px-3 py-1.5 hover:bg-gray-700 cursor-pointer text-sm text-gray-200 rounded-md"
+                            onClick={() => { setForm({ ...form, milestoneId: m.id }); setMilestoneDropdownOpen(false); }}
+                          >
+                            {m.title}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Add Label Button & Selected Badges */}
+              <div className="relative flex items-center gap-2" ref={labelDropdownRef}>
+                <button 
+                  onClick={() => setLabelDropdownOpen(!labelDropdownOpen)}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 rounded-md text-xs font-medium text-gray-300 transition-colors"
+                >
+                  <Plus size={14} className="text-gray-500" />
+                  <span>Labels</span>
+                </button>
+
+                {labelDropdownOpen && (
+                  <div className="absolute z-50 mt-1 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto left-0 bottom-[100%] mb-1">
+                    <div className="p-2">
+                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">Apply labels</div>
+                      {PREDEFINED_LABELS.map(opt => (
+                        <label key={opt} className="flex items-center gap-3 px-2 py-1.5 hover:bg-gray-700 rounded cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-gray-600 bg-gray-900 text-primary-600 focus:ring-primary-500"
+                            checked={form.tags.includes(opt)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setForm({ ...form, tags: [...form.tags, opt] });
+                              } else {
+                                setForm({ ...form, tags: form.tags.filter(t => t !== opt) });
+                              }
+                            }}
+                          />
+                          <span className="text-sm text-gray-200">{opt}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Selected Label Badges inline next to Add Label */}
+                {form.tags.length > 0 && form.tags.map(tag => (
+                  <span key={tag} className="px-2 py-1 bg-primary-900/30 text-primary-400 border border-primary-800/30 rounded text-xs font-medium flex items-center gap-1">
+                    {tag}
+                    <button onClick={() => setForm({ ...form, tags: form.tags.filter(t => t !== tag) })} className="hover:text-red-400"><X size={12} /></button>
+                  </span>
+                ))}
+              </div>
+            </div>
+            
+            {/* Reporter info */}
+            <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
+               <span>Reported by:</span>
+               <Avatar name={currentUser.name} size="xs" />
+               <span className="text-gray-300 font-medium">{currentUser.name}</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave}><Plus size={14} />Create Task</Button>
+      {/* Bottom Action Bar */}
+      <div className="shrink-0 flex items-center justify-between p-4 border-t border-gray-800 bg-gray-900 rounded-b-lg">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" className="rounded border-gray-700 bg-gray-800 text-primary-600 focus:ring-primary-500" checked={createMore} onChange={e => setCreateMore(e.target.checked)} />
+          <span className="text-sm text-gray-400">Create more</span>
+        </label>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-900/30">Create Task</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function TaskTemplateModal({ project, defaultStatus, onClose, onSelectBlank }) {
+  return (
+    <Modal isOpen title="Create new issue" onClose={onClose} size="md" className="bg-gray-900 border-gray-800">
+      <div className="p-5 space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-gray-300">Repository</label>
+          <div className="flex items-center justify-between px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 cursor-not-allowed opacity-80">
+            <span>{project.name}</span>
+            <ChevronDown size={14} className="text-gray-500" />
+          </div>
+        </div>
+        
+        <div className="border-t border-gray-800 pt-4 space-y-3">
+          <div className="flex items-center justify-between p-4 border border-gray-700 rounded-lg bg-gray-800/50 hover:border-gray-600 transition-colors group cursor-pointer" onClick={() => onSelectBlank(defaultStatus)}>
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 text-emerald-500 bg-emerald-900/20 p-1.5 rounded-md group-hover:bg-emerald-900/40 transition-colors">
+                 <CircleDot size={18} />
+              </div>
+              <div>
+                <h4 className="text-base font-medium text-gray-200">Blank issue</h4>
+                <p className="text-sm text-gray-500 mt-1">Create an issue from scratch</p>
+              </div>
+            </div>
+            <Button onClick={(e) => { e.stopPropagation(); onSelectBlank(defaultStatus); }} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-900/30">Get started</Button>
+          </div>
         </div>
       </div>
     </Modal>
