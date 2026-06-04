@@ -45,8 +45,10 @@ export default function NewMeeting() {
     const group = myGroups.find(g => g.id === Number(groupId));
     if (group && group.participantIds) {
       setForm(f => {
-        // Merge without duplicates
-        const updatedIds = [...new Set([...f.participantIds, ...group.participantIds])];
+        // Merge without duplicates, normalizing to Numbers
+        const currentIds = f.participantIds.map(Number);
+        const newIds = group.participantIds.map(Number);
+        const updatedIds = [...new Set([...currentIds, ...newIds])];
         return { ...f, participantIds: updatedIds };
       });
       toast.success(`Added members of ${group.name}`);

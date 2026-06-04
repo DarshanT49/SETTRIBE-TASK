@@ -62,6 +62,7 @@ export default function MeetingRoom() {
   const [mentionQuery, setMentionQuery] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [selectedMentionIdx, setSelectedMentionIdx] = useState(0);
+  const [hasUnreadAlert, setHasUnreadAlert] = useState(false);
   const [taskForm, setTaskForm] = useState({
     title: '',
     description: '',
@@ -280,9 +281,18 @@ export default function MeetingRoom() {
   }, []);
 
   useEffect(() => {
+    if (panelOpen && (sidePanel === 'chat' || sidePanel === 'lobby')) {
+      setHasUnreadAlert(false);
+    }
+  }, [panelOpen, sidePanel]);
+
+  useEffect(() => {
     if (meeting && isHost) {
       const currentWaitingCount = toArray(meeting.waitingRoom).filter(w => w.status === 'waiting').length;
       if (currentWaitingCount > previousWaitingCount.current) {
+        if (!panelOpen || sidePanel !== 'lobby') {
+          setHasUnreadAlert(true);
+        }
         if (audioRef.current) {
           audioRef.current.play().catch(e => console.warn('Audio blocked', e));
         }
@@ -303,7 +313,7 @@ export default function MeetingRoom() {
         const senderId = msg?.userId || msg?.senderId;
         if (senderId !== currentUser.id) {
           const mentions = toArray(msg.mentions);
-          const wasMentioned = mentions.includes(currentUser.id);
+          const wasMentioned = mentions.some(id => String(id) === String(currentUser.id));
           if (wasMentioned) {
             const sender = users.find(user => user.id === senderId);
             shouldPlayMentionSound = true;
@@ -327,6 +337,12 @@ export default function MeetingRoom() {
             setUnreadMentionCount(prev => prev + nextMentionNotifications.length);
           }
         }, 0);
+      }
+
+      if (shouldPlayMentionSound || shouldPlayNormalSound) {
+        if (!panelOpen || sidePanel !== 'chat') {
+          setHasUnreadAlert(true);
+        }
       }
 
       if (shouldPlayMentionSound && mentionAudioRef.current) {
@@ -711,11 +727,18 @@ export default function MeetingRoom() {
         )}
       </div>
 
-      <div className="fixed right-3 top-3 z-[130]">
+      <div className="fixed right-3 bottom-3 z-[130]">
         <button
           type="button"
-          onClick={() => setPanelOpen(open => !open)}
-          className="rounded-lg bg-gray-900/90 p-2 text-gray-300 shadow-lg ring-1 ring-gray-700 hover:bg-gray-800"
+          onClick={() => {
+            setPanelOpen(open => !open);
+            setHasUnreadAlert(false);
+          }}
+          className={`rounded-lg p-2 shadow-lg ring-1 transition-all ${
+            hasUnreadAlert && !panelOpen
+              ? 'bg-primary-600 text-white animate-pulse ring-primary-500'
+              : 'bg-gray-900/90 text-gray-300 hover:bg-gray-800 ring-gray-700'
+          }`}
           title={panelOpen ? 'Hide meeting panel' : 'Show meeting panel'}
         >
           {panelOpen ? <X size={18} /> : <Users size={18} />}
@@ -749,7 +772,7 @@ export default function MeetingRoom() {
                         </p>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <p className="text-xs capitalize text-gray-500">{user.role}</p>
-                          {onlineUsers.includes(user.id) ? (
+                          {onlineUsers.includes(String(user.id)) ? (
                             <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-full font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> In Meeting</span>
                           ) : (
                             <span className="flex items-center gap-1 text-[10px] text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded-full font-medium"><span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span> Offline</span>

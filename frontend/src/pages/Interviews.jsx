@@ -39,7 +39,7 @@ export default function Interviews() {
       await new Promise(r => setTimeout(r, 200));
       let iv = await asyncGet(KEYS.INTERVIEWS) || [];
       if (['panel', 'manager'].includes(currentUser.role)) {
-        iv = iv.filter(i => i.interviewerId === currentUser.id || i.panelIds?.includes(currentUser.id));
+        iv = iv.filter(i => String(i.interviewerId) === String(currentUser.id) || i.panelIds?.some(id => String(id) === String(currentUser.id)));
       }
       setInterviews(iv.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`)));
       setUsers(await asyncGet(KEYS.USERS) || []);
@@ -126,7 +126,7 @@ export default function Interviews() {
                   </div>
                   <div className="flex gap-2">
                     <Link to={`/interviews/${i.id}`}><Button variant="secondary" size="sm">View Details</Button></Link>
-                    {(currentUser.id === i.interviewerId || (i.panelIds || []).includes(currentUser.id)) && i.status === 'completed' && !hasEval && (
+                    {(String(currentUser.id) === String(i.interviewerId) || (i.panelIds || []).some(id => String(id) === String(currentUser.id))) && i.status === 'completed' && !hasEval && (
                       <Link to={`/interviews/${i.id}?tab=evaluation`}><Button size="sm">Add Evaluation</Button></Link>
                     )}
                   </div>

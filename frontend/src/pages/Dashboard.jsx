@@ -343,7 +343,7 @@ function ManagerDashboard({ data, currentUser }) {
   });
   const pendingReviews = teamTasks.filter(t => t.status === 'in_review').length;
   const upcomingMeetings = meetings.filter(m => {
-    if (!m.participantIds.includes(currentUser.id) || m.date < data.today) return false;
+    if (!m.participantIds?.some(id => String(id) === String(currentUser.id)) || m.date < data.today) return false;
     const status = getMeetingStatus(m);
     return status === 'upcoming' || status === 'ongoing';
   });
@@ -414,7 +414,7 @@ function EmployeeDashboard({ data, currentUser }) {
   const overdueTasks = myTasks.filter(t => !['done'].includes(t.status) && new Date(t.dueDate) < new Date());
   const completedThisWeek = myTasks.filter(t => t.status === 'done' && new Date(t.dueDate) >= new Date(Date.now() - 7 * 86400000)).length;
   const upcomingMeetings = meetings.filter(m => {
-    if (!m.participantIds.includes(currentUser.id) || m.date < data.today) return false;
+    if (!m.participantIds?.some(id => String(id) === String(currentUser.id)) || m.date < data.today) return false;
     const status = getMeetingStatus(m);
     return status === 'upcoming' || status === 'ongoing';
   });
