@@ -39,7 +39,10 @@ export default function ProjectChat({ project, users }) {
       })
       .catch(err => console.error("Error fetching chat history", err));
 
-    const wsUrl = api.defaults.baseURL ? api.defaults.baseURL.replace('/api', '/ws-chat') : 'http://localhost:8080/ws-chat';
+    const wsUrlBase = api.defaults.baseURL ? api.defaults.baseURL.replace('/api', '/ws-chat') : 'http://localhost:8080/ws-chat';
+    const wsUrl = (window.location.protocol === 'https:' && wsUrlBase.startsWith('http://')) 
+      ? wsUrlBase.replace('http://', 'https://') 
+      : wsUrlBase;
     
     const client = new Client({
       webSocketFactory: () => new SockJS(wsUrl),

@@ -7,7 +7,10 @@ let stompClient = null;
 export const initRealTime = () => {
   if (stompClient) return;
 
-  const wsUrl = api.defaults.baseURL ? api.defaults.baseURL.replace('/api', '/ws-chat') : 'http://localhost:8080/ws-chat';
+  const wsUrlBase = api.defaults.baseURL ? api.defaults.baseURL.replace('/api', '/ws-chat') : 'http://localhost:8080/ws-chat';
+  const wsUrl = (window.location.protocol === 'https:' && wsUrlBase.startsWith('http://')) 
+    ? wsUrlBase.replace('http://', 'https://') 
+    : wsUrlBase;
   
   stompClient = new Client({
     webSocketFactory: () => new SockJS(wsUrl),
