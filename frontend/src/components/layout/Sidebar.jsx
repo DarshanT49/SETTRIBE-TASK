@@ -40,7 +40,7 @@ const roleColors = {
   panel: 'bg-purple-900/40 text-purple-400 border border-purple-800/50',
 };
 
-export function Sidebar({ collapsed, onCollapse }) {
+export function Sidebar({ collapsed, onCollapse, onNavClick }) {
   const { currentUser, logout } = useAuth();
   const { unreadCount } = useNotifications();
 
@@ -68,6 +68,7 @@ export function Sidebar({ collapsed, onCollapse }) {
           <NavLink
             key={to}
             to={to}
+            onClick={onNavClick}
             className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''} ${collapsed ? 'justify-center px-2' : ''}`}
             title={collapsed ? label : ''}
           >
