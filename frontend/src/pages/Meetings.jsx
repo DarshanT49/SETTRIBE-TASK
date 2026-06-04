@@ -74,9 +74,9 @@ export default function Meetings() {
     const matchType = !typeFilter || m.type === typeFilter;
     return matchSearch && matchFilter && matchType;
   }).sort((a, b) => {
-    const da = new Date(`${a.date}T${a.time}:00+05:30`);
-    const db = new Date(`${b.date}T${b.time}:00+05:30`);
-    // Always descending — latest meeting first
+    // Always descending — newest created first
+    const da = a.createdAt ? new Date(a.createdAt) : new Date(`${a.date}T${a.time}:00+05:30`);
+    const db = b.createdAt ? new Date(b.createdAt) : new Date(`${b.date}T${b.time}:00+05:30`);
     return db - da;
   });
 
