@@ -43,11 +43,11 @@ export default function Meetings() {
     load();
   }, []);
 
-  const getUser = (uid) => users.find(u => u.id === uid);
+  const getUser = (uid) => users.find(u => String(u.id) === String(uid));
    
   const today = new Date().toISOString().split('T')[0];
 
-  const myRsvp = (meetingId) => rsvps.find(r => r.meetingId === meetingId && r.userId === currentUser.id);
+  const myRsvp = (meetingId) => rsvps.find(r => String(r.meetingId) === String(meetingId) && String(r.userId) === String(currentUser.id));
 
   const isAdmin = currentUser.role === 'admin';
 
@@ -55,7 +55,7 @@ export default function Meetings() {
   // Admins see every meeting.
   const visibleMeetings = isAdmin
     ? meetings
-    : meetings.filter(m => m.hostId === currentUser.id || (m.participantIds || []).includes(currentUser.id));
+    : meetings.filter(m => String(m.hostId) === String(currentUser.id) || (m.participantIds || []).map(String).includes(String(currentUser.id)));
 
   const filtered = visibleMeetings.filter(m => {
     const matchSearch = !search || m.title.toLowerCase().includes(search.toLowerCase());
@@ -69,7 +69,7 @@ export default function Meetings() {
       matchFilter = effectiveStatus === 'completed' || effectiveStatus === 'cancelled';
     } else {
       // 'my' – meetings I host or am a participant in
-      matchFilter = m.hostId === currentUser.id || (m.participantIds || []).includes(currentUser.id);
+      matchFilter = String(m.hostId) === String(currentUser.id) || (m.participantIds || []).map(String).includes(String(currentUser.id));
     }
     const matchType = !typeFilter || m.type === typeFilter;
     return matchSearch && matchFilter && matchType;

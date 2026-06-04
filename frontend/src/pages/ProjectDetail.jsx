@@ -8,6 +8,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS,  asyncGet, asyncSet } from '../services/storage';
 import { createBulkNotifications, createNotification } from '../services/notifications';
+import { fetchProjectById, fetchProjectMembers, addProjectMember, removeProjectMember } from '../services/projectApi';
+import { fetchTasks } from '../services/taskApi';
 import { Avatar, Button, Badge, Modal, Input, Select, Textarea, StatusBadge, PriorityBadge, Skeleton, EmptyState, Toggle } from '../components/ui';
 import { formatDate, formatRelativeTime, formatDateTime, rescheduleMilestones, isOverdue } from '../utils/dates';
 import { KanbanBoard } from '../components/kanban/KanbanBoard';
@@ -46,18 +48,31 @@ export default function ProjectDetail() {
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
 
   const load = useCallback(async () => {
-    const projs = await asyncGet(KEYS.PROJECTS) || [];
-    const proj = projs.find(p => p.id === id);
-    if (!proj) { navigate('/projects'); return; }
+    try {
+      const proj = await fetchProjectById(id);
+      if (!proj) { navigate('/projects'); return; }
+    
+    try {
+      const members = await fetchProjectMembers(id);
+      proj.teamIds = members.map(m => m.userId);
+    } catch {
+      proj.teamIds = [];
+    }
+    
     setProject(proj);
     setUsers(await asyncGet(KEYS.USERS) || []);
-    const ms = (await asyncGet(KEYS.MILESTONES) || []).filter(m => m.projectId === id).sort((a, b) => a.order - b.order);
+    const ms = (await asyncGet(KEYS.MILESTONES) || []).filter(m => String(m.projectId) === String(id)).sort((a, b) => a.order - b.order);
     setMilestones(ms);
-    setTasks((await asyncGet(KEYS.TASKS) || []).filter(t => t.projectId === id));
-    setRequirements((await asyncGet(KEYS.PROJECT_REQUIREMENTS) || []).filter(r => r.projectId === id));
-    setMeetings((await asyncGet(KEYS.MEETINGS) || []).filter(m => m.projectId === id));
-    setHistory((await asyncGet(KEYS.PROJECT_HISTORY) || []).filter(h => h.projectId === id).reverse());
+    const allTasks = await fetchTasks();
+    setTasks(allTasks.filter(t => String(t.projectId) === String(id)));
+    setRequirements((await asyncGet(KEYS.PROJECT_REQUIREMENTS) || []).filter(r => String(r.projectId) === String(id)));
+    setMeetings((await asyncGet(KEYS.MEETINGS) || []).filter(m => String(m.projectId) === String(id)));
+    setHistory((await asyncGet(KEYS.PROJECT_HISTORY) || []).filter(h => String(h.projectId) === String(id)).reverse());
     setLoading(false);
+    } catch (e) {
+      console.error(e);
+      navigate('/projects');
+    }
   }, [id, navigate]);
 
   useEffect(() => { load(); }, [load]);
@@ -66,11 +81,13 @@ export default function ProjectDetail() {
   if (loading) return <Skeleton className="h-96" />;
   if (!project) return null;
 
-  const getUser = (uid) => users.find(u => u.id === uid);
-  const isOwner = project.ownerId === currentUser.id;
-  const isManager = project.managerId === currentUser.id;
+  const getUser = (uid) => users.find(u => String(u.id) === String(uid));
+  const isOwner = String(project.ownerId) === String(currentUser.id);
+  const isManager = String(project.managerId) === String(currentUser.id);
   const isAdmin = currentUser.role === 'admin';
   const canManage = isAdmin || isOwner || isManager;
+  const isLead = project.projectMembers?.find(m => String(m.userId) === String(currentUser.id))?.isLead;
+  const canManageTasks = canManage || isLead;
 
   const handleMarkComplete = async (ms) => {
     const allMs = await asyncGet(KEYS.MILESTONES) || [];
@@ -168,7 +185,7 @@ export default function ProjectDetail() {
       {activeTab === 'chat' && <ProjectChat project={project} users={users} />}
       {activeTab === 'requirements' && <RequirementsTab requirements={requirements} users={users} canManage={canManage} projectId={id} onRefresh={load} project={project} />}
       {activeTab === 'milestones' && <MilestonesTab milestones={milestones} canManage={canManage} onMarkComplete={handleMarkComplete} onMarkDelayed={(ms) => setShowDelayModal(ms)} onAddMilestone={() => setShowMilestoneModal(true)} />}
-      {activeTab === 'tasks' && <KanbanBoard project={project} tasks={tasks} users={users} currentUser={currentUser} canManage={canManage} onRefresh={load} />}
+      {activeTab === 'tasks' && <KanbanBoard project={project} tasks={tasks} users={users} currentUser={currentUser} canManage={canManageTasks} onRefresh={load} />}
       {activeTab === 'meetings' && <MeetingsTab meetings={meetings} users={users} projectId={id} />}
       {activeTab === 'files' && <FilesTab project={project} tasks={tasks} requirements={requirements} users={users} />}
       {activeTab === 'history' && <HistoryTab history={history} users={users} />}
@@ -210,13 +227,22 @@ function OverviewTab({ project, users, tasks, meetings, getUser, canManage, onAd
   const currentUserId = useAuth().currentUser.id;
 
   const handleRemoveMember = async (memberId) => {
-    const projs = await asyncGet(KEYS.PROJECTS) || [];
-    const idx = projs.findIndex(p => p.id === project.id);
-    if (idx !== -1) {
-      projs[idx].teamIds = projs[idx].teamIds.filter(id => id !== memberId);
-      asyncSet(KEYS.PROJECTS, projs);
+    try {
+      await removeProjectMember(project.id, memberId);
       toast.success('Member removed');
       onRefresh();
+    } catch {
+      toast.error('Failed to remove member');
+    }
+  };
+
+  const handleToggleLead = async (memberId, currentIsLead) => {
+    try {
+      await addProjectMember(project.id, memberId, !currentIsLead);
+      toast.success(currentIsLead ? 'Removed as Lead' : 'Assigned as Lead');
+      onRefresh();
+    } catch {
+      toast.error('Failed to update lead status');
     }
   };
 
@@ -267,6 +293,8 @@ function OverviewTab({ project, users, tasks, meetings, getUser, canManage, onAd
             const u = getUser(uid);
             if (!u) return null;
             const isOwnerMember = uid === project.ownerId;
+            const memberData = project.projectMembers?.find(m => String(m.userId) === String(uid));
+            const isLead = memberData?.isLead;
             return (
               <div key={uid} className="flex items-center gap-3">
                 <Avatar name={u.name} size="sm" />
@@ -275,10 +303,17 @@ function OverviewTab({ project, users, tasks, meetings, getUser, canManage, onAd
                   <div className="flex gap-1">
                     <span className="text-xs text-gray-500 capitalize">{u.role}</span>
                     {isOwnerMember && <span className="text-xs text-yellow-400">· Owner</span>}
+                    {isLead && !isOwnerMember && <span className="text-xs text-blue-400">· Lead</span>}
                   </div>
                 </div>
                 {canManage && uid !== project.ownerId && uid !== currentUserId && (
-                  <button onClick={() => handleRemoveMember(uid)} className="text-gray-600 hover:text-red-400 transition-colors"><Trash size={12} /></button>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <span className="text-xs text-gray-500">Lead</span>
+                      <Toggle enabled={!!isLead} onChange={() => handleToggleLead(uid, isLead)} />
+                    </label>
+                    <button onClick={() => handleRemoveMember(uid)} className="text-gray-600 hover:text-red-400 transition-colors"><Trash size={12} /></button>
+                  </div>
                 )}
               </div>
             );
@@ -603,12 +638,17 @@ function AddMemberModal({ project, allUsers, onClose, onSave, currentUserId }) {
   const [selected, setSelected] = useState([]);
   const handleSave = async () => {
     if (selected.length === 0) { toast.error('Select at least one member'); return; }
-    const projs = await asyncGet(KEYS.PROJECTS) || [];
-    const idx = projs.findIndex(p => p.id === project.id);
-    if (idx !== -1) { projs[idx].teamIds = [...projs[idx].teamIds, ...selected]; asyncSet(KEYS.PROJECTS, projs); }
-    createBulkNotifications(selected, { type: 'project_added', title: 'Added to Project', message: `You've been added to the "${project.title}" project`, relatedId: project.id, relatedType: 'project' });
-    toast.success(`${selected.length} member(s) added!`);
-    onSave();
+    
+    try {
+      for (const uid of selected) {
+        await addProjectMember(project.id, uid, false);
+      }
+      createBulkNotifications(selected, { type: 'project_added', title: 'Added to Project', message: `You've been added to the "${project.title}" project`, relatedId: project.id, relatedType: 'project' });
+      toast.success(`${selected.length} member(s) added!`);
+      onSave();
+    } catch {
+      toast.error('Failed to add members');
+    }
   };
   return (
     <Modal isOpen title="Add Team Member" onClose={onClose} size="sm">

@@ -11,7 +11,8 @@ import jakarta.persistence.Table;
 @Table(name = "projects")
 public class Project {
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     @Column(columnDefinition = "TEXT")
     private String title;
     @Column(columnDefinition = "TEXT")
@@ -24,10 +25,8 @@ public class Project {
     private String priority;
     @Column(columnDefinition = "TEXT")
     private String status;
-    @Column(columnDefinition = "TEXT")
-    private String ownerId;
-    @Column(columnDefinition = "TEXT")
-    private String managerId;
+    private Long ownerId;
+    private Long managerId;
     @Column(columnDefinition = "TEXT")
     private String startDate;
     @Column(columnDefinition = "TEXT")
@@ -39,13 +38,11 @@ public class Project {
     private Integer progress;
     @Column(columnDefinition = "TEXT")
     private String createdAt;
-    @Column(columnDefinition = "TEXT")
-    private String teamIds; // stored as JSON array string
 
     public Project() {
     }
 
-    public Project(String id, String title, String description, String clientName, String category, String priority, String status, String ownerId, String managerId, String startDate, String endDate, String deadline, String repoLink, Integer progress, String createdAt) {
+    public Project(Long id, String title, String description, String clientName, String category, String priority, String status, Long ownerId, Long managerId, String startDate, String endDate, String deadline, String repoLink, Integer progress, String createdAt) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -63,11 +60,11 @@ public class Project {
         this.createdAt = createdAt;
     }
 
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -119,19 +116,19 @@ public class Project {
         this.status = status;
     }
 
-    public String getOwnerId() {
+    public Long getOwnerId() {
         return ownerId;
     }
 
-    public void setOwnerId(String ownerId) {
+    public void setOwnerId(Long ownerId) {
         this.ownerId = ownerId;
     }
 
-    public String getManagerId() {
+    public Long getManagerId() {
         return managerId;
     }
 
-    public void setManagerId(String managerId) {
+    public void setManagerId(Long managerId) {
         this.managerId = managerId;
     }
 
@@ -181,14 +178,6 @@ public class Project {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public String getTeamIds() {
-        return teamIds;
-    }
-
-    public void setTeamIds(String teamIds) {
-        this.teamIds = teamIds;
     }
 }
 

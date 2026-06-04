@@ -6,6 +6,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
+import { fetchProjects } from '../services/projectApi';
+import { fetchTasks } from '../services/taskApi';
+import { fetchProjectMembers } from '../services/projectApi';
+import { fetchTaskAssignees } from '../services/taskApi';
 import { Avatar, Badge, Button, StatusBadge, PriorityBadge, Skeleton } from '../components/ui';
 import { formatRelativeTime, formatDate, canStartMeeting, getMeetingStatus } from '../utils/dates';
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -18,8 +22,15 @@ export default function Dashboard() {
 
   const load = async () => {
     const users = await asyncGet(KEYS.USERS) || [];
-    const projects = await asyncGet(KEYS.PROJECTS) || [];
-    const tasks = await asyncGet(KEYS.TASKS) || [];
+    const projectsRaw = await fetchProjects();
+    const tasksRaw = await fetchTasks();
+    
+    const projResponses = await Promise.all(projectsRaw.map(p => fetchProjectMembers(p.id).catch(() => [])));
+    const projects = projectsRaw.map((p, i) => ({ ...p, teamIds: projResponses[i].map(m => m.userId) }));
+    
+    const taskResponses = await Promise.all(tasksRaw.map(t => fetchTaskAssignees(t.id).catch(() => [])));
+    const tasks = tasksRaw.map((t, i) => ({ ...t, assigneeIds: taskResponses[i].map(a => a.userId) }));
+
     const meetings = await asyncGet(KEYS.MEETINGS) || [];
     const interviews = await asyncGet(KEYS.INTERVIEWS) || [];
     const requests = await asyncGet(KEYS.REGISTRATION_REQUESTS) || [];

@@ -88,10 +88,10 @@ export default function MeetingRoom() {
     const checkWaitingRoomStatus = async (m) => {
       if (cancelled) return;
 
-      const isHost = m.hostId === currentUser.id;
+      const isHost = String(m.hostId) === String(currentUser.id);
       const isAdmin = currentUser.role === 'admin';
       // Admin and host bypass the waiting room entirely
-      const hasHostStartedMeeting = toArray(m.attendanceLogs).some(l => l.userId === m.hostId);
+      const hasHostStartedMeeting = toArray(m.attendanceLogs).some(l => String(l.userId) === String(m.hostId));
 
       if (!isHost && !isAdmin && !hasHostStartedMeeting) {
         return;
@@ -112,7 +112,7 @@ export default function MeetingRoom() {
       }
 
       const waitingRoom = toArray(m.waitingRoom);
-      const myWaitStatus = waitingRoom.find(w => w.userId === currentUser.id)?.status;
+      const myWaitStatus = waitingRoom.find(w => String(w.userId) === String(currentUser.id))?.status;
 
       if (requiresApproval && myWaitStatus !== 'approved') {
         if (myWaitStatus !== 'waiting' && myWaitStatus !== 'rejected') {
@@ -225,14 +225,14 @@ export default function MeetingRoom() {
     .map(log => log.userId);
 
   const participants = [...new Set(activeUserIds)]
-    .map(userId => users.find(user => user.id === userId))
+    .map(userId => users.find(user => String(user.id) === String(userId)))
     .filter(Boolean);
   const presentParticipants = onlineUsers.length > 0
-    ? participants.filter(user => onlineUsers.includes(user.id))
+    ? participants.filter(user => onlineUsers.map(String).includes(String(user.id)))
     : participants;
   const presentParticipantIds = presentParticipants.map(user => user.id);
 
-  const isHost = meeting?.hostId === currentUser.id;
+  const isHost = String(meeting?.hostId) === String(currentUser.id);
   const mentionSuggestions = mentionQuery !== null ? getMentionSuggestions(mentionQuery, presentParticipants) : [];
 
   useEffect(() => {
@@ -471,7 +471,7 @@ export default function MeetingRoom() {
       const participant = participants.find(p => p.id === participantId);
       const participantName = participant ? participant.name : 'Unknown';
       const qna = validInputs.map((task, idx) => `Task ${idx + 1}: ${task}`).join('\n');
-      
+
       const record = {
         userId: participantId,
         userName: participantName,
@@ -537,10 +537,10 @@ export default function MeetingRoom() {
     );
   }
 
-  const isHostNow = meeting?.hostId === currentUser.id;
+  const isHostNow = String(meeting?.hostId) === String(currentUser.id);
   const isAdminNow = currentUser.role === 'admin';
 
-  const hasHostStartedMeetingNow = toArray(meeting?.attendanceLogs).some(l => l.userId === meeting?.hostId);
+  const hasHostStartedMeetingNow = toArray(meeting?.attendanceLogs).some(l => String(l.userId) === String(meeting?.hostId));
 
   if (!isHostNow && !isAdminNow && !hasHostStartedMeetingNow) {
     return (
@@ -573,7 +573,7 @@ export default function MeetingRoom() {
     }
   }
 
-  const myWaitStatus = toArray(meeting?.waitingRoom).find(w => w.userId === currentUser.id)?.status;
+  const myWaitStatus = toArray(meeting?.waitingRoom).find(w => String(w.userId) === String(currentUser.id))?.status;
 
   if (requiresApproval && myWaitStatus !== 'approved') {
     return (
@@ -707,7 +707,7 @@ export default function MeetingRoom() {
                       <Avatar name={user.name} size="sm" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm text-gray-200">
-                          {user.name} {user.id === meeting.hostId && <span className="text-xs text-primary-400">(Host)</span>}
+                          {user.name} {String(user.id) === String(meeting.hostId) && <span className="text-xs text-primary-400">(Host)</span>}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <p className="text-xs capitalize text-gray-500">{user.role}</p>
@@ -880,13 +880,12 @@ export default function MeetingRoom() {
                         <Avatar name={sender?.name || 'User'} size="xs" />
                         <div className={`max-w-[80%] ${mine ? 'items-end' : ''} flex flex-col`}>
                           <p className="mb-0.5 text-xs text-gray-500">{sender?.name?.split(' ')[0] || 'User'}</p>
-                          <div className={`rounded-lg border px-3 py-2 text-sm ${
-                            mine
+                          <div className={`rounded-lg border px-3 py-2 text-sm ${mine
                               ? 'border-primary-600 bg-primary-700 text-white'
                               : mentionedMe
                                 ? 'border-amber-400/60 bg-amber-500/15 text-amber-50'
                                 : 'border-transparent bg-gray-800 text-gray-200'
-                          }`}>
+                            }`}>
                             {renderMessageText(msg.text, msg.mentions, users, mine)}
                           </div>
                         </div>
@@ -974,7 +973,7 @@ export default function MeetingRoom() {
               <InterviewEvaluationPanel
                 meeting={meeting}
                 currentUser={{ id: meeting.hostId }}
-                onSaved={() => {}}
+                onSaved={() => { }}
               />
             </div>
           )}
@@ -998,8 +997,8 @@ export default function MeetingRoom() {
                   }
                 }}
                 className={`relative flex flex-1 items-center justify-center gap-1 py-3 text-xs font-medium ${sidePanel === tab
-                    ? 'border-t-2 border-primary-500 text-primary-400 bg-gray-900 -mt-[1px]'
-                    : 'border-t-2 border-transparent text-gray-500 hover:text-gray-300 hover:bg-gray-900/50 -mt-[1px]'
+                  ? 'border-t-2 border-primary-500 text-primary-400 bg-gray-900 -mt-[1px]'
+                  : 'border-t-2 border-transparent text-gray-500 hover:text-gray-300 hover:bg-gray-900/50 -mt-[1px]'
                   }`}
               >
                 <Icon size={14} />
@@ -1100,7 +1099,7 @@ function renderMessageText(text, mentions, users, isMine) {
 
 function ActiveParticipantsTracker({ onActiveParticipantsChange }) {
   const participants = useParticipants();
-  
+
   useEffect(() => {
     const activeIds = participants.map(p => p.identity).filter(Boolean);
     onActiveParticipantsChange(activeIds);

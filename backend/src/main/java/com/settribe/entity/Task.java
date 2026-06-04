@@ -11,9 +11,9 @@ import jakarta.persistence.Table;
 @Table(name = "tasks")
 public class Task {
     @Id
-    private String id;
-    @Column(columnDefinition = "TEXT")
-    private String projectId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private Long projectId;
     @Column(columnDefinition = "TEXT")
     private String milestoneId;
     @Column(columnDefinition = "TEXT")
@@ -24,10 +24,8 @@ public class Task {
     private String description;
     @Column(columnDefinition = "TEXT")
     private String priority;
-    @Column(columnDefinition = "TEXT")
-    private String creatorId;
-    @Column(columnDefinition = "TEXT")
-    private String assignedBy;
+    private Long creatorId;
+    private Long assignedBy;
     @Column(columnDefinition = "TEXT")
     private String status;
     @Column(columnDefinition = "TEXT")
@@ -41,14 +39,12 @@ public class Task {
     private Boolean isDelayed;
     @Column(columnDefinition = "TEXT")
     private String createdAt;
-    @Column(columnDefinition = "TEXT")
-    private String assigneeIds; // stored as JSON array string
     private Double estimatedHours;
 
     public Task() {
     }
 
-    public Task(String id, String projectId, String milestoneId, String sprintId, String title, String description, String priority, String creatorId, String assignedBy, String status, String startDate, String dueDate, String delayReason, String newDueDate, Boolean isDelayed, String createdAt, Double estimatedHours) {
+    public Task(Long id, Long projectId, String milestoneId, String sprintId, String title, String description, String priority, Long creatorId, Long assignedBy, String status, String startDate, String dueDate, String delayReason, String newDueDate, Boolean isDelayed, String createdAt, Double estimatedHours) {
         this.id = id;
         this.projectId = projectId;
         this.milestoneId = milestoneId;
@@ -68,19 +64,19 @@ public class Task {
         this.estimatedHours = estimatedHours;
     }
 
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
-    public String getProjectId() {
+    public Long getProjectId() {
         return projectId;
     }
 
-    public void setProjectId(String projectId) {
+    public void setProjectId(Long projectId) {
         this.projectId = projectId;
     }
 
@@ -124,19 +120,19 @@ public class Task {
         this.priority = priority;
     }
 
-    public String getCreatorId() {
+    public Long getCreatorId() {
         return creatorId;
     }
 
-    public void setCreatorId(String creatorId) {
+    public void setCreatorId(Long creatorId) {
         this.creatorId = creatorId;
     }
 
-    public String getAssignedBy() {
+    public Long getAssignedBy() {
         return assignedBy;
     }
 
-    public void setAssignedBy(String assignedBy) {
+    public void setAssignedBy(Long assignedBy) {
         this.assignedBy = assignedBy;
     }
 
@@ -194,14 +190,6 @@ public class Task {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public String getAssigneeIds() {
-        return assigneeIds;
-    }
-
-    public void setAssigneeIds(String assigneeIds) {
-        this.assigneeIds = assigneeIds;
     }
 
     public Double getEstimatedHours() {

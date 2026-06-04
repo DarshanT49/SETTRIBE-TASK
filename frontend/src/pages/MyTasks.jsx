@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { CheckSquare, AlertCircle, Filter } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
+import { fetchTaskAssignees, fetchTasks } from '../services/taskApi';
+import { fetchProjects } from '../services/projectApi';
 import { PriorityBadge, StatusBadge, Skeleton, EmptyState, Avatar } from '../components/ui';
 import { formatDate, isOverdue } from '../utils/dates';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
@@ -19,11 +21,11 @@ export default function MyTasks() {
 
   useEffect(() => {
     const load = async () => {
-      const allTasks = await asyncGet(KEYS.TASKS) || [];
-      let ts = allTasks.filter(t => t.assigneeIds.includes(currentUser.id));
-      if (statusFilter !== 'all') ts = ts.filter(t => t.status === statusFilter);
+      const allTasks = await fetchTasks();
+      const responses = await Promise.all(allTasks.map(t => fetchTaskAssignees(t.id).catch(() => [])));
+      let ts = allTasks.filter((t, idx) => responses[idx].map(a => String(a.userId)).includes(String(currentUser.id)));
       setTasks(ts);
-      setProjects(await asyncGet(KEYS.PROJECTS) || []);
+      setProjects(await fetchProjects());
       setUsers(await asyncGet(KEYS.USERS) || []);
       setLoading(false);
     };
@@ -31,18 +33,18 @@ export default function MyTasks() {
   }, [currentUser.id, statusFilter]);
 
   const load = async () => {
-    const allTasks = await asyncGet(KEYS.TASKS) || [];
-    let ts = allTasks.filter(t => t.assigneeIds.includes(currentUser.id));
-    if (statusFilter !== 'all') ts = ts.filter(t => t.status === statusFilter);
+    const allTasks = await fetchTasks();
+    const responses = await Promise.all(allTasks.map(t => fetchTaskAssignees(t.id).catch(() => [])));
+    let ts = allTasks.filter((t, idx) => responses[idx].map(a => String(a.userId)).includes(String(currentUser.id)));
     setTasks(ts);
-    setProjects(await asyncGet(KEYS.PROJECTS) || []);
+    setProjects(await fetchProjects());
     setUsers(await asyncGet(KEYS.USERS) || []);
   };
 
   useAutoRefresh(load);
 
-  const getProject = (id) => projects.find(p => p.id === id);
-  const getUser = (id) => users.find(u => u.id === id);
+  const getProject = (id) => projects.find(p => String(p.id) === String(id));
+  const getUser = (id) => users.find(u => String(u.id) === String(id));
 
   const filtered = tasks.filter(t => {
     const matchStatus = statusFilter === 'all' ? true : statusFilter === 'open' ? !['done'].includes(t.status) : t.status === statusFilter;

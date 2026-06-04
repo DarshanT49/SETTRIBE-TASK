@@ -8,6 +8,7 @@ import { Button, Modal, Input, Select, Textarea, Toggle, EmptyState, Skeleton } 
 import { formatDate, isOverdue } from '../utils/dates';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { fetchSelfTasks, createSelfTask, updateSelfTask, deleteSelfTask } from '../services/selfTaskApi';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
    
@@ -24,9 +25,15 @@ export default function SelfTasks() {
   const [form, setForm] = useState({ title: '', description: '', date: '', time: '', reminder: false, reminderOffset: '30min' });
 
   const load = async () => {
-    const all = await asyncGet(KEYS.SELF_TASKS) || [];
-    setTasks(all.filter(t => t.userId === currentUser.id));
-    setLoading(false);
+    try {
+      const all = await fetchSelfTasks();
+      setTasks(all.filter(t => String(t.userId) === String(currentUser.id)));
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to load tasks');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -39,33 +46,51 @@ export default function SelfTasks() {
 
   const handleSave = async () => {
     if (!form.title.trim()) { toast.error('Task title is required'); return; }
-    const all = await asyncGet(KEYS.SELF_TASKS) || [];
-    if (editTask) {
-      const idx = all.findIndex(t => t.id === editTask.id);
-      if (idx !== -1) all[idx] = { ...all[idx], ...form };
-    } else {
-      all.push({ id: uuidv4(), userId: currentUser.id, ...form, status: 'pending', createdAt: new Date().toISOString() });
+    try {
+      if (editTask) {
+        await updateSelfTask(editTask.id, { ...editTask, ...form });
+        toast.success('Task updated!');
+      } else {
+        await createSelfTask({
+          userId: String(currentUser.id),
+          ...form,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        });
+        toast.success('Task added!');
+      }
+      setShowModal(false);
+      setEditTask(null);
+      setForm({ title: '', description: '', date: '', time: '', reminder: false, reminderOffset: '30min' });
+      load();
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to save task');
     }
-    asyncSet(KEYS.SELF_TASKS, all);
-    toast.success(editTask ? 'Task updated!' : 'Task added!');
-    setShowModal(false);
-    setEditTask(null);
-    setForm({ title: '', description: '', date: '', time: '', reminder: false, reminderOffset: '30min' });
-    load();
   };
 
   const handleToggleDone = async (taskId) => {
-    const all = await asyncGet(KEYS.SELF_TASKS) || [];
-    const idx = all.findIndex(t => t.id === taskId);
-    if (idx !== -1) { all[idx].status = all[idx].status === 'done' ? 'pending' : 'done'; asyncSet(KEYS.SELF_TASKS, all); }
-    load();
+    const taskToToggle = tasks.find(t => String(t.id) === String(taskId));
+    if (!taskToToggle) return;
+    try {
+      const newStatus = taskToToggle.status === 'done' ? 'pending' : 'done';
+      await updateSelfTask(taskId, { ...taskToToggle, status: newStatus });
+      load();
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to update task');
+    }
   };
 
   const handleDelete = async (taskId) => {
-    const all = await asyncGet(KEYS.SELF_TASKS) || [];
-    asyncSet(KEYS.SELF_TASKS, all.filter(t => t.id !== taskId));
-    toast.success('Task deleted');
-    load();
+    try {
+      await deleteSelfTask(taskId);
+      toast.success('Task deleted');
+      load();
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to delete task');
+    }
   };
 
   const openEdit = (task) => {

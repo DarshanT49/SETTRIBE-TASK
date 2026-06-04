@@ -3,26 +3,25 @@ package com.settribe.dto;
 import java.util.List;
 
 public class ProjectDTO {
-    private String id;
+    private Long id;
     private String title;
     private String description;
     private String clientName;
     private String category;
     private String priority;
     private String status;
-    private String ownerId;
-    private String managerId;
+    private Long ownerId;
+    private Long managerId;
     private String startDate;
     private String endDate;
     private String deadline;
     private String repoLink;
     private Integer progress;
     private String createdAt;
-    private List<String> teamIds;
 
     public ProjectDTO() {}
 
-    public ProjectDTO(String id, String title, String description, String clientName, String category, String priority, String status, String ownerId, String managerId, String startDate, String endDate, String deadline, String repoLink, Integer progress, String createdAt) {
+    public ProjectDTO(Long id, String title, String description, String clientName, String category, String priority, String status, Long ownerId, Long managerId, String startDate, String endDate, String deadline, String repoLink, Integer progress, String createdAt) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -40,11 +39,11 @@ public class ProjectDTO {
         this.createdAt = createdAt;
     }
 
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -96,19 +95,19 @@ public class ProjectDTO {
         this.status = status;
     }
 
-    public String getOwnerId() {
+    public Long getOwnerId() {
         return ownerId;
     }
 
-    public void setOwnerId(String ownerId) {
+    public void setOwnerId(Long ownerId) {
         this.ownerId = ownerId;
     }
 
-    public String getManagerId() {
+    public Long getManagerId() {
         return managerId;
     }
 
-    public void setManagerId(String managerId) {
+    public void setManagerId(Long managerId) {
         this.managerId = managerId;
     }
 
@@ -158,13 +157,5 @@ public class ProjectDTO {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public List<String> getTeamIds() {
-        return teamIds;
-    }
-
-    public void setTeamIds(List<String> teamIds) {
-        this.teamIds = teamIds;
     }
 }

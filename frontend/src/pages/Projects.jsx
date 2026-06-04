@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 import { Plus, Search, Filter, Grid, List, FolderOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
-   
+import { fetchProjects, fetchProjectMembers } from '../services/projectApi';
+
 import { Avatar, Button, Badge, StatusBadge, PriorityBadge, Skeleton, EmptyState } from '../components/ui';
 import { formatDate } from '../utils/dates';
 
@@ -24,11 +25,27 @@ export default function Projects() {
   useEffect(() => {
     const load = async () => {
       await new Promise(r => setTimeout(r, 200));
-      let projs = await asyncGet(KEYS.PROJECTS) || [];
+      let projs = await fetchProjects();
       const us = await asyncGet(KEYS.USERS) || [];
+
+      try {
+        const memberResponses = await Promise.all(
+          projs.map(p => fetchProjectMembers(p.id).catch(() => []))
+        );
+        projs = projs.map((p, idx) => ({
+          ...p,
+          id: String(p.id),
+          ownerId: String(p.ownerId),
+          managerId: p.managerId ? String(p.managerId) : null,
+          teamIds: memberResponses[idx].map(m => String(m.userId))
+        }));
+      } catch (e) {
+        console.error("Failed to fetch project members", e);
+      }
+
       // Non-admin users only see their projects
       if (!['admin', 'hr'].includes(currentUser.role)) {
-        projs = projs.filter(p => p.teamIds.includes(currentUser.id) || p.ownerId === currentUser.id || p.managerId === currentUser.id);
+        projs = projs.filter(p => (p.teamIds || []).includes(currentUser.id) || p.ownerId === currentUser.id || p.managerId === currentUser.id);
       }
       setProjects(projs);
       setUsers(us);
@@ -37,7 +54,7 @@ export default function Projects() {
     load();
   }, [currentUser]);
 
-  const getUser = (id) => users.find(u => u.id === id);
+  const getUser = (id) => users.find(u => String(u.id) === String(id));
 
   const filtered = projects.filter(p => {
     const matchSearch = !search || p.title.toLowerCase().includes(search.toLowerCase()) || p.clientName?.toLowerCase().includes(search.toLowerCase());
@@ -110,7 +127,7 @@ export default function Projects() {
                 </div>
 
                 {/* Tags */}
-                {p.tags?.length > 0 && (
+                {Array.isArray(p.tags) && p.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {p.tags.slice(0, 3).map(t => <span key={t} className="text-xs px-1.5 py-0.5 bg-gray-800 text-gray-500 rounded">{t}</span>)}
                   </div>
@@ -134,8 +151,8 @@ export default function Projects() {
                     <span className="text-xs text-gray-500">{owner?.name?.split(' ')[0]}</span>
                   </div>
                   <div className="flex -space-x-1">
-                    {p.teamIds.slice(0, 3).map(id => <Avatar key={id} name={getUser(id)?.name} size="xs" className="border border-gray-900" />)}
-                    {p.teamIds.length > 3 && <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-xs text-gray-400">+{p.teamIds.length - 3}</div>}
+                    {(Array.isArray(p.teamIds) ? p.teamIds : []).slice(0, 3).map(id => <Avatar key={id} name={getUser(id)?.name} size="xs" className="border border-gray-900" />)}
+                    {(Array.isArray(p.teamIds) ? p.teamIds : []).length > 3 && <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-xs text-gray-400">+{p.teamIds.length - 3}</div>}
                   </div>
                 </div>
               </Link>

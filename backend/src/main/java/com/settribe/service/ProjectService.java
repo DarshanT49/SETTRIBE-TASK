@@ -1,6 +1,8 @@
 package com.settribe.service;
 
 import com.settribe.entity.Project;
+import com.settribe.entity.ProjectMember;
+import com.settribe.repository.ProjectMemberRepository;
 import com.settribe.repository.ProjectRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,11 +19,40 @@ public class ProjectService {
     @Autowired
     private ProjectRepository repository;
 
+    @Autowired
+    private ProjectMemberRepository memberRepository;
+
+    public List<ProjectMember> getMembers(Long projectId) {
+        return memberRepository.findByProjectIdAndStatus(projectId, "ACTIVE");
+    }
+
+    public ProjectMember addMember(Long projectId, Long userId, Boolean isLead) {
+        ProjectMember member = memberRepository.findByProjectIdAndUserId(projectId, userId).orElse(null);
+        if (member == null) {
+            member = new ProjectMember();
+            member.setProjectId(projectId);
+            member.setUserId(userId);
+            member.setStatus("ACTIVE");
+            member.setJoinedAt(java.time.Instant.now().toString());
+        }
+        member.setIsLead(isLead);
+        return memberRepository.save(member);
+    }
+
+    public void removeMember(Long projectId, Long userId) {
+        ProjectMember member = memberRepository.findByProjectIdAndUserId(projectId, userId).orElse(null);
+        if (member != null) {
+            member.setStatus("LEFT");
+            member.setLeftAt(java.time.Instant.now().toString());
+            memberRepository.save(member);
+        }
+    }
+
     public List<ProjectDTO> findAll() {
         return repository.findAll().stream().map(ProjectMapper::toDTO).collect(Collectors.toList());
     }
 
-    public Optional<ProjectDTO> findById(String id) {
+    public Optional<ProjectDTO> findById(Long id) {
         return repository.findById(id).map(ProjectMapper::toDTO);
     }
 
@@ -30,16 +61,16 @@ public class ProjectService {
         return ProjectMapper.toDTO(repository.save(entity));
     }
 
-    public ProjectDTO update(String id, ProjectDTO dto) {
+    public ProjectDTO update(Long id, ProjectDTO dto) {
         if(repository.existsById(id)) {
-            Project entity = com.settribe.mapper.ProjectMapper.toEntity(dto);
+            Project entity = ProjectMapper.toEntity(dto);
             entity.setId(id);
-            return com.settribe.mapper.ProjectMapper.toDTO(repository.save(entity));
+            return ProjectMapper.toDTO(repository.save(entity));
         }
         throw new RuntimeException("Entity not found");
     }
 
-    public void deleteById(String id) {
+    public void deleteById(Long id) {
         repository.deleteById(id);
     }
 }

@@ -66,6 +66,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/registrationRequests/**").permitAll()   // Alternate casing used by frontend
                 .requestMatchers("/ws-chat/**").permitAll()                // WebSocket handshake
                 .requestMatchers("/actuator/health").permitAll()           // Health check (Render)
+                .requestMatchers("/api/interviews/validate").permitAll()   // Interview candidate join
+                .requestMatchers("/api/interviews/*/join-token").permitAll() // Interview candidate token
                 // ─── Everything else requires a valid JWT ───
                 .anyRequest().authenticated()
             );

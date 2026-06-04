@@ -22,7 +22,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProjectDTO> getById(@PathVariable String id) {
+    public ResponseEntity<ProjectDTO> getById(@PathVariable Long id) {
         return service.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -34,7 +34,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProjectDTO> update(@PathVariable String id, @RequestBody ProjectDTO entity) {
+    public ResponseEntity<ProjectDTO> update(@PathVariable Long id, @RequestBody ProjectDTO entity) {
         try {
             // Ensure ID is matched, you might need to set entity.setId(id) depending on structure
             return ResponseEntity.ok(service.update(id, entity));
@@ -44,8 +44,24 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/members")
+    public ResponseEntity<List<com.settribe.entity.ProjectMember>> getMembers(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getMembers(id));
+    }
+
+    @PostMapping("/{id}/members")
+    public ResponseEntity<com.settribe.entity.ProjectMember> addMember(@PathVariable Long id, @RequestParam Long userId, @RequestParam(defaultValue = "false") Boolean isLead) {
+        return ResponseEntity.ok(service.addMember(id, userId, isLead));
+    }
+
+    @DeleteMapping("/{id}/members/{userId}")
+    public ResponseEntity<Void> removeMember(@PathVariable Long id, @PathVariable Long userId) {
+        service.removeMember(id, userId);
         return ResponseEntity.noContent().build();
     }
 }

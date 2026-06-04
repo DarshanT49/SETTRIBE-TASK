@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Plus, MessageSquare, Paperclip, AlertCircle, CheckCircle, X } from 'lucide-react';
 import { KEYS, asyncGet, asyncSet, syncGet } from '../../services/storage';
+import { fetchTaskHistory, updateTask, createTask, fetchTaskAssignees, addTaskAssignee } from '../../services/taskApi';
 import { createBulkNotifications } from '../../services/notifications';
 import { Avatar, Button, Modal, Input, Select, Textarea, PriorityBadge, StatusBadge } from '../ui';
 import { formatDate, formatRelativeTime, isOverdue } from '../../utils/dates';
@@ -25,15 +26,44 @@ export function KanbanBoard({ project, tasks, users, currentUser, canManage, onR
   const [selectedTask, setSelectedTask] = useState(null);
   const [showAddTask, setShowAddTask] = useState(null);
   const [filterAssignee, setFilterAssignee] = useState('');
+  const [tasksWithAssignees, setTasksWithAssignees] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    const fetchAssignees = async () => {
+      try {
+        const responses = await Promise.all(
+          tasks.map(t => fetchTaskAssignees(t.id).catch(() => []))
+        );
+        if (active) {
+          const merged = tasks.map((t, idx) => ({
+            ...t,
+            id: String(t.id),
+            assigneeIds: responses[idx].map(a => String(a.userId))
+          }));
+          setTasksWithAssignees(merged);
+        }
+      } catch (e) {
+        console.error("Failed to fetch assignees", e);
+        if (active) setTasksWithAssignees(tasks.map(t => ({ ...t, assigneeIds: [] })));
+      }
+    };
+    if (tasks.length > 0) {
+      fetchAssignees();
+    } else {
+      setTasksWithAssignees([]);
+    }
+    return () => { active = false; };
+  }, [tasks]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
-  const teamMembers = users.filter(u => project.teamIds?.includes(u.id));
-  const filteredTasks = tasks.filter(t => !filterAssignee || t.assigneeIds.includes(filterAssignee));
+  const teamMembers = users.filter(u => project.teamIds?.map(String).includes(String(u.id)));
+  const filteredTasks = tasksWithAssignees.filter(t => !filterAssignee || (t.assigneeIds || []).includes(filterAssignee));
 
   const getTasksByStatus = (status) => filteredTasks.filter(t => t.status === status);
-  const getUser = (uid) => users.find(u => u.id === uid);
-  const activeTask = tasks.find(t => t.id === activeId);
+  const getUser = (uid) => users.find(u => String(u.id) === String(uid));
+  const activeTask = tasksWithAssignees.find(t => t.id === activeId);
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
@@ -43,19 +73,23 @@ export function KanbanBoard({ project, tasks, users, currentUser, canManage, onR
     const newStatus = over.id;
     if (!COLUMNS.find(c => c.id === newStatus)) return;
 
-    const allTasks = await asyncGet(KEYS.TASKS) || [];
+    const allTasks = [...tasksWithAssignees];
     const idx = allTasks.findIndex(t => t.id === taskId);
     if (idx === -1) return;
     const oldStatus = allTasks[idx].status;
     if (oldStatus === newStatus) return;
 
     allTasks[idx].status = newStatus;
-    asyncSet(KEYS.TASKS, allTasks);
+    
+    try {
+      await updateTask(allTasks[idx].id, allTasks[idx]);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to update task status');
+      return;
+    }
 
-    // Log history
-    const history = await asyncGet(KEYS.TASK_HISTORY) || [];
-    history.push({ id: uuidv4(), taskId, projectId: project.id, action: 'status_changed', performedBy: currentUser.id, fromStatus: oldStatus, toStatus: newStatus, details: `Status changed from ${oldStatus} to ${newStatus}`, timestamp: new Date().toISOString() });
-    asyncSet(KEYS.TASK_HISTORY, history);
+    // History is handled by backend TaskService.update automatically
 
     const oldStatusStr = oldStatus;
     toast.success(
@@ -65,11 +99,10 @@ export function KanbanBoard({ project, tasks, users, currentUser, canManage, onR
           <button 
             onClick={async () => {
               toast.dismiss(t.id);
-              const tasksNow = await asyncGet(KEYS.TASKS) || [];
-              const taskIdx = tasksNow.findIndex(tsk => tsk.id === taskId);
+              const taskIdx = allTasks.findIndex(tsk => tsk.id === taskId);
               if (taskIdx !== -1) {
-                tasksNow[taskIdx].status = oldStatusStr;
-                await asyncSet(KEYS.TASKS, tasksNow);
+                allTasks[taskIdx].status = oldStatusStr;
+                await updateTask(allTasks[taskIdx].id, allTasks[taskIdx]);
                 onRefresh();
                 toast.success('Action undone');
               }
@@ -193,7 +226,7 @@ function SortableTaskCard({ task, users, getUser, onClick }) {
 }
 
 function TaskCardDragging({ task, users }) {
-  const getUser = (uid) => users.find(u => u.id === uid);
+  const getUser = (uid) => users.find(u => String(u.id) === String(uid));
   return (
     <div className="task-card shadow-[0_20px_50px_rgba(0,0,0,0.5)] rotate-3 scale-105 w-[280px] border-primary-500/50 bg-gray-800/95 backdrop-blur-xl z-[100]">
       <TaskCardContent task={task} users={users} getUser={getUser} />
@@ -214,16 +247,16 @@ function TaskCardContent({ task, users, getUser }) {
         </div>
       </div>
 
-      {task.assigneeIds?.length > 0 && (
+      {(task.assigneeIds || []).length > 0 && (
         <div className="flex -space-x-2 mb-3">
-          {task.assigneeIds.slice(0, 3).map(id => (
+          {(task.assigneeIds || []).slice(0, 3).map(id => (
             <div key={id} className="rounded-full ring-2 ring-gray-800 transition-transform hover:scale-110 hover:z-10">
               <Avatar name={getUser(id)?.name} size="sm" />
             </div>
           ))}
-          {task.assigneeIds.length > 3 && (
+          {(task.assigneeIds || []).length > 3 && (
             <div className="w-8 h-8 rounded-full bg-gray-700 ring-2 ring-gray-800 flex items-center justify-center text-xs font-medium text-gray-300 hover:scale-110 hover:z-10 transition-transform">
-              +{task.assigneeIds.length - 3}
+              +{(task.assigneeIds || []).length - 3}
             </div>
           )}
         </div>
@@ -245,11 +278,16 @@ function TaskCardContent({ task, users, getUser }) {
 
 function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefresh }) {
   const [comment, setComment] = useState('');
+  const [taskHistory, setTaskHistory] = useState([]);
   const [showDelayModal, setShowDelayModal] = useState(false);
   const [showLogHoursModal, setShowLogHoursModal] = useState(false);
   const [logHoursForm, setLogHoursForm] = useState({ hours: '', description: '', date: new Date().toISOString().split('T')[0] });
   const [delayForm, setDelayForm] = useState({ reason: '', newDueDate: '' });
-  const getUser = (uid) => users.find(u => u.id === uid);
+  const getUser = (uid) => users.find(u => u.id === uid || u.id === Number(uid));
+
+  useEffect(() => {
+    fetchTaskHistory(task.id).then(setTaskHistory).catch(console.error);
+  }, [task.id]);
 
   const handleAddComment = async () => {
     if (!comment.trim()) return;
@@ -277,9 +315,7 @@ function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefres
     allTasks[idx].status = newStatus;
     asyncSet(KEYS.TASKS, allTasks);
     
-    const history = await asyncGet(KEYS.TASK_HISTORY) || [];
-    history.push({ id: uuidv4(), taskId: task.id, projectId: project.id, action: `task_${action}d`, performedBy: currentUser.id, fromStatus: oldStatus, toStatus: newStatus, details: `Task ${action}d by ${currentUser.name}`, timestamp: new Date().toISOString() });
-    asyncSet(KEYS.TASK_HISTORY, history);
+    // History is handled by backend TaskService.update automatically
     
     const taskIdStr = task.id;
     const actionPastTense = `${action}d`;
@@ -329,10 +365,9 @@ function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefres
     onRefresh();
   };
 
-  const isAssignee = task.assigneeIds?.includes(currentUser.id);
-  const canApprove = ['admin', 'manager'].includes(currentUser.role) || project.ownerId === currentUser.id;
+  const isAssignee = task.assigneeIds?.includes(String(currentUser.id));
+  const canApprove = ['admin', 'manager'].includes(currentUser.role) || String(project.ownerId) === String(currentUser.id);
   const taskOverdue = isOverdue(task.dueDate) && task.status !== 'done';
-  const taskHistory = (syncGet(KEYS.TASK_HISTORY) || []).filter(h => h.taskId === task.id);
 
   return (
     <>
@@ -433,8 +468,10 @@ function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefres
               <div className="space-y-2">
                 {taskHistory.map(h => (
                   <div key={h.id} className="flex gap-2 text-xs text-gray-500">
-                    <span className="text-gray-600">{formatRelativeTime(h.timestamp)}</span>
-                    <span className="text-gray-400">{h.details}</span>
+                    <span className="text-gray-600">{formatRelativeTime(h.changedAt)}</span>
+                    <span className="text-gray-400">
+                      Changed from {h.oldStatus} to {h.newStatus} by {getUser(h.changedByUserId)?.name}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -496,29 +533,47 @@ function AddTaskModal({ project, defaultStatus, users, currentUser, onClose, onS
     }
     setFormErrors({});
 
-    const allTasks = await asyncGet(KEYS.TASKS) || [];
-    const newTask = {
-      id: uuidv4(),
+    const apiTaskPayload = {
       projectId: project.id,
-      ...form,
+      title: form.title,
+      description: form.description,
+      priority: form.priority,
+      status: form.status,
+      // estimatedHours: form.estimatedHours ? Number(form.estimatedHours) : null,
+      milestoneId: form.milestoneId || null,
+      sprintId: form.sprintId || null,
+      startDate: form.startDate,
+      dueDate: form.dueDate,
       creatorId: currentUser.id,
       assignedBy: currentUser.id,
-      attachments: [],
-      comments: [],
-      activityLog: [],
       delayReason: '',
       newDueDate: null,
       isDelayed: false,
-      createdAt: new Date().toISOString(),
-      tags: [] };
-    allTasks.push(newTask);
-    asyncSet(KEYS.TASKS, allTasks);
-    if (form.assigneeIds.length > 0) {
-      createBulkNotifications(form.assigneeIds, { type: 'task_assigned', title: 'New Task Assigned', message: `"${form.title}" has been assigned to you. Due: ${formatDate(form.dueDate)}`, relatedId: newTask.id, relatedType: 'task' });
+      createdAt: new Date().toISOString()
+    };
+    
+    let createdTask;
+    try {
+      createdTask = await createTask(apiTaskPayload);
+    } catch (e) {
+      console.error("Failed to create task", e);
+      toast.error('Failed to create task');
+      return;
     }
-    const history = await asyncGet(KEYS.TASK_HISTORY) || [];
-    history.push({ id: uuidv4(), taskId: newTask.id, projectId: project.id, action: 'created', performedBy: currentUser.id, fromStatus: null, toStatus: form.status, details: `Task created and assigned`, timestamp: new Date().toISOString() });
-    asyncSet(KEYS.TASK_HISTORY, history);
+    
+    // Add assignees via API
+    try {
+      for (const uid of form.assigneeIds) {
+        await addTaskAssignee(createdTask.id, uid);
+      }
+    } catch (e) {
+      console.error("Failed to save task assignees", e);
+    }
+    
+    if (form.assigneeIds.length > 0) {
+      createBulkNotifications(form.assigneeIds, { type: 'task_assigned', title: 'New Task Assigned', message: `"${form.title}" has been assigned to you. Due: ${formatDate(form.dueDate)}`, relatedId: createdTask.id, relatedType: 'task' });
+    }
+    // History is handled by backend TaskService automatically
     toast.success('Task created!');
     onSave();
   };
