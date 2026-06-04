@@ -8,14 +8,14 @@ export const initRealTime = () => {
   if (stompClient) return;
 
   const wsUrlBase = api.defaults.baseURL ? api.defaults.baseURL.replace('/api', '/ws-chat') : 'http://localhost:8080/ws-chat';
-  const wsUrl = (window.location.protocol === 'https:' && wsUrlBase.startsWith('http://')) 
-    ? wsUrlBase.replace('http://', 'https://') 
+  const wsUrl = (window.location.protocol === 'https:' && wsUrlBase.startsWith('http://'))
+    ? wsUrlBase.replace('http://', 'https://')
     : wsUrlBase;
-  
+
   stompClient = new Client({
     webSocketFactory: () => new SockJS(wsUrl),
     reconnectDelay: 5000,
-    debug: () => {},
+    debug: () => { },
     onConnect: () => {
       stompClient.subscribe('/topic/system.update', (message) => {
         window.dispatchEvent(new CustomEvent('system-update', { detail: message.body }));
