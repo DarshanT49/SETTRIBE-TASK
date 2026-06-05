@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Search, UserCheck, ChevronDown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
+import api from '../services/api';
    
 import { Avatar, Button, Badge, StatusBadge, EmptyState, Skeleton } from '../components/ui';
    
@@ -51,6 +52,25 @@ export default function Interviews() {
     const load = async () => {
       await new Promise(r => setTimeout(r, 200));
       let iv = await asyncGet(KEYS.INTERVIEWS) || [];
+
+      // Fetch evaluations to check completed ones
+      let evals = [];
+      try {
+        const evalResp = await api.get('/evaluations');
+        evals = evalResp.data || [];
+      } catch (e) {
+        console.warn("Failed to fetch evaluations", e);
+      }
+
+      // Map evaluations to interviews
+      iv = iv.map(interview => {
+        const foundEval = evals.find(e => e.interviewId === interview.id);
+        if (foundEval) {
+          return { ...interview, evaluation: foundEval };
+        }
+        return interview;
+      });
+
       if (!['admin', 'hr'].includes(currentUser.role)) {
         iv = iv.filter(i => String(i.interviewerId) === String(currentUser.id) || parsePanelIds(i.panelIds).some(id => String(id) === String(currentUser.id)));
       }
@@ -73,7 +93,7 @@ export default function Interviews() {
   }).sort((a, b) => new Date(b.date + 'T' + b.time) - new Date(a.date + 'T' + a.time));
 
   const today_count = interviews.filter(i => i.date === today).length;
-  const pending_eval = interviews.filter(i => i.status === 'completed' && !i.evaluation?.rating).length;
+  const pending_eval = interviews.filter(i => i.status === 'completed' && !(i.evaluation?.rating || i.evaluation?.overallScore)).length;
 
   const canSchedule = ['admin', 'hr'].includes(currentUser.role);
 
@@ -114,7 +134,7 @@ export default function Interviews() {
         <div className="space-y-3">
           {filtered.map(i => {
             const interviewer = getUser(i.interviewerId);
-            const hasEval = i.evaluation?.rating;
+            const hasEval = !!i.evaluation?.rating || !!i.evaluation?.overallScore;
             return (
               <div key={i.id} className="card p-4 hover:border-gray-700 transition-all">
                 <div className="flex items-start justify-between flex-wrap gap-3">

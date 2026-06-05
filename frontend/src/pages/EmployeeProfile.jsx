@@ -192,7 +192,7 @@ export default function EmployeeProfile() {
         setTasks(empTasks);
 
         const allMeetings = await asyncGet(KEYS.MEETINGS) || [];
-        const empMeetings = allMeetings.filter(m => m.participantIds.includes(id));
+        const empMeetings = allMeetings.filter(m => m.participantIds.includes(id) && m.type !== 'interview');
         setMeetings(empMeetings);
 
         const allProjects = await fetchProjects();

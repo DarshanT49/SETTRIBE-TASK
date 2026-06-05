@@ -41,7 +41,7 @@ export default function Dashboard() {
     const taskResponses = await Promise.all(tasksRaw.map(t => fetchTaskAssignees(t.id).catch(() => [])));
     const tasks = tasksRaw.map((t, i) => ({ ...t, assigneeIds: taskResponses[i].map(a => a.userId) }));
 
-    const meetings = await asyncGet(KEYS.MEETINGS) || [];
+    const meetings = (await asyncGet(KEYS.MEETINGS) || []).filter(m => m.type !== 'interview');
     const interviews = await asyncGet(KEYS.INTERVIEWS) || [];
     let requests = [];
     try {

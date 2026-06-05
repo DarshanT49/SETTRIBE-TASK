@@ -24,6 +24,10 @@ public class SelfTask {
     private String date;
     @Column(columnDefinition = "TEXT")
     private String time;
+    @Column(columnDefinition = "TEXT")
+    private String startTime;
+    @Column(columnDefinition = "TEXT")
+    private String endTime;
     private Boolean reminder;
     @Column(columnDefinition = "TEXT")
     private String reminderOffset;
@@ -48,6 +52,10 @@ public class SelfTask {
     public void setDate(String date) { this.date = date; }
     public String getTime() { return time; }
     public void setTime(String time) { this.time = time; }
+    public String getStartTime() { return startTime; }
+    public void setStartTime(String startTime) { this.startTime = startTime; }
+    public String getEndTime() { return endTime; }
+    public void setEndTime(String endTime) { this.endTime = endTime; }
     public Boolean getReminder() { return reminder; }
     public void setReminder(Boolean reminder) { this.reminder = reminder; }
     public String getReminderOffset() { return reminderOffset; }

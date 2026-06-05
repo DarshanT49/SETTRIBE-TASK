@@ -9,7 +9,6 @@ import com.settribe.dto.EvaluationDTO;
 
 @RestController
 @RequestMapping("/api/evaluations")
-
 public class EvaluationController {
 
     @Autowired
@@ -20,6 +19,7 @@ public class EvaluationController {
         return service.findAll();
     }
 
+    /** GET /api/evaluations/{id} — fetch by the evaluation's own primary-key id */
     @GetMapping("/{id}")
     public ResponseEntity<EvaluationDTO> getById(@PathVariable String id) {
         return service.findById(id)
@@ -27,6 +27,19 @@ public class EvaluationController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * GET /api/evaluations/interview/{interviewId}
+     * Fetch the evaluation that belongs to a specific interview.
+     * This is what InterviewDetail uses to load evaluation data.
+     */
+    @GetMapping("/interview/{interviewId}")
+    public ResponseEntity<EvaluationDTO> getByInterviewId(@PathVariable String interviewId) {
+        return service.findByInterviewId(interviewId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /** POST /api/evaluations — create a new evaluation (id is auto-generated if missing) */
     @PostMapping
     public EvaluationDTO create(@RequestBody EvaluationDTO entity) {
         return service.save(entity);

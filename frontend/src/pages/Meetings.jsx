@@ -35,7 +35,8 @@ export default function Meetings() {
   useEffect(() => {
     const load = async () => {
       await new Promise(r => setTimeout(r, 200));
-      setMeetings(await asyncGet(KEYS.MEETINGS) || []);
+      const rawMeetings = await asyncGet(KEYS.MEETINGS) || [];
+      setMeetings(rawMeetings.filter(m => m.type !== 'interview'));
       setUsers(await asyncGet(KEYS.USERS) || []);
       setRsvps(await asyncGet(KEYS.MEETING_RSVPS) || []);
       setLoading(false);
@@ -113,7 +114,7 @@ export default function Meetings() {
         </div>
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="input-field w-36">
           <option value="">All Types</option>
-          {['standup', 'project', 'hr', 'interview', 'general'].map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
+          {['standup', 'project', 'hr', 'general'].map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
         </select>
         <div className="flex border border-gray-700 rounded-lg overflow-hidden">
           <button onClick={() => setViewMode('list')} className={`p-2 ${viewMode === 'list' ? 'bg-gray-700 text-gray-100' : 'text-gray-500 hover:text-gray-300'}`}><List size={16} /></button>

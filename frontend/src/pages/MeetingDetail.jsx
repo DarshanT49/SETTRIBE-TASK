@@ -36,7 +36,7 @@ export default function MeetingDetail() {
     try {
       const meetings = await asyncGet(KEYS.MEETINGS) || [];
       const m = meetings.find(m => m.id === id);
-      if (!m) { navigate('/meetings'); return; }
+      if (!m || m.type === 'interview') { navigate('/meetings'); return; }
 
       setMeeting(m);
       setUsers(await asyncGet(KEYS.USERS) || []);
@@ -149,6 +149,22 @@ export default function MeetingDetail() {
     if (!rescheduleForm.date || !rescheduleForm.time || !rescheduleForm.duration) {
       toast.error('Please fill all fields');
       return;
+    }
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (rescheduleForm.date < todayStr) {
+      toast.error('Date cannot be in the past');
+      return;
+    }
+    if (rescheduleForm.date === todayStr) {
+      const now = new Date();
+      const currentHour = String(now.getHours()).padStart(2, '0');
+      const currentMinute = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${currentHour}:${currentMinute}`;
+      if (rescheduleForm.time < currentTimeStr) {
+        toast.error('Time cannot be in the past');
+        return;
+      }
     }
     const updatedMeeting = { ...meeting, date: rescheduleForm.date, time: rescheduleForm.time, duration: rescheduleForm.duration };
     await apiPut(KEYS.MEETINGS, id, updatedMeeting);
@@ -613,8 +629,23 @@ export default function MeetingDetail() {
       <Modal isOpen={showRescheduleModal} title="Reschedule Meeting" onClose={() => setShowRescheduleModal(false)} size="sm">
         <div className="p-5 space-y-4">
           <div className="space-y-4">
-            <Input label="New Date *" type="date" value={rescheduleForm.date} onChange={e => setRescheduleForm({ ...rescheduleForm, date: e.target.value })} />
-            <Input label="New Time *" type="time" value={rescheduleForm.time} onChange={e => setRescheduleForm({ ...rescheduleForm, time: e.target.value })} />
+            <Input 
+              label="New Date *" 
+              type="date" 
+              value={rescheduleForm.date} 
+              min={new Date().toISOString().split('T')[0]}
+              onChange={e => setRescheduleForm({ ...rescheduleForm, date: e.target.value })} 
+            />
+            <Input 
+              label="New Time *" 
+              type="time" 
+              value={rescheduleForm.time} 
+              min={rescheduleForm.date === new Date().toISOString().split('T')[0] ? (() => {
+                const now = new Date();
+                return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+              })() : undefined}
+              onChange={e => setRescheduleForm({ ...rescheduleForm, time: e.target.value })} 
+            />
             <Select label="New Duration" value={rescheduleForm.duration} onChange={e => setRescheduleForm({ ...rescheduleForm, duration: e.target.value })}>
               <option value="15">15 minutes</option>
               <option value="30">30 minutes</option>
