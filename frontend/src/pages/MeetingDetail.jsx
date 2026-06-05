@@ -452,10 +452,17 @@ export default function MeetingDetail() {
                       let leaveTime = null;
 
                       if (log) {
-                        status = log.status || 'present';
                         durationMinutes = log.durationMinutes || 0;
                         joinTime = log.joinTime;
                         leaveTime = log.leaveTime;
+                        
+                        if (log.status === 'absent') {
+                          status = 'absent';
+                        } else if (durationMinutes < 1) {
+                          status = 'absent';
+                        } else {
+                          status = 'present';
+                        }
                       }
 
                       const percent = Math.min(100, Math.round((durationMinutes / scheduledMinutes) * 100));
@@ -464,14 +471,13 @@ export default function MeetingDetail() {
                     });
 
                     const presentCount = roster.filter(r => r.status === 'present').length;
-                    const partialCount = roster.filter(r => r.status === 'partial').length;
                     const absentCount = roster.filter(r => r.status === 'absent').length;
-                    const rate = roster.length > 0 ? Math.round(((presentCount + partialCount) / roster.length) * 100) : 0;
+                    const rate = roster.length > 0 ? Math.round((presentCount / roster.length) * 100) : 0;
 
                     return (
                       <div className="space-y-6">
                         {/* Summary Cards */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl text-center">
                             <p className="text-xs text-gray-500 mb-1">Present</p>
                             <p className="text-2xl font-semibold text-emerald-400">{presentCount}</p>
@@ -479,10 +485,6 @@ export default function MeetingDetail() {
                           <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl text-center">
                             <p className="text-xs text-gray-500 mb-1">Absent</p>
                             <p className="text-2xl font-semibold text-red-400">{absentCount}</p>
-                          </div>
-                          <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl text-center">
-                            <p className="text-xs text-gray-500 mb-1">Partial</p>
-                            <p className="text-2xl font-semibold text-yellow-400">{partialCount}</p>
                           </div>
                           <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl text-center">
                             <p className="text-xs text-gray-500 mb-1">Attendance Rate</p>
@@ -499,8 +501,7 @@ export default function MeetingDetail() {
                                 <div>
                                   <span className="text-sm font-medium text-gray-200 block">{r.user?.name || 'Unknown'}</span>
                                   <span className={`text-xs font-semibold capitalize
-                                    ${r.status === 'present' ? 'text-emerald-400' :
-                                      r.status === 'partial' ? 'text-yellow-400' : 'text-red-400'}`}>
+                                    ${r.status === 'present' ? 'text-emerald-400' : 'text-red-400'}`}>
                                     {r.status}
                                   </span>
                                 </div>

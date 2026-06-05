@@ -91,6 +91,7 @@ export default function MeetingRoom() {
 
     const checkWaitingRoomStatus = async (m) => {
       if (cancelled) return;
+      if (hasRequestedTokenRef.current) return;
 
       const isHost = String(m.hostId) === String(currentUser.id);
       const isAdmin = currentUser.role === 'admin';
@@ -315,7 +316,7 @@ export default function MeetingRoom() {
           const mentions = toArray(msg.mentions);
           const wasMentioned = mentions.some(id => String(id) === String(currentUser.id));
           if (wasMentioned) {
-            const sender = users.find(user => user.id === senderId);
+            const sender = users.find(user => String(user.id) === String(senderId));
             shouldPlayMentionSound = true;
             nextMentionNotifications.push({
               id: msg.id || `${msg.timestamp}-${senderId}`,
@@ -617,7 +618,7 @@ export default function MeetingRoom() {
   const minutesLateNow = (new Date() - meetingTimeNow) / 60000;
 
   let requiresApproval = false;
-  if (!isAdminNow && !isHostNow) {
+  if (!isAdminNow && !isHostNow && !hasRequestedTokenRef.current) {
     if (['employee', 'hr', 'manager'].includes(currentUser.role)) {
       requiresApproval = minutesLateNow > 5;
     } else if (currentUser.role === 'intern') {
@@ -938,14 +939,14 @@ export default function MeetingRoom() {
                   />
                 ) : (
                   chatLogs.map(msg => {
-                    const sender = users.find(user => user.id === (msg.userId || msg.senderId));
-                    const mine = (msg.userId || msg.senderId) === currentUser.id;
+                    const sender = users.find(user => String(user.id) === String(msg.userId || msg.senderId));
+                    const mine = String(msg.userId || msg.senderId) === String(currentUser.id);
                     const mentionedMe = !mine && toArray(msg.mentions).includes(currentUser.id);
                     return (
                       <div key={msg.id || msg.timestamp} className={`flex gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
                         <Avatar name={sender?.name || 'User'} size="xs" />
                         <div className={`max-w-[80%] ${mine ? 'items-end' : ''} flex flex-col`}>
-                          <p className="mb-0.5 text-xs text-gray-500">{sender?.name?.split(' ')[0] || 'User'}</p>
+                          <p className="mb-0.5 text-xs text-gray-500">{sender?.name || 'User'}</p>
                           <div className={`rounded-lg border px-3 py-2 text-sm ${mine
                             ? 'border-primary-600 bg-primary-700 text-white'
                             : mentionedMe
