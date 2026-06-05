@@ -51,6 +51,27 @@ export default function NewProject() {
 
   const handleSubmit = async () => {
     if (!form.title || !form.startDate || !form.endDate) { toast.error('Title, start date and end date are required'); return; }
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (form.startDate < todayStr) { toast.error('Start date cannot be in the past'); return; }
+    if (form.endDate < todayStr) { toast.error('End date cannot be in the past'); return; }
+    if (form.startDate > form.endDate) { toast.error('End date must be on or after start date'); return; }
+    if (form.deadline && form.deadline < form.startDate) { toast.error('Deadline cannot be before start date'); return; }
+
+    for (let i = 0; i < milestones.length; i++) {
+      const ms = milestones[i];
+      if (ms.title && ms.targetDate) {
+        if (ms.targetDate < form.startDate) {
+          toast.error(`Milestone "${ms.title}" target date cannot be before project start date`);
+          return;
+        }
+        if (ms.targetDate > form.endDate) {
+          toast.error(`Milestone "${ms.title}" target date cannot be after project end date`);
+          return;
+        }
+      }
+    }
+
     setLoading(true);
     await new Promise(r => setTimeout(r, 300));
 
@@ -149,9 +170,27 @@ export default function NewProject() {
             <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
               {STATUSES.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
             </Select>
-            <Input label="Start Date *" type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
-            <Input label="End Date *" type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
-            <Input label="Hard Deadline" type="date" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} />
+            <Input 
+              label="Start Date *" 
+              type="date" 
+              value={form.startDate} 
+              min={new Date().toISOString().split('T')[0]}
+              onChange={e => setForm({ ...form, startDate: e.target.value })} 
+            />
+            <Input 
+              label="End Date *" 
+              type="date" 
+              value={form.endDate} 
+              min={form.startDate || new Date().toISOString().split('T')[0]}
+              onChange={e => setForm({ ...form, endDate: e.target.value })} 
+            />
+            <Input 
+              label="Hard Deadline" 
+              type="date" 
+              value={form.deadline} 
+              min={form.startDate || new Date().toISOString().split('T')[0]}
+              onChange={e => setForm({ ...form, deadline: e.target.value })} 
+            />
             <Input label="Git Repo Link" type="url" placeholder="https://github.com/..." value={form.gitRepo} onChange={e => setForm({ ...form, gitRepo: e.target.value })} />
           </div>
           <TagInput label="Technology Stack" tags={form.technologies} onChange={techs => setForm({ ...form, technologies: techs })} placeholder="Add technology..." />
@@ -200,7 +239,13 @@ export default function NewProject() {
                 <div className="md:col-span-2">
                   <Input label="Title *" value={ms.title} onChange={e => updateMilestone(idx, 'title', e.target.value)} />
                 </div>
-                <Input label="Target Date" type="date" value={ms.targetDate} onChange={e => updateMilestone(idx, 'targetDate', e.target.value)} />
+                <Input 
+                  label="Target Date" 
+                  type="date" 
+                  value={ms.targetDate} 
+                  min={form.startDate || new Date().toISOString().split('T')[0]}
+                  onChange={e => updateMilestone(idx, 'targetDate', e.target.value)} 
+                />
                 <div className="md:col-span-3">
                   <Textarea label="Description" value={ms.description} onChange={e => updateMilestone(idx, 'description', e.target.value)} />
                 </div>

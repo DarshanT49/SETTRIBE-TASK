@@ -33,7 +33,7 @@ export default function NewMeeting() {
     (async () => {
       setUsers(await asyncGet(KEYS.USERS) || []);
       setProjects(await asyncGet(KEYS.PROJECTS) || []);
-      
+
       try {
         const fetchedGroups = await getGroups(currentUser.id);
         setMyGroups(fetchedGroups || []);
@@ -51,7 +51,7 @@ export default function NewMeeting() {
           const localDay = String(onlineDate.getDate()).padStart(2, '0');
           const localHours = String(onlineDate.getHours()).padStart(2, '0');
           const localMinutes = String(onlineDate.getMinutes()).padStart(2, '0');
-          
+
           setMinDate(`${localYear}-${localMonth}-${localDay}`);
           setCurrentOnlineTime(`${localHours}:${localMinutes}`);
         } else {
@@ -65,16 +65,16 @@ export default function NewMeeting() {
         const localDay = String(now.getDate()).padStart(2, '0');
         const localHours = String(now.getHours()).padStart(2, '0');
         const localMinutes = String(now.getMinutes()).padStart(2, '0');
-        
+
         setMinDate(`${localYear}-${localMonth}-${localDay}`);
         setCurrentOnlineTime(`${localHours}:${localMinutes}`);
       }
 
       // Auto-include current user
       setForm(f => ({ ...f, participantIds: [currentUser.id] }));
-      
+
       if (initialProjectId) {
-         await fetchAndAddProjectMembers(initialProjectId);
+        await fetchAndAddProjectMembers(initialProjectId);
       }
     })();
   }, [currentUser.id]);
@@ -141,18 +141,18 @@ export default function NewMeeting() {
     const stringUid = String(uid);
     setForm(f => {
       const isSelected = f.participantIds.some(id => String(id) === stringUid);
-      return { 
-        ...f, 
-        participantIds: isSelected 
-          ? f.participantIds.filter(id => String(id) !== stringUid) 
-          : [...f.participantIds, stringUid] 
+      return {
+        ...f,
+        participantIds: isSelected
+          ? f.participantIds.filter(id => String(id) !== stringUid)
+          : [...f.participantIds, stringUid]
       };
     });
   };
 
   const handleSubmit = async () => {
     if (!form.title || !form.agenda || !form.date || !form.time) { toast.error('Please fill in all required fields'); return; }
-    
+
     if (form.date === minDate && form.time < currentOnlineTime) {
       toast.error('Cannot schedule a meeting in the past');
       return;
@@ -179,7 +179,8 @@ export default function NewMeeting() {
       title: 'Meeting Invitation',
       message: `You've been invited to "${form.title}" on ${form.date} at ${form.time}`,
       relatedId: meetingId,
-      relatedType: 'meeting' });
+      relatedType: 'meeting'
+    });
 
     toast.success('Meeting scheduled!');
     navigate(`/meetings/${meetingId}`);
@@ -187,8 +188,8 @@ export default function NewMeeting() {
   };
 
   const activeUsers = users.filter(u => u.isActive && u.isApproved);
-  const filteredUsers = activeUsers.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredUsers = activeUsers.filter(u =>
+    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (u.role && u.role.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -206,11 +207,11 @@ export default function NewMeeting() {
         <Textarea label="Agenda *" value={form.agenda} onChange={e => setForm({ ...form, agenda: e.target.value })} />
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <Input 
-            label="Date *" 
-            type="date" 
-            min={minDate} 
-            value={form.date} 
+          <Input
+            label="Date *"
+            type="date"
+            min={minDate}
+            value={form.date}
             onChange={e => {
               const newDate = e.target.value;
               let newTime = form.time;
@@ -219,13 +220,13 @@ export default function NewMeeting() {
                 toast.error("Time adjusted to minimum valid time for today.");
               }
               setForm({ ...form, date: newDate, time: newTime });
-            }} 
+            }}
           />
-          <Input 
-            label="Time *" 
-            type="time" 
-            min={form.date === minDate ? currentOnlineTime : undefined} 
-            value={form.time} 
+          <Input
+            label="Time *"
+            type="time"
+            min={form.date === minDate ? currentOnlineTime : undefined}
+            value={form.time}
             onChange={e => {
               let newTime = e.target.value;
               if (form.date === minDate && newTime < currentOnlineTime) {
@@ -233,7 +234,7 @@ export default function NewMeeting() {
                 newTime = currentOnlineTime;
               }
               setForm({ ...form, time: newTime });
-            }} 
+            }}
           />
           <Select label="Duration" value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })}>
             <option value="15">15 minutes</option>
@@ -280,17 +281,17 @@ export default function NewMeeting() {
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search participants..." 
+                <input
+                  type="text"
+                  placeholder="Search participants..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   className="input-field text-sm pl-9 w-full sm:w-64"
                 />
               </div>
               {myGroups.length > 0 && (
-                <select 
-                  className="input-field text-sm w-full sm:w-64" 
+                <select
+                  className="input-field text-sm w-full sm:w-64"
                   onChange={(e) => applyGroup(e.target.value)}
                   defaultValue=""
                 >
@@ -315,10 +316,10 @@ export default function NewMeeting() {
                     <input type="checkbox" checked={isSelected} onChange={() => toggleParticipant(u.id)} className="rounded border-gray-600 bg-gray-700 text-primary-600" disabled={u.id === currentUser.id} />
                     <Avatar name={u.name} size="xs" />
                     <div>
-                  <p className="text-xs font-medium text-gray-200">{u.name}</p>
-                  <p className="text-xs text-gray-500 capitalize">{u.role}</p>
-                </div>
-              </label>
+                      <p className="text-xs font-medium text-gray-200">{u.name}</p>
+                      <p className="text-xs text-gray-500 capitalize">{u.role}</p>
+                    </div>
+                  </label>
                 );
               })
             )}

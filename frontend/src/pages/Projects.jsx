@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Search, Filter, Grid, List, FolderOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
-import { fetchProjects, fetchProjectMembers } from '../services/projectApi';
+import { fetchProjects } from '../services/projectApi';
 
 import { Avatar, Button, Badge, StatusBadge, PriorityBadge, Skeleton, EmptyState } from '../components/ui';
 import { formatDate } from '../utils/dates';
@@ -24,28 +24,20 @@ export default function Projects() {
 
   useEffect(() => {
     const load = async () => {
-      await new Promise(r => setTimeout(r, 200));
       let projs = await fetchProjects();
       const us = await asyncGet(KEYS.USERS) || [];
 
-      try {
-        const memberResponses = await Promise.all(
-          projs.map(p => fetchProjectMembers(p.id).catch(() => []))
-        );
-        projs = projs.map((p, idx) => ({
-          ...p,
-          id: String(p.id),
-          ownerId: String(p.ownerId),
-          managerId: p.managerId ? String(p.managerId) : null,
-          teamIds: memberResponses[idx].map(m => String(m.userId))
-        }));
-      } catch (e) {
-        console.error("Failed to fetch project members", e);
-      }
+      projs = projs.map(p => ({
+        ...p,
+        id: String(p.id),
+        ownerId: String(p.ownerId),
+        managerId: p.managerId ? String(p.managerId) : null,
+        teamIds: p.teamIds || []
+      }));
 
       // Non-admin users only see their projects
       if (!['admin', 'hr'].includes(currentUser.role)) {
-        projs = projs.filter(p => (p.teamIds || []).includes(String(currentUser.id)) || p.ownerId === String(currentUser.id) || p.managerId === String(currentUser.id));
+        projs = projs.filter(p => p.teamIds.includes(String(currentUser.id)) || p.ownerId === String(currentUser.id) || p.managerId === String(currentUser.id));
       }
       setProjects(projs);
       setUsers(us);

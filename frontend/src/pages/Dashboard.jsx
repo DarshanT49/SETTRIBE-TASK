@@ -32,16 +32,10 @@ export default function Dashboard() {
     } catch (e) {
       console.warn('Could not fetch users', e);
     }
-    const projectsRaw = await fetchProjects();
-    const tasksRaw = await fetchTasks();
+    const projects = await fetchProjects();
+    const tasks = await fetchTasks();
 
-    const projResponses = await Promise.all(projectsRaw.map(p => fetchProjectMembers(p.id).catch(() => [])));
-    const projects = projectsRaw.map((p, i) => ({ ...p, teamIds: projResponses[i].map(m => m.userId) }));
-
-    const taskResponses = await Promise.all(tasksRaw.map(t => fetchTaskAssignees(t.id).catch(() => [])));
-    const tasks = tasksRaw.map((t, i) => ({ ...t, assigneeIds: taskResponses[i].map(a => a.userId) }));
-
-    const meetings = await asyncGet(KEYS.MEETINGS) || [];
+    const meetings = (await asyncGet(KEYS.MEETINGS) || []).filter(m => m.type !== 'interview');
     const interviews = await asyncGet(KEYS.INTERVIEWS) || [];
     let requests = [];
     try {

@@ -2,13 +2,14 @@ package com.settribe.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "interviews")
+@Table(name = "interviews", indexes = {
+        @jakarta.persistence.Index(name = "idx_interviews_interviewer_id", columnList = "interviewerId"),
+        @jakarta.persistence.Index(name = "idx_interviews_status", columnList = "status")
+})
 public class Interview {
     @Id
     private String id;
@@ -48,7 +49,7 @@ public class Interview {
     private String expiryTimestamp;
     @Column(columnDefinition = "TEXT")
     private String joinStatus;
-    
+
     // New fields added to match frontend
     @Column(columnDefinition = "TEXT")
     private String mode;
@@ -66,7 +67,9 @@ public class Interview {
     public Interview() {
     }
 
-    public Interview(String id, String candidateName, String mobile, String email, String referredBy, String position, String interviewType, String date, String time, String link, String interviewerId, String status, String token, String notes, String resumeFileName, String candidatePortalStatus, String createdAt) {
+    public Interview(String id, String candidateName, String mobile, String email, String referredBy, String position,
+            String interviewType, String date, String time, String link, String interviewerId, String status,
+            String token, String notes, String resumeFileName, String candidatePortalStatus, String createdAt) {
         this.id = id;
         this.candidateName = candidateName;
         this.mobile = mobile;
@@ -86,7 +89,10 @@ public class Interview {
         this.createdAt = createdAt;
     }
 
-    public Interview(String id, String candidateName, String mobile, String email, String referredBy, String position, String interviewType, String date, String time, String link, String interviewerId, String status, String token, String notes, String resumeFileName, String candidatePortalStatus, String createdAt, String expiryTimestamp, String joinStatus) {
+    public Interview(String id, String candidateName, String mobile, String email, String referredBy, String position,
+            String interviewType, String date, String time, String link, String interviewerId, String status,
+            String token, String notes, String resumeFileName, String candidatePortalStatus, String createdAt,
+            String expiryTimestamp, String joinStatus) {
         this.id = id;
         this.candidateName = candidateName;
         this.mobile = mobile;
@@ -259,7 +265,7 @@ public class Interview {
     public void setJoinStatus(String joinStatus) {
         this.joinStatus = joinStatus;
     }
-    
+
     public String getMode() {
         return mode;
     }
@@ -308,6 +314,3 @@ public class Interview {
         this.meetingId = meetingId;
     }
 }
-
-
-
