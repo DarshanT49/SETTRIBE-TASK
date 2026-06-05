@@ -226,7 +226,7 @@ export default function SelfTasks() {
                   
                   <div className="flex-1 overflow-y-auto space-y-2 mb-3 min-h-[150px] max-h-[400px]">
                     {dayTasks.length === 0 ? (
-                      <p className="text-xs text-gray-500 text-center italic py-2">No tasks</p>
+                      <p className="text-xs text-gray-500 text-center italic py-2">No To-Dos</p>
                     ) : (
                       dayTasks.map(task => (
                         <div key={task.id} className={`p-2 rounded bg-gray-900/50 border border-gray-700/50 text-sm transition-opacity hover:border-gray-600 ${task.status === 'done' ? 'opacity-60' : ''}`}>
