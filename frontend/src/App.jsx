@@ -43,7 +43,7 @@ import GroupDetail from './pages/GroupDetail';
 
 // Simple pending / denied pages
 function PendingApprovalPage() {
-   
+
   const { logout } = useAuth();
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
@@ -149,7 +149,7 @@ export default function App() {
                       <Route path="/interviews/new" element={<RoleGuard allowedRoles={['admin', 'hr']}><NewInterview /></RoleGuard>} />
                       <Route path="/interviews/:id" element={<InterviewDetail />} />
                       {/* Standup Data */}
-                      <Route path="/standup-data" element={<RoleGuard allowedRoles={['admin', 'hr', 'manager', 'employee', 'panel', 'intern']}><StandupData /></RoleGuard>} />
+                      <Route path="/standup-data" element={<RoleGuard allowedRoles={['admin', 'hr', 'employee', 'panel', 'intern']}><StandupData /></RoleGuard>} />
                       <Route path="/email-templates" element={<RoleGuard allowedRoles={['admin', 'hr']}><EmailTemplates /></RoleGuard>} />
 
                       {/* User */}

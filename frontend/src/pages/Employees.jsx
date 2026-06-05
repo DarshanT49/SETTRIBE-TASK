@@ -11,12 +11,11 @@ import { v4 as uuidv4 } from 'uuid';
 import api from '../services/api';
 
 const DEPARTMENTS = ['Engineering', 'Design', 'QA', 'HR', 'Management'];
-const ALL_ROLES = ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'];
+const ALL_ROLES = ['admin', 'hr', 'employee', 'intern', 'panel'];
 
 const roleColors = {
   admin: 'bg-red-900/40 text-red-400 border border-red-800/50',
   hr: 'bg-orange-900/40 text-orange-400 border border-orange-800/50',
-  manager: 'bg-yellow-900/40 text-yellow-400 border border-yellow-800/50',
   employee: 'bg-emerald-900/40 text-emerald-400 border border-emerald-800/50',
   intern: 'bg-blue-900/40 text-blue-400 border border-blue-800/50',
   panel: 'bg-purple-900/40 text-purple-400 border border-purple-800/50' };
@@ -27,6 +26,7 @@ export default function Employees() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('employee'); // 'employee' | 'intern'
   const [roleFilter, setRoleFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
   const [viewMode, setViewMode] = useState('grid');
@@ -55,9 +55,9 @@ export default function Employees() {
       u.email.toLowerCase().includes(search.toLowerCase()) || u.employeeId.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || (statusFilter === 'active' && u.isActive && u.isApproved) ||
       (statusFilter === 'inactive' && !u.isActive) || (statusFilter === 'pending' && !u.isApproved);
-    const matchRole = !roleFilter || u.role === roleFilter;
+    const matchType = u.role === typeFilter;
     const matchDept = !deptFilter || u.department === deptFilter;
-    return matchSearch && matchStatus && matchRole && matchDept;
+    return matchSearch && matchStatus && matchType && matchDept;
   });
 
   const handleToggleStatus = async (userId) => {
@@ -77,11 +77,29 @@ export default function Employees() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-100">Employee Directory</h1>
-          <p className="text-sm text-gray-500 mt-1">{filtered.length} employees found</p>
+          <p className="text-sm text-gray-500 mt-1">{filtered.length} {typeFilter === 'intern' ? 'interns' : 'employees'} found</p>
         </div>
         {currentUser.role === 'admin' && (
           <Button onClick={() => setShowAddModal(true)}><Plus size={16} /> Add Employee</Button>
         )}
+      </div>
+
+      {/* Employee / Intern Toggle */}
+      <div className="flex gap-1 p-1 bg-gray-800/60 rounded-xl border border-gray-700/50 w-fit">
+        {[{ key: 'employee', label: '👔 Employees' }, { key: 'intern', label: '🎓 Interns' }].map(({ key, label }) => (
+          <button
+            key={key}
+            id={`type-filter-${key}`}
+            onClick={() => setTypeFilter(key)}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              typeFilter === key
+                ? 'bg-primary-600 text-white shadow-lg shadow-primary-900/40'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Filters */}
@@ -98,10 +116,6 @@ export default function Employees() {
             </button>
           ))}
         </div>
-        <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="input-field w-32">
-          <option value="">All Roles</option>
-          {ALL_ROLES.map(r => <option key={r} value={r} className="capitalize">{r}</option>)}
-        </select>
         <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)} className="input-field w-36">
           <option value="">All Depts</option>
           {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}

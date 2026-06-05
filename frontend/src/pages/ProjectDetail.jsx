@@ -8,7 +8,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS,  asyncGet, asyncSet } from '../services/storage';
 import { createBulkNotifications, createNotification } from '../services/notifications';
-import { fetchProjectById, fetchProjectMembers, addProjectMember, removeProjectMember } from '../services/projectApi';
+import { fetchProjectById, fetchProjectMembers, addProjectMember, removeProjectMember, updateProject } from '../services/projectApi';
 import { fetchTasks } from '../services/taskApi';
 import { Avatar, Button, Badge, Modal, Input, Select, Textarea, StatusBadge, PriorityBadge, Skeleton, EmptyState, Toggle } from '../components/ui';
 import { formatDate, formatRelativeTime, formatDateTime, rescheduleMilestones, isOverdue } from '../utils/dates';
@@ -46,6 +46,7 @@ export default function ProjectDetail() {
   const [showMilestoneModal, setShowMilestoneModal] = useState(false);
   const [showChangeReqModal, setShowChangeReqModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -126,6 +127,25 @@ export default function ProjectDetail() {
     load();
   };
 
+  const handleMarkProjectComplete = async () => {
+    try {
+      await updateProject(project.id, { ...project, status: 'completed' });
+      toast.success('Project marked as completed!');
+      
+      // Update history
+      const h = await asyncGet(KEYS.PROJECT_HISTORY) || [];
+      h.push({ id: uuidv4(), projectId: id, action: 'project_completed', performedBy: currentUser.id, targetId: id, targetType: 'project', details: `Project marked as completed`, timestamp: new Date().toISOString() });
+      await asyncSet(KEYS.PROJECT_HISTORY, h);
+
+      createBulkNotifications(project.teamIds, { type: 'project_completed', title: 'Project Completed', message: `The project "${project.title}" has been successfully completed!`, relatedId: id, relatedType: 'project' });
+      
+      setShowCompleteModal(false);
+      load();
+    } catch (e) {
+      toast.error('Failed to complete project');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -164,10 +184,17 @@ export default function ProjectDetail() {
                 <p className="text-2xl font-bold text-gray-100">{project.progress}%</p>
                 <p className="text-xs text-gray-500">Complete</p>
               </div>
-              <div className="w-32 h-2 bg-gray-800 rounded-full">
+              <div className="w-32 h-2 bg-gray-800 rounded-full mb-1">
                 <div className="h-full bg-primary-600 rounded-full" style={{ width: `${project.progress}%` }} />
               </div>
-              {canManage && <Link to={`/projects/${id}/edit`}><Button variant="secondary" size="sm"><Edit size={12} /> Edit</Button></Link>}
+              <div className="flex gap-2">
+                {isOwner && project.status !== 'completed' && project.status !== 'done' && (
+                  <Button variant="secondary" size="sm" onClick={() => setShowCompleteModal(true)} className="border-emerald-600/30 hover:bg-emerald-900/20 text-emerald-400">
+                    <CheckCircle size={12} /> Mark Complete
+                  </Button>
+                )}
+                {canManage && <Link to={`/projects/${id}/edit`}><Button variant="secondary" size="sm"><Edit size={12} /> Edit</Button></Link>}
+              </div>
             </div>
           </div>
         </div>
@@ -220,6 +247,15 @@ export default function ProjectDetail() {
           onClose={() => setShowAddMemberModal(false)}
           onSave={() => { setShowAddMemberModal(false); load(); }}
           currentUserId={currentUser.id}
+        />
+      )}
+
+      {/* Complete Project Modal */}
+      {showCompleteModal && (
+        <CompleteProjectModal
+          project={project}
+          onClose={() => setShowCompleteModal(false)}
+          onSave={handleMarkProjectComplete}
         />
       )}
     </div>
@@ -671,6 +707,20 @@ function AddMemberModal({ project, allUsers, onClose, onSave, currentUserId }) {
         <div className="flex justify-end gap-3 pt-2 border-t border-gray-800">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSave}><Plus size={14} />Add {selected.length > 0 ? `(${selected.length})` : ''}</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function CompleteProjectModal({ project, onClose, onSave }) {
+  return (
+    <Modal isOpen title="Complete Project" onClose={onClose} size="sm">
+      <div className="p-5 space-y-4">
+        <p className="text-sm text-gray-400">Are you sure you want to mark the project <span className="font-medium text-gray-200">"{project.title}"</span> as complete?</p>
+        <div className="flex justify-end gap-3 pt-2 border-t border-gray-800">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={onSave} className="bg-emerald-600 hover:bg-emerald-500 text-white border-0"><CheckCircle size={14} /> Yes, Mark Complete</Button>
         </div>
       </div>
     </Modal>

@@ -31,9 +31,7 @@ public class Interview {
     private String time;
     @Column(columnDefinition = "TEXT")
     private String link;
-    @Column(columnDefinition = "TEXT")
     private String interviewerId;
-    @Column(columnDefinition = "TEXT")
     private String status;
     @Column(columnDefinition = "TEXT")
     private String token;

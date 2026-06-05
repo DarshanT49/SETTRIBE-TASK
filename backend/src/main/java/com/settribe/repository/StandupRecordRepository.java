@@ -8,4 +8,5 @@ import java.util.List;
 
 @Repository
 public interface StandupRecordRepository extends JpaRepository<StandupRecord, Long>, JpaSpecificationExecutor<StandupRecord> {
+    List<StandupRecord> findByUserIdOrderByMeetingDateDesc(String userId);
 }
