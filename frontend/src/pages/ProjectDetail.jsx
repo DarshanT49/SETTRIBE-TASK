@@ -69,7 +69,7 @@ export default function ProjectDetail() {
     const allTasks = await fetchTasks();
     setTasks(allTasks.filter(t => String(t.projectId) === String(id)));
     setRequirements((await asyncGet(KEYS.PROJECT_REQUIREMENTS) || []).filter(r => String(r.projectId) === String(id)));
-    setMeetings((await asyncGet(KEYS.MEETINGS) || []).filter(m => String(m.projectId) === String(id)));
+    setMeetings((await asyncGet(KEYS.MEETINGS) || []).filter(m => String(m.projectId) === String(id) && m.type !== 'interview'));
     setHistory((await asyncGet(KEYS.PROJECT_HISTORY) || []).filter(h => String(h.projectId) === String(id)).reverse());
     setLoading(false);
     } catch (e) {

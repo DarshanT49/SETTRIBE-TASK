@@ -35,6 +35,22 @@ export default function NewInterview() {
     if (!form.candidateName || !form.candidateEmail || !form.position || !form.date || !form.time || !form.interviewerId) {
       toast.error('Please fill in all required fields'); return;
     }
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (form.date < todayStr) {
+      toast.error('Date cannot be in the past');
+      return;
+    }
+    if (form.date === todayStr) {
+      const now = new Date();
+      const currentHour = String(now.getHours()).padStart(2, '0');
+      const currentMinute = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${currentHour}:${currentMinute}`;
+      if (form.time < currentTimeStr) {
+        toast.error('Time cannot be in the past');
+        return;
+      }
+    }
     setLoading(true);
     await new Promise(r => setTimeout(r, 300));
 
@@ -158,8 +174,23 @@ export default function NewInterview() {
             <Select label="Mode" value={form.mode} onChange={e => setForm({ ...form, mode: e.target.value })}>
               {MODES.map(m => <option key={m} value={m} className="capitalize">{m.replace('_', ' ')}</option>)}
             </Select>
-            <Input label="Date *" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-            <Input label="Time *" type="time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
+            <Input 
+              label="Date *" 
+              type="date" 
+              value={form.date} 
+              min={new Date().toISOString().split('T')[0]}
+              onChange={e => setForm({ ...form, date: e.target.value })} 
+            />
+            <Input 
+              label="Time *" 
+              type="time" 
+              value={form.time} 
+              min={form.date === new Date().toISOString().split('T')[0] ? (() => {
+                const now = new Date();
+                return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+              })() : undefined}
+              onChange={e => setForm({ ...form, time: e.target.value })} 
+            />
             <Select label="Duration" value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })}>
               {['30', '45', '60', '90', '120'].map(d => <option key={d} value={d}>{d} minutes</option>)}
             </Select>

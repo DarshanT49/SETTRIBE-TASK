@@ -117,8 +117,9 @@ async function checkSelfTaskReminders(userId) {
   const now = new Date();
 
   selfTasks.filter(t => t.userId === userId && t.reminder && t.status !== 'done').forEach(task => {
-    if (!task.date || !task.time) return;
-    const taskTime = new Date(`${task.date}T${task.time}`);
+    if (!task.date || (!task.startTime && !task.time)) return;
+    const timeToUse = task.startTime || task.time;
+    const taskTime = new Date(`${task.date}T${timeToUse}`);
     const offsetMs = getReminderOffsetMs(task.reminderOffset);
     const reminderTime = new Date(taskTime.getTime() - offsetMs);
     const key = `selftask-reminder-${task.id}`;

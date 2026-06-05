@@ -121,10 +121,9 @@ export default function EmployeeProfile() {
           emp = await fetchEmployeeById(id);
         }
 
-        if (!emp) {
-          if (isMounted) navigate('/employees');
-          return;
-        }
+        const allMeetings = await asyncGet(KEYS.MEETINGS) || [];
+        const empMeetings = allMeetings.filter(m => m.participantIds.includes(id) && m.type !== 'interview');
+        setMeetings(empMeetings);
 
         if (isMounted) {
           setEmployee(emp);

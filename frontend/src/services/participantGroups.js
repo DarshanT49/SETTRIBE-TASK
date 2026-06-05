@@ -7,6 +7,13 @@ export const getGroups = async (userId) => {
   return data;
 };
 
+export const getGroup = async (userId, id) => {
+  const { data } = await api.get(`/groups/${id}`, {
+    headers: { userId }
+  });
+  return data;
+};
+
 export const createGroup = async (userId, groupData) => {
   const { data } = await api.post('/groups', groupData, {
     headers: { userId }

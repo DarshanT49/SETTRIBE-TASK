@@ -15,6 +15,8 @@ public class SelfTaskMapper {
         d.setStatus(e.getStatus());
         d.setDate(e.getDate());
         d.setTime(e.getTime());
+        d.setStartTime(e.getStartTime());
+        d.setEndTime(e.getEndTime());
         d.setReminder(e.getReminder());
         d.setReminderOffset(e.getReminderOffset());
         d.setCreatedAt(e.getCreatedAt());
@@ -32,6 +34,8 @@ public class SelfTaskMapper {
         e.setStatus(d.getStatus());
         e.setDate(d.getDate());
         e.setTime(d.getTime());
+        e.setStartTime(d.getStartTime());
+        e.setEndTime(d.getEndTime());
         e.setReminder(d.getReminder());
         e.setReminderOffset(d.getReminderOffset());
         e.setCreatedAt(d.getCreatedAt());

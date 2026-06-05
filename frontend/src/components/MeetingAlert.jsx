@@ -95,7 +95,8 @@ export function MeetingAlert() {
       if (activeAlertRef.current) return;
 
       try {
-        const meetings = await asyncGet(KEYS.MEETINGS) || [];
+        const rawMeetings = await asyncGet(KEYS.MEETINGS) || [];
+        const meetings = rawMeetings.filter(m => m.type !== 'interview');
         const storageKey = `acknowledgedMeetingAlerts:${currentUser.id}`;
         const acknowledged = JSON.parse(localStorage.getItem(storageKey) || '[]');
         const now = Date.now();

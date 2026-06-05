@@ -18,10 +18,11 @@ public class ProjectDTO {
     private String repoLink;
     private Integer progress;
     private String createdAt;
+    private List<String> teamIds;
 
     public ProjectDTO() {}
 
-    public ProjectDTO(Long id, String title, String description, String clientName, String category, String priority, String status, Long ownerId, Long managerId, String startDate, String endDate, String deadline, String repoLink, Integer progress, String createdAt) {
+    public ProjectDTO(Long id, String title, String description, String clientName, String category, String priority, String status, Long ownerId, Long managerId, String startDate, String endDate, String deadline, String repoLink, Integer progress, String createdAt, List<String> teamIds) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -37,6 +38,7 @@ public class ProjectDTO {
         this.repoLink = repoLink;
         this.progress = progress;
         this.createdAt = createdAt;
+        this.teamIds = teamIds;
     }
 
     public Long getId() {
@@ -157,5 +159,13 @@ public class ProjectDTO {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public List<String> getTeamIds() {
+        return teamIds;
+    }
+
+    public void setTeamIds(List<String> teamIds) {
+        this.teamIds = teamIds;
     }
 }

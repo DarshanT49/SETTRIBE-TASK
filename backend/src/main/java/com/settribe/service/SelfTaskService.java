@@ -19,6 +19,10 @@ public class SelfTaskService {
         return repository.findAll().stream().map(SelfTaskMapper::toDTO).collect(Collectors.toList());
     }
 
+    public List<SelfTaskDTO> findByUserId(String userId) {
+        return repository.findByUserId(userId).stream().map(SelfTaskMapper::toDTO).collect(Collectors.toList());
+    }
+
     public Optional<SelfTaskDTO> findById(String id) {
         return repository.findById(id).map(SelfTaskMapper::toDTO);
     }

@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface SelfTaskRepository extends JpaRepository<SelfTask, String> {
+    java.util.List<SelfTask> findByUserId(String userId);
 }

@@ -20,6 +20,11 @@ public class SelfTaskController {
         return service.findAll();
     }
 
+    @GetMapping("/user/{userId}")
+    public List<SelfTaskDTO> getByUserId(@PathVariable String userId) {
+        return service.findByUserId(userId);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<SelfTaskDTO> getById(@PathVariable String id) {
         return service.findById(id)

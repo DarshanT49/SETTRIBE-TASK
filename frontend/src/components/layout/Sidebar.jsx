@@ -22,7 +22,7 @@ const allNavLinks = [
   { to: '/projects', icon: FolderKanban, label: 'Projects', roles: ['admin', 'employee', 'intern'] },
   { to: '/tasks', icon: CheckSquare, label: 'My Tasks', roles: ['employee', 'intern'] },
   { to: '/self-tasks', icon: ClipboardList, label: 'My To-Dos', roles: ['admin', 'hr', 'employee', 'intern', 'panel'] },
-  { to: '/groups', icon: Users, label: 'My Groups', roles: ['admin', 'hr'] },
+  { to: '/groups', icon: Users, label: 'My Groups', roles: ['employee', 'intern'] },
   { to: '/meetings', icon: Video, label: 'Meetings', roles: ['admin', 'hr', 'employee', 'intern', 'panel'] },
   { to: '/standup-data', icon: Database, label: 'Standup Data', roles: ['hr', 'employee'] },
   { to: '/interviews', icon: UserCheck, label: 'Interviews', roles: ['hr', 'employee', 'panel'] },

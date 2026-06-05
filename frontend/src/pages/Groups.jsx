@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getGroups, createGroup, updateGroup, deleteGroup, shareGroup } from '../services/participantGroups';
 import { KEYS, asyncGet } from '../services/storage';
 import { Button, Input, Modal, Avatar } from '../components/ui';
 import { Users, Edit2, Share2, Trash2, Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Swal from 'sweetalert2';
 
 export default function Groups() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [groups, setGroups] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,13 +50,13 @@ export default function Groups() {
 
   const openEditModal = (group) => {
     setEditingGroup(group);
-    setGroupForm({ name: group.name, participantIds: group.participantIds || [] });
+    setGroupForm({ name: group.name, participantIds: (group.participantIds || []).map(String) });
     setIsGroupModalOpen(true);
   };
 
   const openShareModal = (group) => {
     setSharingGroup(group);
-    setShareForm({ sharedWith: group.sharedWith || [] });
+    setShareForm({ sharedWith: (group.sharedWith || []).map(String) });
     setIsShareModalOpen(true);
   };
 
@@ -67,19 +70,35 @@ export default function Groups() {
       if (editingGroup) {
         await updateGroup(currentUser.id, editingGroup.id, groupForm);
         toast.success("Group updated");
+        setIsGroupModalOpen(false);
+        fetchData();
       } else {
-        await createGroup(currentUser.id, groupForm);
+        const newGroup = await createGroup(currentUser.id, groupForm);
         toast.success("Group created");
+        setIsGroupModalOpen(false);
+        fetchData();
+        
+        navigate(`/groups/${newGroup.id}`);
       }
-      setIsGroupModalOpen(false);
-      fetchData();
     } catch (err) {
       toast.error("Failed to save group");
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this group?")) return;
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#374151',
+      confirmButtonText: 'Yes, delete it!',
+      background: '#1f2937',
+      color: '#f3f4f6'
+    });
+    
+    if (!result.isConfirmed) return;
     try {
       await deleteGroup(currentUser.id, id);
       toast.success("Group deleted");
@@ -100,21 +119,46 @@ export default function Groups() {
     }
   };
 
+  const handleUnshare = async (group) => {
+    const result = await Swal.fire({
+      title: 'Stop sharing?',
+      text: "Are you sure you want to stop sharing this group?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#374151',
+      confirmButtonText: 'Yes, unshare it!',
+      background: '#1f2937',
+      color: '#f3f4f6'
+    });
+    
+    if (!result.isConfirmed) return;
+    try {
+      await shareGroup(currentUser.id, group.id, []);
+      toast.success("Group unshared");
+      fetchData();
+    } catch (err) {
+      toast.error("Failed to unshare group");
+    }
+  };
+
   const toggleParticipant = (uid) => {
+    const strUid = String(uid);
     setGroupForm(prev => ({
       ...prev,
-      participantIds: prev.participantIds.includes(uid)
-        ? prev.participantIds.filter(id => id !== uid)
-        : [...prev.participantIds, uid]
+      participantIds: prev.participantIds.includes(strUid)
+        ? prev.participantIds.filter(id => id !== strUid)
+        : [...prev.participantIds, strUid]
     }));
   };
 
   const toggleShareUser = (uid) => {
+    const strUid = String(uid);
     setShareForm(prev => ({
       ...prev,
-      sharedWith: prev.sharedWith.includes(uid)
-        ? prev.sharedWith.filter(id => id !== uid)
-        : [...prev.sharedWith, uid]
+      sharedWith: prev.sharedWith.includes(strUid)
+        ? prev.sharedWith.filter(id => id !== strUid)
+        : [...prev.sharedWith, strUid]
     }));
   };
 
@@ -136,7 +180,7 @@ export default function Groups() {
 
       <div className="grid gap-4 md:grid-cols-2">
         {groups.map(group => {
-          const isOwner = group.createdBy === currentUser.id;
+          const isOwner = String(group.createdBy) === String(currentUser.id);
           return (
             <div key={group.id} className="card p-5 border border-gray-800 bg-gray-900/50 hover:bg-gray-900 transition-colors">
               <div className="flex items-start justify-between mb-4">
@@ -144,6 +188,8 @@ export default function Groups() {
                   <h3 className="font-semibold text-gray-200 text-lg flex items-center gap-2">
                     {group.name}
                     {!isOwner && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-400">Shared</span>}
+                    {isOwner && group.sharedWith?.length > 0 && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-400">Shared</span>}
+                    {isOwner && (!group.sharedWith || group.sharedWith.length === 0) && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-500/20 text-gray-400">Private</span>}
                   </h3>
                   <p className="text-sm text-gray-500 mt-1">{group.participantIds?.length || 0} participants</p>
                 </div>
@@ -152,6 +198,11 @@ export default function Groups() {
                     <button onClick={() => openShareModal(group)} className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-md transition-colors" title="Share Group">
                       <Share2 size={16} />
                     </button>
+                    {group.sharedWith?.length > 0 && (
+                      <button onClick={(e) => { e.stopPropagation(); handleUnshare(group); }} className="p-1.5 text-blue-400 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors" title="Unshare Group">
+                        <X size={16} />
+                      </button>
+                    )}
                     <button onClick={() => openEditModal(group)} className="p-1.5 text-gray-400 hover:text-primary-400 hover:bg-primary-400/10 rounded-md transition-colors" title="Edit Group">
                       <Edit2 size={16} />
                     </button>
@@ -162,21 +213,36 @@ export default function Groups() {
                 )}
               </div>
               
-              <div className="flex flex-wrap gap-2 mt-4">
-                {group.participantIds && group.participantIds.slice(0, 5).map(uid => {
-                  const user = allUsers.find(u => u.id === uid);
-                  return user ? (
-                    <div key={uid} className="flex items-center gap-1.5 bg-gray-800 px-2 py-1 rounded-full border border-gray-700">
-                      <Avatar name={user.name} size="xs" className="w-4 h-4 text-[8px]" />
-                      <span className="text-[11px] text-gray-300 whitespace-nowrap truncate max-w-[80px]">{user.name.split(' ')[0]}</span>
-                    </div>
-                  ) : null;
-                })}
-                {group.participantIds?.length > 5 && (
-                  <div className="flex items-center justify-center bg-gray-800 px-2 py-1 rounded-full border border-gray-700 text-[11px] text-gray-400">
-                    +{group.participantIds.length - 5} more
-                  </div>
-                )}
+              <div className="mt-4 pt-3 border-t border-gray-800/50">
+                <p className="text-xs text-gray-500 mb-2">Participants ({group.participantIds?.length || 0})</p>
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1 custom-scrollbar" onClick={e => e.stopPropagation()}>
+                  {group.participantIds && group.participantIds.map(uid => {
+                    const user = allUsers.find(u => String(u.id) === String(uid));
+                    return user ? (
+                      <div key={uid} title={user.name} className="flex-shrink-0 hover:scale-110 transition-transform cursor-help">
+                        <Avatar name={user.name} size="sm" className="w-7 h-7 text-xs" />
+                      </div>
+                    ) : null;
+                  })}
+                  {(!group.participantIds || group.participantIds.length === 0) && (
+                    <span className="text-xs text-gray-600 italic px-1">No participants</span>
+                  )}
+                </div>
+              </div>
+
+              {group.sharedWith?.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-800/50">
+                  <p className="text-xs text-blue-400/80">Shared with {group.sharedWith.length} user(s)</p>
+                </div>
+              )}
+
+              <div className="mt-4">
+                <Button 
+                  className="w-full justify-center bg-gray-800 hover:bg-gray-700 text-gray-200 border-gray-700" 
+                  onClick={(e) => { e.stopPropagation(); navigate(`/groups/${group.id}`); }}
+                >
+                  View Details
+                </Button>
               </div>
             </div>
           );
@@ -202,10 +268,10 @@ export default function Groups() {
             <label className="label mb-3">Select Participants</label>
             <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
               {activeUsers.map(u => (
-                <label key={u.id} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${groupForm.participantIds.includes(u.id) ? 'bg-primary-900/30 border border-primary-800/50' : 'hover:bg-gray-800 border border-transparent'}`}>
+                <label key={u.id} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${groupForm.participantIds.includes(String(u.id)) ? 'bg-primary-900/30 border border-primary-800/50' : 'hover:bg-gray-800 border border-transparent'}`}>
                   <input 
                     type="checkbox" 
-                    checked={groupForm.participantIds.includes(u.id)} 
+                    checked={groupForm.participantIds.includes(String(u.id))} 
                     onChange={() => toggleParticipant(u.id)} 
                     className="rounded border-gray-600 bg-gray-700 text-primary-600" 
                   />
@@ -233,10 +299,10 @@ export default function Groups() {
           
           <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
             {activeUsers.filter(u => u.id !== currentUser.id && ['admin', 'manager', 'hr'].includes(u.role)).map(u => (
-              <label key={u.id} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${shareForm.sharedWith.includes(u.id) ? 'bg-blue-900/30 border border-blue-800/50' : 'hover:bg-gray-800 border border-transparent'}`}>
+              <label key={u.id} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${shareForm.sharedWith.includes(String(u.id)) ? 'bg-blue-900/30 border border-blue-800/50' : 'hover:bg-gray-800 border border-transparent'}`}>
                 <input 
                   type="checkbox" 
-                  checked={shareForm.sharedWith.includes(u.id)} 
+                  checked={shareForm.sharedWith.includes(String(u.id))} 
                   onChange={() => toggleShareUser(u.id)} 
                   className="rounded border-gray-600 bg-gray-700 text-blue-600" 
                 />

@@ -39,10 +39,11 @@ import Leaderboard from './pages/Leaderboard';
 import TeamPerformance from './pages/TeamPerformance';
 import StandupData from './pages/StandupData';
 import Groups from './pages/Groups';
+import GroupDetail from './pages/GroupDetail';
 
 // Simple pending / denied pages
 function PendingApprovalPage() {
-   
+
   const { logout } = useAuth();
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
@@ -121,7 +122,8 @@ export default function App() {
                       <Route path="/progress" element={<MyProgress />} />
                       <Route path="/leaderboard" element={<Leaderboard />} />
                       <Route path="/groups" element={<Groups />} />
-                      <Route path="/team-performance" element={<RoleGuard allowedRoles={['admin', 'hr', 'employee', 'panel']}><TeamPerformance /></RoleGuard>} />
+                      <Route path="/groups/:id" element={<GroupDetail />} />
+                      <Route path="/team-performance" element={<RoleGuard allowedRoles={['admin', 'hr', 'manager', 'employee', 'panel']}><TeamPerformance /></RoleGuard>} />
 
                       {/* Employees */}
                       <Route path="/employees" element={<Employees />} />

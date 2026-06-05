@@ -350,6 +350,11 @@ function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefres
 
   const handleDelaySubmit = async () => {
     if (!delayForm.reason || !delayForm.newDueDate) { toast.error('Please fill all fields'); return; }
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (delayForm.newDueDate < todayStr) {
+      toast.error('New due date cannot be in the past');
+      return;
+    }
     const allTasks = await asyncGet(KEYS.TASKS) || [];
     const idx = allTasks.findIndex(t => t.id === task.id);
     if (idx !== -1) { allTasks[idx].delayReason = delayForm.reason; allTasks[idx].newDueDate = delayForm.newDueDate; allTasks[idx].isDelayed = true; asyncSet(KEYS.TASKS, allTasks); }
@@ -360,6 +365,11 @@ function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefres
 
   const handleLogHoursSubmit = async () => {
     if (!logHoursForm.hours || isNaN(logHoursForm.hours)) { toast.error('Please enter valid hours'); return; }
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (logHoursForm.date && logHoursForm.date > todayStr) {
+      toast.error('Cannot log hours for future dates');
+      return;
+    }
     // Normally call backend: await worklogService.logTime({ taskId: task.id, ... })
     toast.success(`Logged ${logHoursForm.hours} hours!`);
     setShowLogHoursModal(false);
@@ -486,7 +496,13 @@ function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefres
         <Modal isOpen title="Submit Delay Reason" onClose={() => setShowDelayModal(false)} size="sm">
           <div className="p-5 space-y-4">
             <Textarea label="Reason for Delay *" value={delayForm.reason} onChange={e => setDelayForm({ ...delayForm, reason: e.target.value })} />
-            <Input label="New Expected Due Date *" type="date" value={delayForm.newDueDate} onChange={e => setDelayForm({ ...delayForm, newDueDate: e.target.value })} />
+            <Input 
+              label="New Expected Due Date *" 
+              type="date" 
+              value={delayForm.newDueDate} 
+              min={new Date().toISOString().split('T')[0]}
+              onChange={e => setDelayForm({ ...delayForm, newDueDate: e.target.value })} 
+            />
             <div className="flex justify-end gap-3">
               <Button variant="secondary" onClick={() => setShowDelayModal(false)}>Cancel</Button>
               <Button onClick={handleDelaySubmit}>Submit</Button>
@@ -500,7 +516,13 @@ function TaskDetailSlider({ task, users, project, currentUser, onClose, onRefres
         <Modal isOpen title="Log Actual Hours" onClose={() => setShowLogHoursModal(false)} size="sm">
           <div className="p-5 space-y-4">
             <Input label="Hours Worked *" type="number" step="0.5" min="0" value={logHoursForm.hours} onChange={e => setLogHoursForm({ ...logHoursForm, hours: e.target.value })} />
-            <Input label="Date *" type="date" value={logHoursForm.date} onChange={e => setLogHoursForm({ ...logHoursForm, date: e.target.value })} />
+            <Input 
+              label="Date *" 
+              type="date" 
+              value={logHoursForm.date} 
+              max={new Date().toISOString().split('T')[0]}
+              onChange={e => setLogHoursForm({ ...logHoursForm, date: e.target.value })} 
+            />
             <Textarea label="Description (Optional)" value={logHoursForm.description} onChange={e => setLogHoursForm({ ...logHoursForm, description: e.target.value })} />
             <div className="flex justify-end gap-3">
               <Button variant="secondary" onClick={() => setShowLogHoursModal(false)}>Cancel</Button>
@@ -528,6 +550,18 @@ function AddTaskModal({ project, defaultStatus, users, currentUser, onClose, onS
     if (!form.title) errors.title = 'Title is required';
     if (!form.startDate) errors.startDate = 'Start date is required';
     if (!form.dueDate) errors.dueDate = 'Due date is required';
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (form.startDate && form.startDate < todayStr) {
+      errors.startDate = 'Start date cannot be in the past';
+    }
+    if (form.dueDate && form.dueDate < todayStr) {
+      errors.dueDate = 'Due date cannot be in the past';
+    }
+    if (form.startDate && form.dueDate && form.startDate > form.dueDate) {
+      errors.dueDate = 'Due date must be on or after start date';
+    }
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
@@ -596,8 +630,22 @@ function AddTaskModal({ project, defaultStatus, users, currentUser, onClose, onS
             {['backlog', 'todo', 'in_progress'].map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
           </Select>
           <Input label="Estimated Hours" type="number" step="0.5" min="0" value={form.estimatedHours} onChange={e => setForm({ ...form, estimatedHours: e.target.value })} />
-          <Input label="Start Date *" type="date" error={formErrors.startDate} value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
-          <Input label="Due Date *" type="date" error={formErrors.dueDate} value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />
+          <Input 
+            label="Start Date *" 
+            type="date" 
+            error={formErrors.startDate} 
+            value={form.startDate} 
+            min={new Date().toISOString().split('T')[0]}
+            onChange={e => setForm({ ...form, startDate: e.target.value })} 
+          />
+          <Input 
+            label="Due Date *" 
+            type="date" 
+            error={formErrors.dueDate} 
+            value={form.dueDate} 
+            min={form.startDate || new Date().toISOString().split('T')[0]}
+            onChange={e => setForm({ ...form, dueDate: e.target.value })} 
+          />
           {milestones.length > 0 && (
             <Select label="Milestone" value={form.milestoneId} onChange={e => setForm({ ...form, milestoneId: e.target.value })}>
               <option value="">No milestone</option>

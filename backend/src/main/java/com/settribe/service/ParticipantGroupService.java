@@ -8,6 +8,7 @@ import com.settribe.entity.ParticipantGroup;
 import com.settribe.exception.GroupNotFoundException;
 import com.settribe.repository.ParticipantGroupRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -34,6 +35,20 @@ public class ParticipantGroupService {
                 .collect(Collectors.toList());
     }
 
+    public ParticipantGroupDTO getGroupForUser(Long id, String userId) {
+        ParticipantGroup entity = repository.findById(id)
+                .orElseThrow(() -> new GroupNotFoundException("Group not found with id " + id));
+
+        boolean isCreator = entity.getCreatedBy().equals(userId);
+        boolean isShared = entity.getSharedWith() != null && entity.getSharedWith().contains("\"" + userId + "\"");
+
+        if (!isCreator && !isShared) {
+            throw new AccessDeniedException("You do not have permission to view this group");
+        }
+
+        return convertToDTO(entity);
+    }
+
     public ParticipantGroupDTO createGroup(ParticipantGroupDTO dto, String creatorId) {
         ParticipantGroup entity = new ParticipantGroup();
         entity.setName(dto.getName());
@@ -50,7 +65,7 @@ public class ParticipantGroupService {
                 .orElseThrow(() -> new GroupNotFoundException("Group not found with id " + id));
 
         if (!entity.getCreatedBy().equals(userId)) {
-            throw new RuntimeException("Only the creator can update the group");
+            throw new AccessDeniedException("Only the creator can update the group");
         }
 
         entity.setName(dto.getName());
@@ -64,7 +79,7 @@ public class ParticipantGroupService {
                 .orElseThrow(() -> new GroupNotFoundException("Group not found with id " + id));
 
         if (!entity.getCreatedBy().equals(userId)) {
-            throw new RuntimeException("Only the creator can delete the group");
+            throw new AccessDeniedException("Only the creator can delete the group");
         }
         repository.delete(entity);
     }
@@ -74,7 +89,7 @@ public class ParticipantGroupService {
                 .orElseThrow(() -> new GroupNotFoundException("Group not found with id " + id));
 
         if (!entity.getCreatedBy().equals(ownerId)) {
-            throw new RuntimeException("Only the creator can share the group");
+            throw new AccessDeniedException("Only the creator can share the group");
         }
 
         entity.setSharedWith(toJson(userIdsToShareWith));
