@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
    
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet, apiPost } from '../services/storage';

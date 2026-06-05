@@ -1,5 +1,5 @@
    
-import { CalendarCheck, CalendarX, Clock, Coffee, Users, Video } from 'lucide-react';
+import { CalendarCheck, CalendarX, Clock, Coffee, Video } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export function AttendanceActivity({ stats, activityData }) {

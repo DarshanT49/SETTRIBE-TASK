@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Send, Paperclip, Video, MessageSquare, MoreVertical, Search, Pin, X } from 'lucide-react';
+import { Send, Paperclip, Video, MessageSquare, Search, X } from 'lucide-react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client/dist/sockjs';
-import { Avatar, Button, Input } from './ui';
+import { Avatar, Button } from './ui';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';

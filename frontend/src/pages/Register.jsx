@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import { registerUser } from '../services/auth';
-import { notifyAdminsAndHR } from '../services/notifications';
 import { Button, Input, Select } from '../components/ui';
 import { validateEmail, validatePassword, validateMobile, getPasswordStrength } from '../utils/validators';
 import toast from 'react-hot-toast';

@@ -1,6 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
    
-import { FolderKanban, Clock, CheckCircle } from 'lucide-react';
+import { FolderKanban, Clock } from 'lucide-react';
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']; // Green, Blue, Yellow, Red
 

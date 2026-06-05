@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
    
-import { CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { KEYS, asyncGet } from '../services/storage';
 import { createNotification } from '../services/notifications';
 import { Avatar, Button, Modal, Skeleton } from '../components/ui';
 import { formatRelativeTime } from '../utils/dates';

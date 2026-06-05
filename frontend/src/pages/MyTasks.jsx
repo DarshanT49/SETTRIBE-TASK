@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
    
-import { CheckSquare, AlertCircle, Filter } from 'lucide-react';
+import { CheckSquare, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
-import { fetchTaskAssignees, fetchTasks } from '../services/taskApi';
+import { fetchTasks } from '../services/taskApi';
 import { fetchProjects } from '../services/projectApi';
 import { PriorityBadge, StatusBadge, Skeleton, EmptyState, Avatar } from '../components/ui';
 import { formatDate, isOverdue } from '../utils/dates';
@@ -22,8 +22,7 @@ export default function MyTasks() {
   useEffect(() => {
     const load = async () => {
       const allTasks = await fetchTasks();
-      const responses = await Promise.all(allTasks.map(t => fetchTaskAssignees(t.id).catch(() => [])));
-      let ts = allTasks.filter((t, idx) => responses[idx].map(a => String(a.userId)).includes(String(currentUser.id)));
+      let ts = allTasks.filter(t => t.assigneeIds && t.assigneeIds.map(String).includes(String(currentUser.id)));
       setTasks(ts);
       setProjects(await fetchProjects());
       setUsers(await asyncGet(KEYS.USERS) || []);
@@ -34,8 +33,7 @@ export default function MyTasks() {
 
   const load = async () => {
     const allTasks = await fetchTasks();
-    const responses = await Promise.all(allTasks.map(t => fetchTaskAssignees(t.id).catch(() => [])));
-    let ts = allTasks.filter((t, idx) => responses[idx].map(a => String(a.userId)).includes(String(currentUser.id)));
+    let ts = allTasks.filter(t => t.assigneeIds && t.assigneeIds.map(String).includes(String(currentUser.id)));
     setTasks(ts);
     setProjects(await fetchProjects());
     setUsers(await asyncGet(KEYS.USERS) || []);

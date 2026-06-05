@@ -3,7 +3,6 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef } f
 import { markNotificationRead, markAllRead as markAllReadService, deleteNotification, getUserNotifications, getUnreadCount as getUnreadCountService } from '../services/notifications';
 import { useAuth } from './AuthContext';
    
-import api from '../services/api';
 
 const NotificationContext = createContext(null);
 

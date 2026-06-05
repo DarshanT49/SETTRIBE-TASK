@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { LiveKitRoom, VideoConference, useParticipants } from '@livekit/components-react';
 import {
   CheckSquare,
-  Grid3X3,
   Loader2,
   MessageSquare,
   Plus,
@@ -25,6 +24,7 @@ import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft, getMeetingChat
 import { saveStandupRecord, filterStandupData } from '../services/standup';
 import { getMeetingDateTime } from '../utils/dates';
 import { createNotification } from '../services/notifications';
+import api from '../services/api';
 
 export default function MeetingRoom() {
   const { id } = useParams();

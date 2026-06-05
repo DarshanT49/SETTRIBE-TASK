@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { FolderKanban, Clock, CheckCircle2, FileText, Users, Calendar } from 'lucide-react';
 import { StatusBadge } from './index';
 
