@@ -94,6 +94,7 @@ export default function MeetingRoom() {
 
     const checkWaitingRoomStatus = async (m) => {
       if (cancelled) return;
+      if (hasRequestedTokenRef.current) return;
 
       const isHost = String(m.hostId) === String(currentUser.id);
       const isAdmin = currentUser.role === 'admin';
@@ -332,7 +333,7 @@ export default function MeetingRoom() {
           const mentions = toArray(msg.mentions);
           const wasMentioned = mentions.some(id => String(id) === String(currentUser.id));
           if (wasMentioned) {
-            const sender = users.find(user => user.id === senderId);
+            const sender = users.find(user => String(user.id) === String(senderId));
             shouldPlayMentionSound = true;
             nextMentionNotifications.push({
               id: msg.id || `${msg.timestamp}-${senderId}`,
@@ -502,11 +503,9 @@ export default function MeetingRoom() {
             userId: u.id,
             type: 'interview_evaluated',
             title: 'Interview Evaluated',
-            message: `Interview with ${
-              interviewRecord?.candidateName || 'Candidate'
-            } for ${
-              interviewRecord?.position || 'the position'
-            } has been evaluated. Recommendation: ${payload.recommendation}`,
+            message: `Interview with ${interviewRecord?.candidateName || 'Candidate'
+              } for ${interviewRecord?.position || 'the position'
+              } has been evaluated. Recommendation: ${payload.recommendation}`,
             relatedId: interviewRecord?.id || id,
             relatedType: 'interview'
           });
@@ -869,11 +868,10 @@ export default function MeetingRoom() {
             setPanelOpen(open => !open);
             setHasUnreadAlert(false);
           }}
-          className={`rounded-lg p-2 shadow-lg ring-1 transition-all ${
-            hasUnreadAlert && !panelOpen
+          className={`rounded-lg p-2 shadow-lg ring-1 transition-all ${hasUnreadAlert && !panelOpen
               ? 'bg-primary-600 text-white animate-pulse ring-primary-500'
               : 'bg-gray-900/90 text-gray-300 hover:bg-gray-800 ring-gray-700'
-          }`}
+            }`}
           title={panelOpen ? 'Hide meeting panel' : 'Show meeting panel'}
         >
           {panelOpen ? <X size={18} /> : <Users size={18} />}
@@ -1073,14 +1071,14 @@ export default function MeetingRoom() {
                   />
                 ) : (
                   chatLogs.map(msg => {
-                    const sender = users.find(user => user.id === (msg.userId || msg.senderId));
-                    const mine = (msg.userId || msg.senderId) === currentUser.id;
+                    const sender = users.find(user => String(user.id) === String(msg.userId || msg.senderId));
+                    const mine = String(msg.userId || msg.senderId) === String(currentUser.id);
                     const mentionedMe = !mine && toArray(msg.mentions).includes(currentUser.id);
                     return (
                       <div key={msg.id || msg.timestamp} className={`flex gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
                         <Avatar name={sender?.name || 'User'} size="xs" />
                         <div className={`max-w-[80%] ${mine ? 'items-end' : ''} flex flex-col`}>
-                          <p className="mb-0.5 text-xs text-gray-500">{sender?.name?.split(' ')[0] || 'User'}</p>
+                          <p className="mb-0.5 text-xs text-gray-500">{sender?.name || 'User'}</p>
                           <div className={`rounded-lg border px-3 py-2 text-sm ${mine
                             ? 'border-primary-600 bg-primary-700 text-white'
                             : mentionedMe

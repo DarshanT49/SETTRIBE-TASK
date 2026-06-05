@@ -20,6 +20,11 @@ public class ParticipantGroupController {
         return ResponseEntity.ok(service.getGroupsForUser(userId));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ParticipantGroupDTO> getGroup(@PathVariable Long id, @RequestHeader("userId") String userId) {
+        return ResponseEntity.ok(service.getGroupForUser(id, userId));
+    }
+
     @PostMapping
     public ResponseEntity<ParticipantGroupDTO> createGroup(@RequestHeader("userId") String userId, @RequestBody ParticipantGroupDTO dto) {
         return ResponseEntity.ok(service.createGroup(dto, userId));
