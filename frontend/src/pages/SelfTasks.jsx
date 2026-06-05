@@ -9,7 +9,7 @@ import { Button, Modal, Input, Select, Textarea, Toggle, EmptyState, Skeleton } 
 import { formatDate, isOverdue } from '../utils/dates';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
-import { fetchSelfTasks, createSelfTask, updateSelfTask, deleteSelfTask } from '../services/selfTaskApi';
+import { fetchSelfTasksByUserId, createSelfTask, updateSelfTask, deleteSelfTask } from '../services/selfTaskApi';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
    
@@ -34,8 +34,7 @@ export default function SelfTasks() {
 
   const load = async () => {
     try {
-      const all = await fetchSelfTasks();
-      const filteredTasks = all.filter(t => String(t.userId) === String(currentUser.id));
+      const filteredTasks = await fetchSelfTasksByUserId(currentUser.id);
       setTasks(filteredTasks);
       await asyncSet(KEYS.SELF_TASKS, filteredTasks);
     } catch (e) {
