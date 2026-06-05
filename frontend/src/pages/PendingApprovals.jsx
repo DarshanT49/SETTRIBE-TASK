@@ -24,7 +24,7 @@ export default function PendingApprovals() {
       ]);
       const reqs = reqsResp.data || [];
       const users = usersResp.data || [];
-      const enriched = reqs.map(r => ({ ...r, user: users.find(u => u.id === r.userId) })).filter(r => r.user);
+      const enriched = reqs.map(r => ({ ...r, user: users.find(u => String(u.id) === String(r.userId)) })).filter(r => r.user);
       setRequests(enriched);
     } catch (error) {
       console.error('Error loading pending approvals:', error);

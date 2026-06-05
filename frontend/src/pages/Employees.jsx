@@ -8,6 +8,7 @@ import { Avatar, Badge, Button, Modal, Input, Select, StatusBadge, Skeleton, Emp
 import { formatRelativeTime, formatDate } from '../utils/dates';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
+import api from '../services/api';
 
 const DEPARTMENTS = ['Engineering', 'Design', 'QA', 'HR', 'Management'];
 const ALL_ROLES = ['admin', 'hr', 'manager', 'employee', 'intern', 'panel'];
@@ -33,8 +34,17 @@ export default function Employees() {
 
   const load = async () => {
     setLoading(true);
-    await new Promise(r => setTimeout(r, 200));
-    setUsers(await asyncGet(KEYS.USERS) || []);
+    let allUsers = await asyncGet(KEYS.USERS) || [];
+    try {
+      const resp = await api.get('/users');
+      if (resp.data) {
+        allUsers = resp.data;
+        await asyncSet(KEYS.USERS, allUsers);
+      }
+    } catch (e) {
+      console.warn('Could not fetch users', e);
+    }
+    setUsers(allUsers);
     setLoading(false);
   };
 

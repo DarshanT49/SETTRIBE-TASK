@@ -14,6 +14,7 @@ import { Avatar, Badge, Button, StatusBadge, PriorityBadge, Skeleton } from '../
 import { formatRelativeTime, formatDate, canStartMeeting, getMeetingStatus } from '../utils/dates';
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
+import api from '../services/api';
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -21,7 +22,16 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const users = await asyncGet(KEYS.USERS) || [];
+    let users = await asyncGet(KEYS.USERS) || [];
+    try {
+      const resp = await api.get('/users');
+      if (resp.data) {
+        users = resp.data;
+        await asyncSet(KEYS.USERS, users);
+      }
+    } catch (e) {
+      console.warn('Could not fetch users', e);
+    }
     const projectsRaw = await fetchProjects();
     const tasksRaw = await fetchTasks();
 
@@ -301,7 +311,7 @@ function HRDashboard({ data, currentUser }) {
           {pendingRequests.length === 0 ? (
             <div className="text-center py-8 text-gray-500 text-sm">No pending requests</div>
           ) : pendingRequests.slice(0, 3).map(req => {
-            const user = users.find(u => u.id === req.userId);
+            const user = users.find(u => String(u.id) === String(req.userId));
             if (!user) return null;
             return (
               <div key={req.id} className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg mb-3">
