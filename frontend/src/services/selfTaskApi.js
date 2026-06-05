@@ -5,6 +5,11 @@ export const fetchSelfTasks = async () => {
   return data;
 };
 
+export const fetchSelfTasksByUserId = async (userId) => {
+  const { data } = await api.get(`/selfTasks/user/${userId}`);
+  return data;
+};
+
 export const fetchSelfTaskById = async (taskId) => {
   const { data } = await api.get(`/selfTasks/${taskId}`);
   return data;
