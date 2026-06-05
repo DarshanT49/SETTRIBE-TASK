@@ -61,6 +61,23 @@ export default function NewMeeting() {
 
   const handleSubmit = async () => {
     if (!form.title || !form.agenda || !form.date || !form.time) { toast.error('Please fill in all required fields'); return; }
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (form.date < todayStr) {
+      toast.error('Date cannot be in the past');
+      return;
+    }
+    if (form.date === todayStr) {
+      const now = new Date();
+      const currentHour = String(now.getHours()).padStart(2, '0');
+      const currentMinute = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${currentHour}:${currentMinute}`;
+      if (form.time < currentTimeStr) {
+        toast.error('Time cannot be in the past');
+        return;
+      }
+    }
+
     setLoading(true);
     await new Promise(r => setTimeout(r, 300));
 
@@ -105,8 +122,23 @@ export default function NewMeeting() {
         <Textarea label="Agenda *" value={form.agenda} onChange={e => setForm({ ...form, agenda: e.target.value })} />
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <Input label="Date *" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-          <Input label="Time *" type="time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
+          <Input 
+            label="Date *" 
+            type="date" 
+            value={form.date} 
+            min={new Date().toISOString().split('T')[0]}
+            onChange={e => setForm({ ...form, date: e.target.value })} 
+          />
+          <Input 
+            label="Time *" 
+            type="time" 
+            value={form.time} 
+            min={form.date === new Date().toISOString().split('T')[0] ? (() => {
+              const now = new Date();
+              return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            })() : undefined}
+            onChange={e => setForm({ ...form, time: e.target.value })} 
+          />
           <Select label="Duration" value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })}>
             <option value="15">15 minutes</option>
             <option value="30">30 minutes</option>
@@ -118,7 +150,6 @@ export default function NewMeeting() {
             <option value="standup">Daily Standup</option>
             <option value="project">Project Discussion</option>
             <option value="hr">HR Meeting</option>
-            <option value="interview">Interview</option>
             <option value="general">General</option>
           </Select>
           {projects.length > 0 && (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Star, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Star, MessageSquare, Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS,  asyncGet, asyncSet } from '../services/storage';
 import { createNotification } from '../services/notifications';
@@ -52,14 +52,26 @@ export default function InterviewDetail() {
     const iv = ivs.find(i => i.id === id);
     if (!iv) { navigate('/interviews'); return; }
     
-    // Attempt to fetch evaluation from API if not in local storage
+    // Fetch evaluation by interview ID from API (correct endpoint)
     try {
-      const evalResp = await api.get(`/evaluations/${id}`);
+      const evalResp = await api.get(`/evaluations/interview/${id}`);
       if (evalResp.data) {
         iv.evaluation = evalResp.data;
+        // Self-heal: If evaluation exists, status must be completed
+        if (iv.status !== 'completed' && iv.status !== 'cancelled') {
+          iv.status = 'completed';
+          const updatedIvs = ivs.map(item => item.id === iv.id ? { ...item, status: 'completed' } : item);
+          await asyncSet(KEYS.INTERVIEWS, updatedIvs);
+          try {
+            await api.post(`/interviews/${id}/end`);
+          } catch (err) {}
+        }
       }
     } catch (e) {
-      console.warn("Could not fetch evaluation from API, falling back to local storage if available.");
+      // 404 means no evaluation yet — that's fine, fall through to local storage
+      if (e.response?.status !== 404) {
+        console.warn("Could not fetch evaluation from API, falling back to local storage if available.");
+      }
     }
 
     setInterview(iv);
@@ -91,7 +103,13 @@ export default function InterviewDetail() {
     const idx = ivs.findIndex(i => i.id === id);
     if (idx !== -1) {
       ivs[idx].evaluation = { ...payload, evaluatedBy: currentUser.id, evaluatedAt: new Date().toISOString() };
-      asyncSet(KEYS.INTERVIEWS, ivs);
+      ivs[idx].status = 'completed';
+      await asyncSet(KEYS.INTERVIEWS, ivs);
+    }
+    try {
+      await api.post(`/interviews/${id}/end`);
+    } catch (err) {
+      console.warn("Failed to set interview status to completed in backend", err);
     }
     const hrUsers = (await asyncGet(KEYS.USERS) || []).filter(u => ['hr', 'admin'].includes(u.role));
     hrUsers.forEach(u => {
@@ -126,6 +144,12 @@ export default function InterviewDetail() {
     setStartingInterview(true);
     try {
       await api.post(`/interviews/${interview.id}/start`);
+      const ivs = await asyncGet(KEYS.INTERVIEWS) || [];
+      const idx = ivs.findIndex(i => i.id === interview.id);
+      if (idx !== -1) {
+        ivs[idx].status = 'in_progress';
+        await asyncSet(KEYS.INTERVIEWS, ivs);
+      }
       toast.success('Interview started — candidate will join automatically');
     } catch (err) {
       console.warn('Start signal failed, proceeding to room anyway:', err);
@@ -301,8 +325,11 @@ export default function InterviewDetail() {
       {/* Evaluation Tab */}
       {activeTab === 'evaluation' && (
         <div className="space-y-4">
-          {hasEvaluation && !canEvaluate ? (
-            <div className="card p-5">
+          {hasEvaluation ? (
+            <div className="card p-5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-emerald-500/20 text-emerald-400 px-4 py-1.5 rounded-bl-lg font-medium text-sm flex items-center gap-1.5">
+                <Check size={14} /> Evaluation Submitted
+              </div>
               <h2 className="font-semibold text-gray-100 mb-4">Evaluation Results</h2>
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-xl font-bold text-gray-100">Score: {interview.evaluation.overallScore}/5 ({interview.evaluation.percentage}%)</span>

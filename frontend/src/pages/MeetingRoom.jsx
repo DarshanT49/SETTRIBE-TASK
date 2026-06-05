@@ -24,6 +24,7 @@ import { KEYS, apiPut, asyncGet, asyncSet } from '../services/storage';
 import { getMeetingJoinToken, markMeetingJoined, markMeetingLeft, getMeetingChat, postMeetingChat } from '../services/meetings';
 import { saveStandupRecord, filterStandupData } from '../services/standup';
 import { getMeetingDateTime } from '../utils/dates';
+import { createNotification } from '../services/notifications';
 
 export default function MeetingRoom() {
   const { id } = useParams();
@@ -42,6 +43,8 @@ export default function MeetingRoom() {
   const [projects, setProjects] = useState([]);
   const [roomConfig, setRoomConfig] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [interviewRecord, setInterviewRecord] = useState(null);
+  const [showPostInterviewEval, setShowPostInterviewEval] = useState(false);
   const [error, setError] = useState('');
   const [connectionError, setConnectionError] = useState('');
   const [panelOpen, setPanelOpen] = useState(false);
@@ -95,9 +98,10 @@ export default function MeetingRoom() {
       const isHost = String(m.hostId) === String(currentUser.id);
       const isAdmin = currentUser.role === 'admin';
       // Admin and host bypass the waiting room entirely
+      // Interview meetings also bypass the host-started check entirely
       const hasHostStartedMeeting = toArray(m.attendanceLogs).some(l => String(l.userId) === String(m.hostId));
 
-      if (!isHost && !isAdmin && !hasHostStartedMeeting) {
+      if (m.type !== 'interview' && !isHost && !isAdmin && !hasHostStartedMeeting) {
         return;
       }
 
@@ -105,7 +109,8 @@ export default function MeetingRoom() {
       const minutesLate = (new Date() - meetingTime) / 60000;
 
       let requiresApproval = false;
-      if (!isAdmin && !isHost) {
+      // Interviews never require waiting room approval
+      if (m.type !== 'interview' && !isAdmin && !isHost) {
         if (['employee', 'hr', 'manager'].includes(currentUser.role)) {
           requiresApproval = minutesLate > 5;
         } else if (currentUser.role === 'intern') {
@@ -145,6 +150,18 @@ export default function MeetingRoom() {
           asyncGet(KEYS.USERS),
           asyncGet(KEYS.PROJECTS)
         ]);
+
+        // If this is an interview meeting, load the linked interview record
+        // so we can identify the assigned interviewer
+        if (foundMeeting && foundMeeting.type === 'interview') {
+          try {
+            const allInterviews = await asyncGet(KEYS.INTERVIEWS) || [];
+            const linked = allInterviews.find(iv => iv.meetingId === foundMeeting.id);
+            if (linked) setInterviewRecord(linked);
+          } catch (e) {
+            console.warn('Could not load linked interview record', e);
+          }
+        }
 
         if (!foundMeeting) {
           handleGoBack();
@@ -403,23 +420,103 @@ export default function MeetingRoom() {
     }
   }, []);
 
+  // Whether the current user is the assigned interviewer for this interview meeting
+  const isInterviewerForMeeting = meeting?.type === 'interview' && interviewRecord &&
+    String(interviewRecord.interviewerId) === String(currentUser.id);
+
   const confirmLeave = async () => {
     setShowLeaveModal(false);
     joinedRef.current = false;
     markMeetingLeft(id, currentUser.id);
-    handleGoBack();
+    // If the interviewer leaves an interview meeting, show the post-interview eval form
+    if (isInterviewerForMeeting) {
+      setShowPostInterviewEval(true);
+    } else {
+      handleGoBack();
+    }
   };
 
   const handleEndMeeting = async () => {
-    if (!meeting || !isHost) return;
+    // For interview meetings the interviewer ends the call; for all others only the host can
+    const canEnd = meeting?.type === 'interview' ? isInterviewerForMeeting : isHost;
+    if (!meeting || !canEnd) return;
     try {
       const updatedMeeting = { ...meeting, status: 'completed', endedByHost: true };
       setMeeting(updatedMeeting);
       await apiPut(KEYS.MEETINGS, id, updatedMeeting);
-      navigate(`/meetings/${id}`, { state: { endedByHost: true } });
+
+      // Update the actual interview status to 'completed'
+      if (meeting.type === 'interview') {
+        try {
+          const ivs = await asyncGet(KEYS.INTERVIEWS) || [];
+          const currentInterview = interviewRecord || ivs.find(i => i.meetingId === meeting.id);
+          if (currentInterview) {
+            const idx = ivs.findIndex(i => i.id === currentInterview.id);
+            if (idx !== -1) {
+              ivs[idx].status = 'completed';
+              await asyncSet(KEYS.INTERVIEWS, ivs);
+            }
+            await api.post(`/interviews/${currentInterview.id}/end`);
+          }
+        } catch (err) {
+          console.error("Failed to update interview status", err);
+        }
+      }
+
+      // Interviewer ends interview → show post-interview eval form
+      if (isInterviewerForMeeting) {
+        setShowPostInterviewEval(true);
+      } else {
+        navigate(`/meetings/${id}`, { state: { endedByHost: true } });
+      }
     } catch (err) {
       toast.error('Failed to end meeting');
     }
+  };
+
+  // Called when interviewer submits their evaluation after the interview
+  const handlePostEvalSubmitted = async (payload) => {
+    try {
+      // Mark the interview as completed dynamically
+      const ivs = await asyncGet(KEYS.INTERVIEWS) || [];
+      const currentInterview = interviewRecord || ivs.find(i => i.meetingId === id);
+      if (currentInterview) {
+        const idx = ivs.findIndex(i => i.id === currentInterview.id);
+        if (idx !== -1) {
+          ivs[idx].status = 'completed';
+          await asyncSet(KEYS.INTERVIEWS, ivs);
+        }
+        try {
+          await api.post(`/interviews/${currentInterview.id}/end`);
+        } catch (err) {
+          console.warn("Failed to set interview status to completed in backend", err);
+        }
+      }
+
+      // Notify all HR and admin users
+      const allUsers = await asyncGet(KEYS.USERS) || [];
+      const hrUsers = allUsers.filter(u => ['hr', 'admin'].includes(u.role));
+      hrUsers.forEach(u => {
+        if (String(u.id) !== String(currentUser.id)) {
+          createNotification({
+            userId: u.id,
+            type: 'interview_evaluated',
+            title: 'Interview Evaluated',
+            message: `Interview with ${
+              interviewRecord?.candidateName || 'Candidate'
+            } for ${
+              interviewRecord?.position || 'the position'
+            } has been evaluated. Recommendation: ${payload.recommendation}`,
+            relatedId: interviewRecord?.id || id,
+            relatedType: 'interview'
+          });
+        }
+      });
+      toast.success('Evaluation submitted and HR has been notified!');
+    } catch (e) {
+      console.warn('Could not notify HR:', e);
+    }
+    navigate('/interviews');
   };
 
   const cancelLeave = () => {
@@ -591,12 +688,48 @@ export default function MeetingRoom() {
     );
   }
 
+  // Post-interview evaluation screen — shown to the interviewer after the call ends
+  if (showPostInterviewEval && interviewRecord) {
+    return (
+      <div className="fixed inset-0 z-[200] bg-gray-950 flex flex-col">
+        {/* Header */}
+        <div className="shrink-0 bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-gray-100">📋 Post-Interview Evaluation</h1>
+            <p className="text-sm text-gray-400 mt-0.5">
+              The interview has ended. Please complete your evaluation for{' '}
+              <span className="text-primary-400 font-medium">{interviewRecord.candidateName}</span>
+              {' '}— {interviewRecord.position}.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/interviews')}
+            className="text-xs text-gray-500 hover:text-gray-300 border border-gray-700 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            Skip for now
+          </button>
+        </div>
+
+        {/* Evaluation Panel */}
+        <div className="flex-1 overflow-hidden max-w-3xl w-full mx-auto py-6 px-4">
+          <div className="h-full rounded-xl border border-gray-800 overflow-hidden shadow-2xl">
+            <InterviewEvaluationPanel
+              meeting={{ ...meeting, ...interviewRecord }}
+              currentUser={currentUser}
+              onSaved={handlePostEvalSubmitted}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const isHostNow = String(meeting?.hostId) === String(currentUser.id);
   const isAdminNow = currentUser.role === 'admin';
 
   const hasHostStartedMeetingNow = toArray(meeting?.attendanceLogs).some(l => String(l.userId) === String(meeting?.hostId));
 
-  if (!isHostNow && !isAdminNow && !hasHostStartedMeetingNow) {
+  if (meeting?.type !== 'interview' && !isHostNow && !isAdminNow && !hasHostStartedMeetingNow) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950">
         <div className="max-w-md rounded-lg border border-gray-800 bg-gray-900 p-6 text-center shadow-xl">
@@ -617,7 +750,8 @@ export default function MeetingRoom() {
   const minutesLateNow = (new Date() - meetingTimeNow) / 60000;
 
   let requiresApproval = false;
-  if (!isAdminNow && !isHostNow) {
+  // Interviews never require waiting room approval
+  if (meeting?.type !== 'interview' && !isAdminNow && !isHostNow) {
     if (['employee', 'hr', 'manager'].includes(currentUser.role)) {
       requiresApproval = minutesLateNow > 5;
     } else if (currentUser.role === 'intern') {
@@ -717,12 +851,13 @@ export default function MeetingRoom() {
             {meeting.title}
           </div>
         )}
-        {isHost && (
+        {/* Interview: only the assigned interviewer can end — for all other meeting types the host ends */}
+        {(meeting?.type === 'interview' ? isInterviewerForMeeting : isHost) && (
           <button
             onClick={() => setShowEndMeetingModal(true)}
             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-lg ring-1 ring-red-700 hover:bg-red-700 transition-colors"
           >
-            End Meeting
+            End Interview
           </button>
         )}
       </div>
@@ -1034,11 +1169,12 @@ export default function MeetingRoom() {
             </div>
           )}
 
-          {sidePanel === 'evaluate' && isHost && meeting.type === 'interview' && (
+          {sidePanel === 'evaluate' && meeting.type === 'interview' && interviewRecord && String(interviewRecord.interviewerId) === String(currentUser.id) && (
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
               <InterviewEvaluationPanel
-                meeting={meeting}
-                currentUser={{ id: meeting.hostId }}
+                meeting={{ ...meeting, ...interviewRecord }}
+                currentUser={currentUser}
+                mode="live"
                 onSaved={() => { }}
               />
             </div>
@@ -1049,7 +1185,8 @@ export default function MeetingRoom() {
               ['participants', 'People', Users],
               ['chat', 'Chat', MessageSquare],
               ...(isHost ? [['lobby', 'Lobby', Clock]] : []),
-              ...(isHost && meeting.type === 'interview' ? [['evaluate', 'Evaluate', ClipboardList]] : []),
+              // Show Evaluate tab ONLY to the assigned interviewer (not HR, not host unless they are the interviewer)
+              ...(meeting.type === 'interview' && interviewRecord && String(interviewRecord.interviewerId) === String(currentUser.id) ? [['evaluate', 'Evaluate', ClipboardList]] : []),
               ...(isHost && meeting.type === 'project' ? [['tasks', 'Tasks', CheckSquare]] : [])
             ].map(([tab, label, Icon]) => (
               <button
