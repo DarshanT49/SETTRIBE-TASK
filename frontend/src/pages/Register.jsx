@@ -48,7 +48,7 @@ export default function Register() {
     }
     // Notifications for registration should be handled by the backend securely.
     toast.success('Registration submitted! Waiting for approval.');
-    navigate('/login');
+    navigate('/login', { state: { pendingRegistration: true } });
     setLoading(false);
   };
 

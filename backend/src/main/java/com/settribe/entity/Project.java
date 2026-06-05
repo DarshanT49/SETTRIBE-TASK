@@ -8,7 +8,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "projects")
+@Table(name = "projects", indexes = {
+    @jakarta.persistence.Index(name = "idx_projects_status", columnList = "status"),
+    @jakarta.persistence.Index(name = "idx_projects_owner_id", columnList = "ownerId"),
+    @jakarta.persistence.Index(name = "idx_projects_manager_id", columnList = "managerId")
+})
 public class Project {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

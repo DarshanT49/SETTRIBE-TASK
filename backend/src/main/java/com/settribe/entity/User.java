@@ -7,7 +7,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", indexes = {
+    @jakarta.persistence.Index(name = "idx_users_role", columnList = "role"),
+    @jakarta.persistence.Index(name = "idx_users_is_active", columnList = "isActive")
+})
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

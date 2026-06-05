@@ -14,6 +14,7 @@ export default function PendingApprovals() {
   const [loading, setLoading] = useState(true);
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [approveAllLoading, setApproveAllLoading] = useState(false);
 
   const load = async () => {
     try {
@@ -76,6 +77,55 @@ export default function PendingApprovals() {
     }
   };
 
+  const handleApproveAll = async () => {
+    const pendingRequests = requests.filter(r => r.status === 'pending');
+    if (pendingRequests.length === 0) return;
+    
+    setApproveAllLoading(true);
+    try {
+      await Promise.all(pendingRequests.map(async (req) => {
+        // Fetch the user from backend and update via PUT
+        const userResp = await api.get(`/users/${req.userId}`);
+        const user = userResp.data;
+        const updatedUser = {
+          ...user,
+          isApproved: true,
+          isActive: true,
+          approvedBy: currentUser.id,
+          approvedAt: new Date().toISOString(),
+        };
+        await api.put(`/users/${req.userId}`, updatedUser);
+
+        // Update registration request status via PUT
+        const updatedReq = {
+          ...req,
+          status: 'approved',
+          reviewedBy: currentUser.id,
+          reviewedAt: new Date().toISOString(),
+        };
+        delete updatedReq.user; // remove enriched field before sending
+        await api.put(`/registrationRequests/${req.id}`, updatedReq);
+
+        createNotification({
+          userId: req.userId,
+          type: 'registration_approved',
+          title: 'Account Approved!',
+          message: 'Your registration has been approved. You can now log in to SetTribe.',
+          relatedType: 'user',
+        });
+      }));
+      
+      toast.success(`Approved ${pendingRequests.length} requests successfully!`);
+      load();
+    } catch (e) {
+      console.error('Approve all error:', e);
+      toast.error('Failed to approve all requests. Some might have failed.');
+      load(); // Reload to get updated state
+    } finally {
+      setApproveAllLoading(false);
+    }
+  };
+
   const handleReject = async () => {
     if (!rejectReason.trim()) { toast.error('Please provide a rejection reason'); return; }
     const req = rejectModal;
@@ -128,8 +178,11 @@ export default function PendingApprovals() {
         </div>
       ) : (
         <div className="card overflow-hidden">
-          <div className="p-4 border-b border-gray-800">
+          <div className="p-4 border-b border-gray-800 flex justify-between items-center">
             <h2 className="font-semibold text-gray-100 flex items-center gap-2"><AlertTriangle size={16} className="text-yellow-400" /> Pending Requests</h2>
+            <Button variant="success" size="sm" onClick={handleApproveAll} loading={approveAllLoading}>
+              <CheckCircle size={14} className="mr-1" /> Approve All
+            </Button>
           </div>
           <table className="w-full">
             <thead className="border-b border-gray-800">

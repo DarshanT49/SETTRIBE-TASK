@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface RegistrationRequestRepository extends JpaRepository<RegistrationRequest, String> {
+    long countByStatus(String status);
 }

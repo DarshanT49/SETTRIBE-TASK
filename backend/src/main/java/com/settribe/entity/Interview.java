@@ -8,7 +8,8 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "interviews", indexes = {
         @jakarta.persistence.Index(name = "idx_interviews_interviewer_id", columnList = "interviewerId"),
-        @jakarta.persistence.Index(name = "idx_interviews_status", columnList = "status")
+        @jakarta.persistence.Index(name = "idx_interviews_status", columnList = "status"),
+        @jakarta.persistence.Index(name = "idx_interviews_date", columnList = "date")
 })
 public class Interview {
     @Id

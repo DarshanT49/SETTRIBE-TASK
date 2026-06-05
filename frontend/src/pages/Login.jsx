@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, LogIn, Zap } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Eye, EyeOff, LogIn, Zap, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button, Input } from '../components/ui';
 import toast from 'react-hot-toast';
@@ -17,20 +17,23 @@ const DEMO_USERS = [
 export default function Login() {
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({ emailOrId: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [pendingMsg, setPendingMsg] = useState(location.state?.pendingRegistration || false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setPendingMsg(false);
     if (!form.emailOrId || !form.password) { setError('Please fill in all fields'); return; }
     const result = await login(form.emailOrId, form.password);
     if (result.success) {
       toast.success(`Welcome back! Logged in as ${result.user.role}`);
       navigate('/dashboard');
     } else if (result.error === 'pending_approval') {
-      setError('Your account is pending admin/HR approval. Please wait.');
+      setPendingMsg(true);
     } else {
       setError(result.error || 'Invalid credentials');
     }
@@ -65,6 +68,18 @@ export default function Login() {
 
         <div className="card p-8 shadow-2xl">
           <h2 className="text-xl font-semibold text-gray-100 mb-6">Sign in to your account</h2>
+          
+          {pendingMsg && (
+            <div className="p-4 mb-6 bg-yellow-900/20 border border-yellow-800/50 rounded-lg flex items-start gap-3">
+              <Clock className="text-yellow-500 flex-shrink-0 mt-0.5" size={20} />
+              <div>
+                <h3 className="text-sm font-semibold text-yellow-400">Account Pending Approval</h3>
+                <p className="text-xs text-yellow-500/90 mt-1">
+                  Your registration has been submitted and is currently waiting for approval from an Administrator or HR representative. Please check back later.
+                </p>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input

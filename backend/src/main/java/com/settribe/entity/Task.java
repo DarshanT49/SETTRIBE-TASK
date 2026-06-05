@@ -11,7 +11,8 @@ import jakarta.persistence.Table;
 @Table(name = "tasks", indexes = {
     @jakarta.persistence.Index(name = "idx_tasks_project_id", columnList = "projectId"),
     @jakarta.persistence.Index(name = "idx_tasks_status", columnList = "status"),
-    @jakarta.persistence.Index(name = "idx_tasks_assigned_by", columnList = "assignedBy")
+    @jakarta.persistence.Index(name = "idx_tasks_assigned_by", columnList = "assignedBy"),
+    @jakarta.persistence.Index(name = "idx_tasks_due_date", columnList = "dueDate")
 })
 public class Task {
     @Id

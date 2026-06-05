@@ -20,40 +20,36 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    let users = await asyncGet(KEYS.USERS) || [];
     try {
-      const resp = await api.get('/users');
-      if (resp.data) {
-        users = resp.data;
-        await asyncSet(KEYS.USERS, users);
+      let users = await asyncGet(KEYS.USERS) || [];
+      try {
+        const resp = await api.get('/users');
+        if (resp.data) {
+          users = resp.data;
+          await asyncSet(KEYS.USERS, users);
+        }
+      } catch (e) {
+        console.warn('Could not fetch users', e);
       }
+
+      const email = currentUser.email; // Assuming currentUser has email, else use id or token backend will resolve
+      const resp = await api.get('/dashboard', { headers: { 'user-email': email } });
+      const dashboardData = resp.data;
+
+      const today = new Date().toISOString().split('T')[0];
+      const thisWeek = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+
+      setData({
+        users,
+        ...dashboardData,
+        today,
+        thisWeek
+      });
+      setLoading(false);
     } catch (e) {
-      console.warn('Could not fetch users', e);
+      console.error('Failed to load dashboard data', e);
+      setLoading(false);
     }
-    const projects = await fetchProjects();
-    const tasks = await fetchTasks();
-
-    const meetings = (await asyncGet(KEYS.MEETINGS) || []).filter(m => m.type !== 'interview');
-    const interviews = await asyncGet(KEYS.INTERVIEWS) || [];
-    let requests = [];
-    try {
-      const resp = await api.get('/registrationRequests');
-      requests = resp.data || [];
-    } catch (e) {
-      console.warn('Could not fetch registration requests', e);
-    }
-    const milestones = await asyncGet(KEYS.MILESTONES) || [];
-    const selfTasks = await asyncGet(KEYS.SELF_TASKS) || [];
-    const projectHistory = await asyncGet(KEYS.PROJECT_HISTORY) || [];
-
-    const today = new Date().toISOString().split('T')[0];
-    const thisWeek = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
-
-    setData({
-      users, projects, tasks, meetings, interviews, requests, milestones, selfTasks, projectHistory,
-      today, thisWeek
-    });
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -137,36 +133,31 @@ function MeetingCard({ meeting, users }) {
 }
 
 function AdminDashboard({ data, currentUser }) {
-  const { users, projects, tasks, meetings, interviews, requests, milestones, projectHistory } = data;
-  const pendingRequests = requests.filter(r => r.status === 'pending').length;
-  const activeProjects = projects.filter(p => p.status === 'active').length;
-  const pendingTasks = tasks.filter(t => !['done', 'completed'].includes(t.status)).length;
-  const todayMeetings = meetings.filter(m => m.date === data.today).length;
-  const thisWeekInterviews = interviews.filter(i => i.date >= data.today && i.date <= data.thisWeek).length;
-  const delayedMilestones = milestones.filter(m => m.status === 'delayed');
+  const {
+    users, totalProjects, activeProjects, pendingTasks, todayMeetings,
+    todayInterviewsList = [], pendingRegistrationRequests = [],
+    delayedMilestones = [], taskStatusDistribution = [], weeklyTasks = []
+  } = data;
+  
+  const pendingRequests = pendingRegistrationRequests.length;
+  // Fallback in case backend doesn't provide history (could be fetched locally for now)
+  const projectHistory = data.projectHistory || [];
 
-  const taskStatusData = [
-    { name: 'Backlog', value: tasks.filter(t => t.status === 'backlog').length, color: '#6b7280' },
-    { name: 'In Progress', value: tasks.filter(t => t.status === 'in_progress').length, color: '#3b82f6' },
-    { name: 'In Review', value: tasks.filter(t => t.status === 'in_review').length, color: '#f59e0b' },
-    { name: 'Done', value: tasks.filter(t => t.status === 'done').length, color: '#10b981' },
-  ].filter(d => d.value > 0);
+  const taskStatusData = taskStatusDistribution.map(d => {
+    let color = '#6b7280';
+    if (d.status === 'In Progress') color = '#3b82f6';
+    if (d.status === 'In Review') color = '#f59e0b';
+    if (d.status === 'Completed' || d.status === 'Done') color = '#10b981';
+    return { name: d.status, value: d.count, color };
+  }).filter(d => d.value > 0);
 
-  const weeklyTasks = [
-    { day: 'Mon', completed: 3, created: 5 },
-    { day: 'Tue', completed: 5, created: 4 },
-    { day: 'Wed', completed: 2, created: 6 },
-    { day: 'Thu', completed: 7, created: 3 },
-    { day: 'Fri', completed: 4, created: 5 },
-    { day: 'Sat', completed: 2, created: 2 },
-    { day: 'Sun', completed: 1, created: 0 },
-  ];
+  const weeklyTasksData = weeklyTasks.map(w => ({
+    day: w.day,
+    completed: w.tasks, // mapping simply for now
+    created: 0 // dummy or add to DTO
+  }));
 
-  const upcomingMeetings = meetings.filter(m => {
-    if (m.date < data.today) return false;
-    const status = getMeetingStatus(m);
-    return status === 'upcoming' || status === 'ongoing';
-  }).slice(0, 3);
+  const upcomingMeetings = data.upcomingMeetings || [];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -188,7 +179,7 @@ function AdminDashboard({ data, currentUser }) {
         <StatCard icon={FolderKanban} label="Active Projects" value={activeProjects} color="blue" />
         <StatCard icon={CheckSquare} label="Pending Tasks" value={pendingTasks} color="orange" />
         <StatCard icon={Video} label="Meetings Today" value={todayMeetings} color="purple" />
-        <StatCard icon={UserCheck} label="Interviews / Week" value={thisWeekInterviews} color="yellow" />
+        <StatCard icon={UserCheck} label="Today's Interviews" value={data.todayInterviews || 0} color="yellow" />
       </div>
 
       {/* Charts + Activity */}
@@ -197,7 +188,7 @@ function AdminDashboard({ data, currentUser }) {
         <div className="lg:col-span-2 card p-5">
           <h2 className="font-semibold text-gray-100 mb-4 flex items-center gap-2"><BarChart3 size={16} className="text-primary-400" /> Tasks This Week</h2>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={weeklyTasks} barSize={12}>
+            <BarChart data={weeklyTasksData} barSize={12}>
               <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
               <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
               <Tooltip contentStyle={{ background: '#1f2937', border: '1px solid #374151', borderRadius: '8px', color: '#f9fafb' }} />
@@ -274,10 +265,9 @@ function AdminDashboard({ data, currentUser }) {
 }
 
 function HRDashboard({ data, currentUser }) {
-  const { users, interviews, meetings, requests } = data;
-  const pendingRequests = requests.filter(r => r.status === 'pending');
-  const todayInterviews = interviews.filter(i => i.date === data.today);
-  const todayMeetings = meetings.filter(m => m.date === data.today);
+  const { users, todayMeetings, pendingRegistrationRequests = [], todayInterviewsList = [] } = data;
+  const pendingRequests = pendingRegistrationRequests;
+  const todayInterviews = todayInterviewsList;
 
 
   return (
@@ -344,24 +334,18 @@ function HRDashboard({ data, currentUser }) {
 }
 
 function ManagerDashboard({ data, currentUser }) {
-  const { users, projects, tasks, meetings, milestones } = data;
-  const myProjects = projects.filter(p => String(p.managerId) === String(currentUser.id) || String(p.ownerId) === String(currentUser.id));
-  const myTasks = tasks.filter(t => (t.assigneeIds || []).map(String).includes(String(currentUser.id)));
-  const teamTasks = tasks.filter(t => {
-    const myProjectIds = myProjects.map(p => String(p.id));
-    return myProjectIds.includes(String(t.projectId));
-  });
-  const pendingReviews = teamTasks.filter(t => t.status === 'in_review').length;
-  const upcomingMeetings = meetings.filter(m => {
-    if (!(m.participantIds || []).map(String).includes(String(currentUser.id)) || m.date < data.today) return false;
-    const status = getMeetingStatus(m);
-    return status === 'upcoming' || status === 'ongoing';
-  });
-
-  const teamProductivity = users.filter(u => ['employee', 'intern'].includes(u.role)).map(u => ({
-    name: u.name.split(' ')[0],
-    completed: tasks.filter(t => (t.assigneeIds || []).map(String).includes(String(u.id)) && t.status === 'done').length,
-    pending: tasks.filter(t => (t.assigneeIds || []).map(String).includes(String(u.id)) && t.status !== 'done').length
+  const {
+    users, pendingTasks, pendingApprovals, todayMeetings, activeProjects,
+    myProjects = [], upcomingMeetings = [], teamProductivity = []
+  } = data;
+  
+  const teamTasksCount = pendingTasks;
+  const pendingReviews = pendingApprovals;
+  
+  const mappedTeamProductivity = teamProductivity.map(u => ({
+    name: u.userName.split(' ')[0],
+    completed: u.completedTasks,
+    pending: u.pendingTasks
   }));
 
   return (
@@ -372,7 +356,7 @@ function ManagerDashboard({ data, currentUser }) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={CheckSquare} label="Team Tasks" value={teamTasks.length} color="primary" />
+        <StatCard icon={CheckSquare} label="Team Tasks" value={teamTasksCount} color="primary" />
         <StatCard icon={Clock} label="Pending Reviews" value={pendingReviews} color="orange" />
         <StatCard icon={Video} label="Upcoming Meetings" value={upcomingMeetings.length} color="blue" />
         <StatCard icon={FolderKanban} label="My Projects" value={myProjects.length} color="purple" />
@@ -381,11 +365,11 @@ function ManagerDashboard({ data, currentUser }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card p-5">
           <h2 className="font-semibold text-gray-100 mb-4">Team Productivity</h2>
-          {teamProductivity.length === 0 ? (
+          {mappedTeamProductivity.length === 0 ? (
             <div className="text-center py-8 text-gray-500 text-sm">No team data</div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={teamProductivity} barSize={12}>
+              <BarChart data={mappedTeamProductivity} barSize={12}>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 11 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 11 }} />
                 <Tooltip contentStyle={{ background: '#1f2937', border: '1px solid #374151', borderRadius: '8px', color: '#f9fafb' }} />
@@ -419,16 +403,15 @@ function ManagerDashboard({ data, currentUser }) {
 }
 
 function EmployeeDashboard({ data, currentUser }) {
-  const { users, projects, tasks, meetings } = data;
-  const myTasks = tasks.filter(t => (t.assigneeIds || []).map(String).includes(String(currentUser.id)));
-  const openTasks = myTasks.filter(t => !['done'].includes(t.status));
-  const overdueTasks = myTasks.filter(t => !['done'].includes(t.status) && new Date(t.dueDate) < new Date());
-  const completedThisWeek = myTasks.filter(t => t.status === 'done' && new Date(t.dueDate) >= new Date(Date.now() - 7 * 86400000)).length;
-  const upcomingMeetings = meetings.filter(m => {
-    if (!(m.participantIds || []).map(String).includes(String(currentUser.id)) || m.date < data.today) return false;
-    const status = getMeetingStatus(m);
-    return status === 'upcoming' || status === 'ongoing';
-  });
+  const {
+    users, pendingTasks, todayMeetings, overdueTasks = [],
+    myProjects = [], upcomingMeetings = [], myInterviewsList = []
+  } = data;
+  
+  const openTasks = new Array(pendingTasks).fill({}); // Dummy array for length checking if needed, but we can just use pendingTasks
+  const openTasksCount = pendingTasks;
+  const completedThisWeek = data.completedThisWeek || 0;
+  
   const parsePanelIds = (panelIds) => {
     if (!panelIds) return [];
     if (Array.isArray(panelIds)) return panelIds;
@@ -443,9 +426,7 @@ function EmployeeDashboard({ data, currentUser }) {
     return [];
   };
 
-  const myProjects = projects.filter(p => (p.teamIds || []).map(String).includes(String(currentUser.id)));
-  const { interviews } = data;
-  const myInterviews = interviews ? interviews.filter(i => String(i.interviewerId) === String(currentUser.id) || parsePanelIds(i.panelIds).some(id => String(id) === String(currentUser.id))) : [];
+  const myInterviews = myInterviewsList;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -466,7 +447,7 @@ function EmployeeDashboard({ data, currentUser }) {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={CheckSquare} label="Open Tasks" value={openTasks.length} color="primary" />
+        <StatCard icon={CheckSquare} label="Open Tasks" value={openTasksCount} color="primary" />
         <StatCard icon={AlertTriangle} label="Overdue Tasks" value={overdueTasks.length} color={overdueTasks.length > 0 ? 'red' : 'green'} />
         <StatCard icon={Video} label="Upcoming Meetings" value={upcomingMeetings.length} color="blue" />
         <StatCard icon={TrendingUp} label="Completed / Week" value={completedThisWeek} color="green" />
@@ -530,8 +511,8 @@ function EmployeeDashboard({ data, currentUser }) {
 }
 
 function PanelDashboard({ data, currentUser }) {
-  const { interviews } = data;
-  const myInterviews = interviews.filter(i => i.interviewerId === currentUser.id);
+  const { myInterviewsList = [] } = data;
+  const myInterviews = myInterviewsList;
   const pending = myInterviews.filter(i => ['scheduled', 'waiting'].includes(i.status));
   const todayI = myInterviews.filter(i => i.date === data.today);
   const completed = myInterviews.filter(i => i.status === 'completed');

@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface InterviewRepository extends JpaRepository<Interview, String> {
     Optional<Interview> findByToken(String token);
+    long countByDate(String date);
 }
