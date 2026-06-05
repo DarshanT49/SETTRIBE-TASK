@@ -6,7 +6,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "self_tasks")
+@Table(name = "self_tasks", indexes = {
+    @jakarta.persistence.Index(name = "idx_self_task_user_id", columnList = "userId")
+})
 public class SelfTask {
     @Id
     private String id;

@@ -34,6 +34,12 @@ export default function SelfTasks() {
 
   const load = async () => {
     try {
+      const cached = await asyncGet(KEYS.SELF_TASKS);
+      if (cached && cached.length > 0) {
+        setTasks(cached);
+        setLoading(false);
+      }
+      
       const filteredTasks = await fetchSelfTasksByUserId(currentUser.id);
       setTasks(filteredTasks);
       await asyncSet(KEYS.SELF_TASKS, filteredTasks);

@@ -8,7 +8,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "meetingrsvps")
+@Table(name = "meetingrsvps", indexes = {
+    @jakarta.persistence.Index(name = "idx_meetingrsvps_meeting_id", columnList = "meetingId"),
+    @jakarta.persistence.Index(name = "idx_meetingrsvps_user_id", columnList = "userId")
+})
 public class MeetingRsvp {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
