@@ -856,7 +856,7 @@ export default function MeetingRoom() {
             onClick={() => setShowEndMeetingModal(true)}
             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-lg ring-1 ring-red-700 hover:bg-red-700 transition-colors"
           >
-            End Interview
+            End Meeting
           </button>
         )}
       </div>
@@ -869,8 +869,8 @@ export default function MeetingRoom() {
             setHasUnreadAlert(false);
           }}
           className={`rounded-lg p-2 shadow-lg ring-1 transition-all ${hasUnreadAlert && !panelOpen
-              ? 'bg-primary-600 text-white animate-pulse ring-primary-500'
-              : 'bg-gray-900/90 text-gray-300 hover:bg-gray-800 ring-gray-700'
+            ? 'bg-primary-600 text-white animate-pulse ring-primary-500'
+            : 'bg-gray-900/90 text-gray-300 hover:bg-gray-800 ring-gray-700'
             }`}
           title={panelOpen ? 'Hide meeting panel' : 'Show meeting panel'}
         >
