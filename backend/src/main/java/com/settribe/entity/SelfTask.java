@@ -12,7 +12,6 @@ import jakarta.persistence.Table;
 public class SelfTask {
     @Id
     private String id;
-    @Column(columnDefinition = "TEXT")
     private String userId;
     @Column(columnDefinition = "TEXT")
     private String title;

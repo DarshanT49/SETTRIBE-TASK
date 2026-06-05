@@ -30,7 +30,6 @@ public class Task {
     private String priority;
     private Long creatorId;
     private Long assignedBy;
-    @Column(columnDefinition = "TEXT")
     private String status;
     @Column(columnDefinition = "TEXT")
     private String startDate;

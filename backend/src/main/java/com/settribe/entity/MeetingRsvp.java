@@ -17,9 +17,7 @@ public class MeetingRsvp {
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(length = 36)
     private String id;
-    @Column(columnDefinition = "TEXT")
     private String meetingId;
-    @Column(columnDefinition = "TEXT")
     private String userId;
     @Column(columnDefinition = "TEXT")
     private String status;
