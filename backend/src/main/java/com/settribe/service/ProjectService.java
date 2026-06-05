@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import com.settribe.dto.ProjectDTO;
 import com.settribe.mapper.ProjectMapper;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -49,11 +51,31 @@ public class ProjectService {
     }
 
     public List<ProjectDTO> findAll() {
-        return repository.findAll().stream().map(ProjectMapper::toDTO).collect(Collectors.toList());
+        List<Project> projects = repository.findAll();
+        List<ProjectMember> activeMembers = memberRepository.findByStatus("ACTIVE");
+        
+        Map<Long, List<String>> projectToTeamIds = activeMembers.stream()
+            .collect(Collectors.groupingBy(
+                ProjectMember::getProjectId,
+                Collectors.mapping(m -> String.valueOf(m.getUserId()), Collectors.toList())
+            ));
+            
+        return projects.stream().map(project -> {
+            ProjectDTO dto = ProjectMapper.toDTO(project);
+            dto.setTeamIds(projectToTeamIds.getOrDefault(project.getId(), Collections.emptyList()));
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     public Optional<ProjectDTO> findById(Long id) {
-        return repository.findById(id).map(ProjectMapper::toDTO);
+        return repository.findById(id).map(project -> {
+            ProjectDTO dto = ProjectMapper.toDTO(project);
+            List<String> teamIds = getMembers(id).stream()
+                .map(m -> String.valueOf(m.getUserId()))
+                .collect(Collectors.toList());
+            dto.setTeamIds(teamIds);
+            return dto;
+        });
     }
 
     public ProjectDTO save(ProjectDTO dto) {
