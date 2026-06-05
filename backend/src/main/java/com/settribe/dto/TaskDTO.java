@@ -19,10 +19,11 @@ public class TaskDTO {
     private String newDueDate;
     private Boolean isDelayed;
     private String createdAt;
+    private List<Long> assigneeIds;
 
     public TaskDTO() {}
 
-    public TaskDTO(Long id, Long projectId, String milestoneId, String sprintId, String title, String description, String priority, Long creatorId, Long assignedBy, String status, String startDate, String dueDate, String delayReason, String newDueDate, Boolean isDelayed, String createdAt) {
+    public TaskDTO(Long id, Long projectId, String milestoneId, String sprintId, String title, String description, String priority, Long creatorId, Long assignedBy, String status, String startDate, String dueDate, String delayReason, String newDueDate, Boolean isDelayed, String createdAt, List<Long> assigneeIds) {
         this.id = id;
         this.projectId = projectId;
         this.milestoneId = milestoneId;
@@ -39,6 +40,7 @@ public class TaskDTO {
         this.newDueDate = newDueDate;
         this.isDelayed = isDelayed;
         this.createdAt = createdAt;
+        this.assigneeIds = assigneeIds;
     }
 
     public Long getId() {
@@ -167,5 +169,13 @@ public class TaskDTO {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public List<Long> getAssigneeIds() {
+        return assigneeIds;
+    }
+
+    public void setAssigneeIds(List<Long> assigneeIds) {
+        this.assigneeIds = assigneeIds;
     }
 }

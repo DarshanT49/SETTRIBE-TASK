@@ -7,7 +7,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "project_members")
+@Table(name = "project_members", indexes = {
+    @jakarta.persistence.Index(name = "idx_project_members_project_id", columnList = "projectId"),
+    @jakarta.persistence.Index(name = "idx_project_members_user_id", columnList = "userId"),
+    @jakarta.persistence.Index(name = "idx_project_members_status", columnList = "status")
+})
 public class ProjectMember {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

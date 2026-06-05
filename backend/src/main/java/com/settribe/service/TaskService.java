@@ -33,11 +33,33 @@ public class TaskService {
     }
 
     public List<TaskDTO> findAll() {
-        return repository.findAll().stream().map(TaskMapper::toDTO).collect(Collectors.toList());
+        List<Task> tasks = repository.findAll();
+        List<com.settribe.entity.TaskAssignee> assignees = assigneeRepository.findAll();
+        
+        java.util.Map<Long, List<Long>> taskToAssigneeIds = assignees.stream()
+            .filter(a -> "ACTIVE".equals(a.getStatus())) // Optional: filter by active status if needed
+            .collect(Collectors.groupingBy(
+                com.settribe.entity.TaskAssignee::getTaskId,
+                Collectors.mapping(com.settribe.entity.TaskAssignee::getUserId, Collectors.toList())
+            ));
+
+        return tasks.stream().map(task -> {
+            TaskDTO dto = TaskMapper.toDTO(task);
+            dto.setAssigneeIds(taskToAssigneeIds.getOrDefault(task.getId(), java.util.Collections.emptyList()));
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     public Optional<TaskDTO> findById(Long id) {
-        return repository.findById(id).map(TaskMapper::toDTO);
+        return repository.findById(id).map(task -> {
+            TaskDTO dto = TaskMapper.toDTO(task);
+            List<Long> assigneeIds = getAssignees(id).stream()
+                .filter(a -> "ACTIVE".equals(a.getStatus()))
+                .map(com.settribe.entity.TaskAssignee::getUserId)
+                .collect(Collectors.toList());
+            dto.setAssigneeIds(assigneeIds);
+            return dto;
+        });
     }
 
     public TaskDTO save(TaskDTO dto) {
