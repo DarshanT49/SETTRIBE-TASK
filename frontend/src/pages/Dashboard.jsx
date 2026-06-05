@@ -2,17 +2,15 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Users, FolderKanban, CheckSquare, Video, UserCheck, Clock,
-  TrendingUp, AlertTriangle, Plus, ArrowRight, BarChart3, Shield
+  TrendingUp, AlertTriangle, Plus, BarChart3, Shield
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { KEYS, asyncGet } from '../services/storage';
+import { KEYS, asyncGet, asyncSet } from '../services/storage';
 import { fetchProjects } from '../services/projectApi';
 import { fetchTasks } from '../services/taskApi';
-import { fetchProjectMembers } from '../services/projectApi';
-import { fetchTaskAssignees } from '../services/taskApi';
-import { Avatar, Badge, Button, StatusBadge, PriorityBadge, Skeleton } from '../components/ui';
-import { formatRelativeTime, formatDate, canStartMeeting, getMeetingStatus } from '../utils/dates';
-import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Avatar, Button, StatusBadge, Skeleton } from '../components/ui';
+import { formatRelativeTime, getMeetingStatus } from '../utils/dates';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import api from '../services/api';
 

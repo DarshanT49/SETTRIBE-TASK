@@ -1,5 +1,5 @@
    
-import { Trophy, Star, Zap, Flame, Rocket } from 'lucide-react';
+import { Trophy, Star, Zap, Rocket } from 'lucide-react';
 import { Avatar } from '../ui';
 
 export function RecognitionWall({ wallOfFame }) {

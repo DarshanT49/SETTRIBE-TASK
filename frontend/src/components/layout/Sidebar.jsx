@@ -1,16 +1,15 @@
 
-import { useState } from 'react';
 
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Users, FolderKanban, CheckSquare, ClipboardList,
   Video, UserCheck, BarChart3, Bell, User, LogOut, ChevronLeft,
-  ChevronRight, Clock, Shield, Menu, X, Trophy, TrendingUp, Database, Mail
+  ChevronRight, Shield, Trophy, TrendingUp, Database, Mail
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 
-import { Avatar, Badge } from '../ui';
+import { Avatar } from '../ui';
 
 const allNavLinks = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'hr', 'employee', 'intern', 'panel'] },

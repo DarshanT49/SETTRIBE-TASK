@@ -2,16 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit, Plus, Lock, AlertTriangle, CheckCircle, Clock,
-  MoreVertical, Users, FileText, History, KanbanSquare, Target,
-  ChevronDown, Download, Trash, ExternalLink, Calendar, MessageSquare
+  MoreVertical, Users, FileText, History, KanbanSquare, Target, Trash, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS,  asyncGet, asyncSet } from '../services/storage';
-import { createBulkNotifications, createNotification } from '../services/notifications';
+import { createBulkNotifications } from '../services/notifications';
 import { fetchProjectById, fetchProjectMembers, addProjectMember, removeProjectMember, updateProject } from '../services/projectApi';
 import { fetchTasks } from '../services/taskApi';
-import { Avatar, Button, Badge, Modal, Input, Select, Textarea, StatusBadge, PriorityBadge, Skeleton, EmptyState, Toggle } from '../components/ui';
-import { formatDate, formatRelativeTime, formatDateTime, rescheduleMilestones, isOverdue } from '../utils/dates';
+import { Avatar, Button, Modal, Input, Textarea, StatusBadge, PriorityBadge, Skeleton, EmptyState, Toggle } from '../components/ui';
+import { formatDate, formatRelativeTime, rescheduleMilestones, isOverdue } from '../utils/dates';
 import { KanbanBoard } from '../components/kanban/KanbanBoard';
 import ProjectChat from '../components/ProjectChat';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';

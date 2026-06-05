@@ -60,8 +60,7 @@ export function Topbar({ onMobileMenu }) {
         {/* User menu */}
         <div className="relative" ref={userRef}>
           <button
-            onClick={() => { setShowUser(!showUser);  
-        setShowNotifs(false); }}
+            onClick={() => { setShowUser(!showUser); }}
             className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-800 transition-colors"
           >
             <Avatar name={currentUser?.name} photo={currentUser?.profilePhoto} size="sm" />

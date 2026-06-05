@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { LiveKitRoom, VideoConference } from '@livekit/components-react';
 import { createBulkNotifications } from '../services/notifications';
 import api from '../services/api';
-import { Camera, Mic, Volume2, Wifi, WifiOff, Settings, Monitor, CheckCircle, Loader2 } from 'lucide-react';
+import { Camera, Mic, Volume2, Wifi, WifiOff, Settings, Loader2 } from 'lucide-react';
 import InterviewEvaluationPanel from '../components/InterviewEvaluationPanel';
 
 export default function JoinInterview() {

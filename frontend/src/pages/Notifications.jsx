@@ -1,7 +1,7 @@
 
 import { useNavigate } from 'react-router-dom';
    
-import { Bell, Check, CheckCheck, Trash, ArrowRight } from 'lucide-react';
+import { Bell, CheckCheck, Trash } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { Button } from '../components/ui';
 import { formatRelativeTime } from '../utils/dates';

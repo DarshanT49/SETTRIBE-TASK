@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
    
-import { Plus, Check, Edit, Trash, Search, Bell, BellOff, Calendar as CalendarIcon, List as ListIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { startOfWeek, addDays, subWeeks, addWeeks, format, isToday } from 'date-fns';
+import { Plus, Check, Edit, Trash, Search, Bell } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet, asyncSet } from '../services/storage';
 import { Button, Modal, Input, Select, Textarea, Toggle, EmptyState, Skeleton } from '../components/ui';
    
-import { formatDate, isOverdue } from '../utils/dates';
+import { isOverdue } from '../utils/dates';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchSelfTasksByUserId, createSelfTask, updateSelfTask, deleteSelfTask } from '../services/selfTaskApi';
@@ -23,14 +22,8 @@ export default function SelfTasks() {
   const [editTask, setEditTask] = useState(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('list');
-  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [filterDate, setFilterDate] = useState('');
   const [form, setForm] = useState({ title: '', description: '', date: '', startTime: '', endTime: '', reminder: false, reminderOffset: '30min' });
-
-  const prevWeek = () => setCurrentWeekStart(prev => subWeeks(prev, 1));
-  const nextWeek = () => setCurrentWeekStart(prev => addWeeks(prev, 1));
-  const goToday = () => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(currentWeekStart, i));
 
   const load = async () => {
     try {
@@ -151,11 +144,64 @@ export default function SelfTasks() {
     const matchFilter = filter === 'all' ? true : filter === 'today' ? t.date === new Date().toISOString().split('T')[0] :
       filter === 'overdue' ? (isOverdue(`${t.date}T${t.startTime || t.time || '23:59'}`) && t.status !== 'done') :
       filter === 'completed' ? t.status === 'done' : true;
-    return matchSearch && matchFilter;
+    const matchDate = !filterDate || t.date === filterDate;
+    return matchSearch && matchFilter && matchDate;
   });
 
   const todo = filtered.filter(t => t.status !== 'done');
   const done = filtered.filter(t => t.status === 'done');
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+  const groupedTodo = {
+    'Overdue': [],
+    'Today': [],
+    'Tomorrow': [],
+    'No Date': []
+  };
+
+  const upcomingKeys = new Set();
+
+  todo.forEach(t => {
+    if (!t.date) {
+      groupedTodo['No Date'].push(t);
+    } else if (isOverdue(`${t.date}T${t.startTime || t.time || '23:59'}`)) {
+      groupedTodo['Overdue'].push(t);
+    } else if (t.date === todayStr) {
+      groupedTodo['Today'].push(t);
+    } else if (t.date === tomorrowStr) {
+      groupedTodo['Tomorrow'].push(t);
+    } else {
+      const [y, m, d] = t.date.split('-');
+      const dateObj = new Date(y, m - 1, d);
+      const formattedDate = `${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (${dateObj.toLocaleDateString('en-US', { weekday: 'long' })})`;
+      
+      if (!groupedTodo[formattedDate]) {
+        groupedTodo[formattedDate] = [];
+        upcomingKeys.add(formattedDate);
+      }
+      groupedTodo[formattedDate].push(t);
+    }
+  });
+
+  const sortedUpcomingKeys = Array.from(upcomingKeys).sort((a, b) => {
+    return new Date(groupedTodo[a][0].date) - new Date(groupedTodo[b][0].date);
+  });
+
+  const renderTaskGroup = (title, tasks, titleColor) => {
+    if (tasks.length === 0) return null;
+    return (
+      <div className="mb-6 last:mb-0">
+        <h3 className={`text-xs font-bold uppercase tracking-wider mb-3 ${titleColor}`}>{title} ({tasks.length})</h3>
+        <div className="space-y-3">
+          {tasks.map(task => <TaskCard key={task.id} task={task} onToggle={handleToggleDone} onEdit={openEdit} onDelete={handleDelete} />)}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -165,112 +211,51 @@ export default function SelfTasks() {
           <p className="text-sm text-gray-500 mt-1">{todo.length} pending · {done.length} done</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-gray-800 p-1 rounded-lg">
-            <button 
-              onClick={() => setViewMode('list')} 
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'list' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
-            >
-              <ListIcon size={14} /> List View
-            </button>
-            <button 
-              onClick={() => setViewMode('week')} 
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'week' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
-            >
-              <CalendarIcon size={14} /> Weekly Planner
-            </button>
-          </div>
           <Button onClick={() => setShowModal(true)}><Plus size={16} />Add To-Do</Button>
         </div>
       </div>
 
-      {viewMode === 'list' && (
-        <div className="flex flex-wrap gap-3 mb-2">
-          <div className="relative flex-1 min-w-48">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search to-dos..." className="input-field pl-9" />
-          </div>
-          <div className="flex gap-1">
-            {[['all', 'All'], ['today', 'Today'], ['overdue', 'Overdue'], ['completed', 'Completed']].map(([val, label]) => (
-              <button key={val} onClick={() => setFilter(val)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filter === val ? 'bg-primary-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}`}>{label}</button>
-            ))}
+      <div className="flex flex-wrap gap-3 mb-6">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input 
+            value={search} 
+            onChange={e => setSearch(e.target.value)} 
+            placeholder="Search to-dos..." 
+            className="input-field pl-10 h-10 text-sm" 
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <select 
+            value={filter} 
+            onChange={e => setFilter(e.target.value)}
+            className="input-field bg-gray-800 border-gray-700 cursor-pointer w-40 h-10 text-sm"
+          >
+            <option value="all">All Tasks</option>
+            <option value="today">Today</option>
+            <option value="overdue">Overdue</option>
+            <option value="completed">Completed</option>
+          </select>
+          <div className="relative flex items-center">
+            <input 
+              type="date" 
+              value={filterDate} 
+              onChange={e => setFilterDate(e.target.value)} 
+              className="input-field bg-gray-800 border-gray-700 w-44 h-10 text-sm [color-scheme:dark]" 
+            />
+            {filterDate && (
+              <button 
+                onClick={() => setFilterDate('')} 
+                className="absolute right-8 text-xs font-medium text-gray-400 hover:text-white bg-gray-800 px-1"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
-      {loading ? <Skeleton className="h-48" /> : viewMode === 'week' ? (
-        <div className="space-y-4 animate-fade-in">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h2 className="text-lg font-semibold text-gray-200">
-                {format(currentWeekStart, 'MMM d')} - {format(addDays(currentWeekStart, 6), 'MMM d, yyyy')}
-              </h2>
-            </div>
-            <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-1">
-              <button onClick={prevWeek} className="p-1 hover:bg-gray-700 rounded text-gray-400" title="Previous Week"><ChevronLeft size={16} /></button>
-              <button onClick={goToday} className="px-3 text-sm font-medium text-gray-300 hover:text-white">Today</button>
-              <button onClick={nextWeek} className="p-1 hover:bg-gray-700 rounded text-gray-400" title="Next Week"><ChevronRight size={16} /></button>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
-            {weekDays.map(day => {
-              const dateStr = format(day, 'yyyy-MM-dd');
-              const dayTasks = tasks.filter(t => t.date === dateStr);
-              const isCurrentDay = isToday(day);
-              const isPastDay = dateStr < format(new Date(), 'yyyy-MM-dd');
-              
-              return (
-                <div key={dateStr} className={`bg-gray-800/50 rounded-xl p-3 flex flex-col h-full border ${isCurrentDay ? 'border-primary-500/50 bg-primary-900/10' : 'border-gray-700/50'}`}>
-                  <div className="text-center pb-3 mb-3 border-b border-gray-700/50">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{format(day, 'EEE')}</p>
-                    <p className={`text-xl font-bold mt-1 ${isCurrentDay ? 'text-primary-400' : 'text-gray-200'}`}>
-                      {format(day, 'd')}
-                    </p>
-                  </div>
-                  
-                  <div className="flex-1 overflow-y-auto space-y-2 mb-3 min-h-[150px] max-h-[400px]">
-                    {dayTasks.length === 0 ? (
-                      <p className="text-xs text-gray-500 text-center italic py-2">No To-Dos</p>
-                    ) : (
-                      dayTasks.map(task => (
-                        <div key={task.id} className={`p-2 rounded bg-gray-900/50 border border-gray-700/50 text-sm transition-opacity hover:border-gray-600 ${task.status === 'done' ? 'opacity-60' : ''}`}>
-                          <div className="flex items-start gap-2">
-                             <button onClick={(e) => { e.stopPropagation(); handleToggleDone(task.id); }} className={`mt-0.5 w-4 h-4 rounded-full border flex flex-shrink-0 items-center justify-center ${task.status === 'done' ? 'bg-emerald-600 border-emerald-600' : 'border-gray-500 hover:border-primary-500 transition-colors'}`}>
-                               {task.status === 'done' && <Check size={10} className="text-white" />}
-                             </button>
-                             <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openEdit(task)} role="button">
-                               <p className={`text-xs font-medium truncate ${task.status === 'done' ? 'line-through text-gray-500' : 'text-gray-300'}`}>{task.title}</p>
-                               {(task.startTime || task.time) && (
-                                 <p className="text-[10px] text-gray-500 mt-0.5">{task.startTime || task.time}</p>
-                               )}
-                             </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  
-                  <Button 
-                    variant="secondary" 
-                    className={`w-full text-xs py-1.5 ${isPastDay ? 'opacity-50 cursor-not-allowed' : ''}`} 
-                    disabled={isPastDay}
-                    onClick={() => {
-                      if (!isPastDay) {
-                        setForm({ title: '', description: '', date: dateStr, startTime: '', endTime: '', reminder: false, reminderOffset: '30min' });
-                        setEditTask(null);
-                        setShowModal(true);
-                      }
-                    }}
-                  >
-                    <Plus size={14} /> Add
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
+      {loading ? <Skeleton className="h-48" /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
           {/* Todo Column */}
           <div>
@@ -280,8 +265,12 @@ export default function SelfTasks() {
             {todo.length === 0 ? (
               <EmptyState title="All done! 🎉" description="No pending to-dos" />
             ) : (
-              <div className="space-y-3">
-                {todo.map(task => <TaskCard key={task.id} task={task} onToggle={handleToggleDone} onEdit={openEdit} onDelete={handleDelete} />)}
+              <div>
+                {renderTaskGroup('Overdue', groupedTodo['Overdue'], 'text-red-400')}
+                {renderTaskGroup('Today', groupedTodo['Today'], 'text-blue-400')}
+                {renderTaskGroup('Tomorrow', groupedTodo['Tomorrow'], 'text-indigo-400')}
+                {sortedUpcomingKeys.map(key => renderTaskGroup(key, groupedTodo[key], 'text-purple-400'))}
+                {renderTaskGroup('No Date', groupedTodo['No Date'], 'text-gray-400')}
               </div>
             )}
           </div>

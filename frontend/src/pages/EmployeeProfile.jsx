@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone, Building, Calendar, Edit2, Save, X, Download, Clock, Laptop, Shield } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Building, Calendar, Save, Download, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet, asyncSet } from '../services/storage';
 import { fetchProjectMembers } from '../services/projectApi';

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
    
-import { Plus, Search, Filter, Grid, List, FolderOpen } from 'lucide-react';
+import { Plus, Search, Grid, List, FolderOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
 import { fetchProjects } from '../services/projectApi';
 
-import { Avatar, Button, Badge, StatusBadge, PriorityBadge, Skeleton, EmptyState } from '../components/ui';
+import { Avatar, Button, StatusBadge, PriorityBadge, Skeleton, EmptyState } from '../components/ui';
 import { formatDate } from '../utils/dates';
 
 const STATUSES = ['all', 'planning', 'active', 'completed'];

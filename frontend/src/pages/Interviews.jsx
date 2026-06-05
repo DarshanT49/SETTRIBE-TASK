@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
    
-import { Plus, Search, UserCheck, ChevronDown } from 'lucide-react';
+import { Plus, Search, UserCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { KEYS, asyncGet } from '../services/storage';
 import api from '../services/api';
    
-import { Avatar, Button, Badge, StatusBadge, EmptyState, Skeleton } from '../components/ui';
+import { Avatar, Button, EmptyState, Skeleton } from '../components/ui';
    
-import { formatDate } from '../utils/dates';
 
 const STATUS_COLORS = {
   scheduled: 'bg-blue-900/40 text-blue-400 border border-blue-800/50',
