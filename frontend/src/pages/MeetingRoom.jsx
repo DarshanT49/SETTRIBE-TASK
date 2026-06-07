@@ -66,6 +66,7 @@ export default function MeetingRoom() {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [selectedMentionIdx, setSelectedMentionIdx] = useState(0);
   const [hasUnreadAlert, setHasUnreadAlert] = useState(false);
+  const [hasHostStartedSeen, setHasHostStartedSeen] = useState(false);
   const [taskForm, setTaskForm] = useState({
     title: '',
     description: '',
@@ -76,6 +77,7 @@ export default function MeetingRoom() {
   });
   const joinedRef = useRef(false);
   const hasRequestedTokenRef = useRef(false);
+  const hasHostStartedRef = useRef(false);
   const previousWaitingCount = useRef(0);
   const audioRef = useRef(null);
   const previousChatCount = useRef(0);
@@ -92,44 +94,47 @@ export default function MeetingRoom() {
       return (allMeetings || []).find(item => item.id === id);
     };
 
+    const updateWaitingRoom = async (updater) => {
+      const latestMeeting = await fetchMeetingData();
+      if (!latestMeeting) return null;
+      const updatedWaitingRoom = updater(toArray(latestMeeting.waitingRoom));
+      const updatedMeeting = { ...latestMeeting, waitingRoom: updatedWaitingRoom };
+      setMeeting(updatedMeeting);
+      await apiPut(KEYS.MEETINGS, id, updatedMeeting);
+      return updatedMeeting;
+    };
+
     const checkWaitingRoomStatus = async (m) => {
       if (cancelled) return;
       if (hasRequestedTokenRef.current) return;
 
       const isHost = String(m.hostId) === String(currentUser.id);
       const isAdmin = currentUser.role === 'admin';
-      // Admin and host bypass the waiting room entirely
-      // Interview meetings also bypass the host-started check entirely
-      const hasHostStartedMeeting = toArray(m.attendanceLogs).some(l => String(l.userId) === String(m.hostId));
+      const myWaitStatus = getWaitingRoomStatus(m, currentUser.id);
+      const alreadyAdmitted = isUserAlreadyAdmitted(m, currentUser.id, {
+        hasRoomConfig: Boolean(roomConfig),
+        joined: joinedRef.current,
+        waitStatus: myWaitStatus
+      });
+      const hasHostStartedMeeting = hasMeetingStarted(m, hasHostStartedRef.current);
 
-      if (m.type !== 'interview' && !isHost && !isAdmin && !hasHostStartedMeeting) {
+      if (hasHostStartedMeeting) {
+        hasHostStartedRef.current = true;
+        if (!cancelled) setHasHostStartedSeen(true);
+      }
+
+      if (m.type !== 'interview' && !isHost && !isAdmin && !alreadyAdmitted && !hasHostStartedMeeting) {
         return;
       }
 
-      const meetingTime = getMeetingDateTime(m);
-      const minutesLate = (new Date() - meetingTime) / 60000;
-
-      let requiresApproval = false;
-      // Interviews never require waiting room approval
-      if (m.type !== 'interview' && !isAdmin && !isHost) {
-        if (['employee', 'hr', 'manager'].includes(currentUser.role)) {
-          requiresApproval = minutesLate > 5;
-        } else if (currentUser.role === 'intern') {
-          requiresApproval = minutesLate > 2;
-        } else {
-          requiresApproval = true;
-        }
-      }
-
-      const waitingRoom = toArray(m.waitingRoom);
-      const myWaitStatus = waitingRoom.find(w => String(w.userId) === String(currentUser.id))?.status;
+      const requiresApproval = requiresLateApproval(m, currentUser, alreadyAdmitted);
 
       if (requiresApproval && myWaitStatus !== 'approved') {
         if (myWaitStatus !== 'waiting' && myWaitStatus !== 'rejected') {
-          const updatedWait = [...waitingRoom, { userId: currentUser.id, status: 'waiting', timestamp: new Date().toISOString() }];
-          const updatedMeeting = { ...m, waitingRoom: updatedWait };
-          setMeeting(updatedMeeting);
-          await apiPut(KEYS.MEETINGS, id, updatedMeeting);
+          await updateWaitingRoom(latestWaitingRoom => [
+            ...latestWaitingRoom.filter(w => String(w.userId) !== String(currentUser.id)),
+            { userId: currentUser.id, status: 'waiting', timestamp: new Date().toISOString() }
+          ]);
         }
       } else {
         if (!hasRequestedTokenRef.current) {
@@ -284,17 +289,28 @@ export default function MeetingRoom() {
   const presentParticipantIds = presentParticipants.map(user => user.id);
 
   const isHost = String(meeting?.hostId) === String(currentUser.id);
-  const mentionSuggestions = mentionQuery !== null ? getMentionSuggestions(mentionQuery, presentParticipants) : [];
+  const mentionSuggestions = mentionQuery !== null ? getMentionSuggestions(mentionQuery, presentParticipants, currentUser.id) : [];
+
+  const updateMeetingWaitingRoom = async (updater) => {
+    const allMeetings = await asyncGet(KEYS.MEETINGS);
+    const latestMeeting = (allMeetings || []).find(item => item.id === id);
+    if (!latestMeeting) return null;
+    const updatedWaitingRoom = updater(toArray(latestMeeting.waitingRoom));
+    const updatedMeeting = { ...latestMeeting, waitingRoom: updatedWaitingRoom };
+    setMeeting(updatedMeeting);
+    await apiPut(KEYS.MEETINGS, id, updatedMeeting);
+    return updatedMeeting;
+  };
 
   useEffect(() => {
     if (!audioRef.current) {
-      audioRef.current = new Audio('/universfield-new-notification-051-494246.mp3');
+      audioRef.current = createMeetingAudio('/universfield-new-notification-051-494246.mp3');
     }
     if (!chatAudioRef.current) {
-      chatAudioRef.current = new Audio('/koiroylers-live-chat-353605.mp3');
+      chatAudioRef.current = createMeetingAudio('/koiroylers-live-chat-353605.mp3');
     }
     if (!mentionAudioRef.current) {
-      mentionAudioRef.current = new Audio('/liecio-message-alert-190042.mp3');
+      mentionAudioRef.current = createMeetingAudio('/liecio-message-alert-190042.mp3');
     }
   }, []);
 
@@ -311,13 +327,11 @@ export default function MeetingRoom() {
         if (!panelOpen || sidePanel !== 'lobby') {
           setHasUnreadAlert(true);
         }
-        if (audioRef.current) {
-          audioRef.current.play().catch(e => console.warn('Audio blocked', e));
-        }
+        playMeetingAudio(audioRef, 'waiting-room');
       }
       previousWaitingCount.current = currentWaitingCount;
     }
-  }, [meeting, isHost]);
+  }, [meeting, isHost, panelOpen, sidePanel]);
 
   useEffect(() => {
     const currentChatCount = chatLogs.length;
@@ -351,7 +365,7 @@ export default function MeetingRoom() {
       if (nextMentionNotifications.length > 0) {
         window.setTimeout(() => {
           setMentionNotifications(prev => [...nextMentionNotifications, ...prev].slice(0, 5));
-          if (sidePanel !== 'chat') {
+          if (!panelOpen || sidePanel !== 'chat') {
             setUnreadMentionCount(prev => prev + nextMentionNotifications.length);
           }
         }, 0);
@@ -363,49 +377,45 @@ export default function MeetingRoom() {
         }
       }
 
-      if (shouldPlayMentionSound && mentionAudioRef.current) {
-        mentionAudioRef.current.play().catch(e => console.warn('Mention audio blocked', e));
-      } else if (shouldPlayNormalSound && chatAudioRef.current) {
-        chatAudioRef.current.play().catch(e => console.warn('Chat audio blocked', e));
+      if (!panelOpen || sidePanel !== 'chat') {
+        if (shouldPlayMentionSound) {
+          playMeetingAudio(mentionAudioRef, 'mention');
+        } else if (shouldPlayNormalSound) {
+          playMeetingAudio(chatAudioRef, 'chat');
+        }
       }
     }
     previousChatCount.current = currentChatCount;
-  }, [chatLogs, currentUser.id, sidePanel, users]);
+  }, [chatLogs, currentUser.id, panelOpen, sidePanel, users]);
 
   const handlePermitAll = async () => {
-    const updatedWait = toArray(meeting.waitingRoom).map(w => w.status === 'waiting' ? { ...w, status: 'approved' } : w);
-    const updatedMeeting = { ...meeting, waitingRoom: updatedWait };
-    setMeeting(updatedMeeting);
-    await apiPut(KEYS.MEETINGS, id, updatedMeeting);
+    await updateMeetingWaitingRoom(waitingRoom =>
+      waitingRoom.map(w => w.status === 'waiting' ? { ...w, status: 'approved' } : w)
+    );
     toast.success('All pending requests approved');
   };
 
   const handleWaitingRoomAction = async (userId, status) => {
-    const updatedWait = toArray(meeting.waitingRoom).map(w => w.userId === userId ? { ...w, status } : w);
-    const updatedMeeting = { ...meeting, waitingRoom: updatedWait };
-    setMeeting(updatedMeeting);
-    await apiPut(KEYS.MEETINGS, id, updatedMeeting);
+    await updateMeetingWaitingRoom(waitingRoom =>
+      waitingRoom.map(w => String(w.userId) === String(userId) ? { ...w, status } : w)
+    );
     toast.success(status === 'approved' ? 'Allowed into meeting' : 'Denied entry');
   };
 
   const handleLeaveWaitingRoom = async () => {
     if (meeting) {
-      const updatedWait = toArray(meeting.waitingRoom).filter(w => w.userId !== currentUser.id);
-      if (updatedWait.length !== toArray(meeting.waitingRoom).length) {
-        const updatedMeeting = { ...meeting, waitingRoom: updatedWait };
-        setMeeting(updatedMeeting);
-        await apiPut(KEYS.MEETINGS, id, updatedMeeting);
-      }
+      await updateMeetingWaitingRoom(waitingRoom =>
+        waitingRoom.filter(w => String(w.userId) !== String(currentUser.id))
+      );
     }
     handleGoBack();
   };
 
   const handleRequestAgain = async () => {
-    const updatedWait = toArray(meeting.waitingRoom).filter(w => w.userId !== currentUser.id);
-    updatedWait.push({ userId: currentUser.id, status: 'waiting', timestamp: new Date().toISOString() });
-    const updatedMeeting = { ...meeting, waitingRoom: updatedWait };
-    setMeeting(updatedMeeting);
-    await apiPut(KEYS.MEETINGS, id, updatedMeeting);
+    await updateMeetingWaitingRoom(waitingRoom => [
+      ...waitingRoom.filter(w => String(w.userId) !== String(currentUser.id)),
+      { userId: currentUser.id, status: 'waiting', timestamp: new Date().toISOString() }
+    ]);
   };
 
   const handleConnected = useCallback(() => {
@@ -725,10 +735,15 @@ export default function MeetingRoom() {
 
   const isHostNow = String(meeting?.hostId) === String(currentUser.id);
   const isAdminNow = currentUser.role === 'admin';
+  const myWaitStatus = getWaitingRoomStatus(meeting, currentUser.id);
+  const isAlreadyAdmittedNow = isUserAlreadyAdmitted(meeting, currentUser.id, {
+    hasRoomConfig: Boolean(roomConfig),
+    waitStatus: myWaitStatus
+  });
 
-  const hasHostStartedMeetingNow = toArray(meeting?.attendanceLogs).some(l => String(l.userId) === String(meeting?.hostId));
+  const hasHostStartedMeetingNow = hasMeetingStarted(meeting, hasHostStartedSeen);
 
-  if (meeting?.type !== 'interview' && !isHostNow && !isAdminNow && !hasHostStartedMeetingNow) {
+  if (meeting?.type !== 'interview' && !isHostNow && !isAdminNow && !isAlreadyAdmittedNow && !hasHostStartedMeetingNow) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950">
         <div className="max-w-md rounded-lg border border-gray-800 bg-gray-900 p-6 text-center shadow-xl">
@@ -745,22 +760,7 @@ export default function MeetingRoom() {
     );
   }
 
-  const meetingTimeNow = meeting ? getMeetingDateTime(meeting) : new Date();
-  const minutesLateNow = (new Date() - meetingTimeNow) / 60000;
-
-  let requiresApproval = false;
-  // Interviews never require waiting room approval
-  if (meeting?.type !== 'interview' && !isAdminNow && !isHostNow) {
-    if (['employee', 'hr', 'manager'].includes(currentUser.role)) {
-      requiresApproval = minutesLateNow > 5;
-    } else if (currentUser.role === 'intern') {
-      requiresApproval = minutesLateNow > 2;
-    } else {
-      requiresApproval = true;
-    }
-  }
-
-  const myWaitStatus = toArray(meeting?.waitingRoom).find(w => String(w.userId) === String(currentUser.id))?.status;
+  const requiresApproval = requiresLateApproval(meeting, currentUser, isAlreadyAdmittedNow);
 
   if (requiresApproval && myWaitStatus !== 'approved') {
     return (
@@ -1217,12 +1217,12 @@ export default function MeetingRoom() {
         </aside>
       )}
 
-      <Modal isOpen={showLeaveModal} onClose={cancelLeave} title="Leave Meeting" size="sm">
+      <Modal isOpen={showLeaveModal} onClose={cancelLeave} title="Exit Room" size="sm">
         <div className="p-5">
-          <p className="text-gray-300 mb-6 text-sm">Are you sure you want to leave the meeting? You can rejoin later if it hasn't ended.</p>
+          <p className="text-gray-300 mb-6 text-sm">Are you sure you want to exit the room? You can rejoin later if the meeting has not ended.</p>
           <div className="flex justify-end gap-3">
             <Button variant="secondary" onClick={cancelLeave}>Cancel</Button>
-            <Button className="bg-red-600 hover:bg-red-700 text-white border-transparent" onClick={confirmLeave}>Leave Meeting</Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white border-transparent" onClick={confirmLeave}>Exit Room</Button>
           </div>
         </div>
       </Modal>
@@ -1254,7 +1254,72 @@ function toArray(value) {
   return [];
 }
 
-function getMentionSuggestions(query, presentParticipants) {
+function hasMeetingStarted(meeting, alreadyStarted = false) {
+  if (alreadyStarted) return true;
+  if (!meeting) return false;
+  return toArray(meeting.attendanceLogs).some(log => String(log.userId) === String(meeting.hostId));
+}
+
+function getWaitingRoomStatus(meeting, userId) {
+  if (!meeting || userId == null) return undefined;
+  return toArray(meeting.waitingRoom).find(w => String(w.userId) === String(userId))?.status;
+}
+
+function hasActiveAttendance(meeting, userId) {
+  if (!meeting || userId == null) return false;
+  return toArray(meeting.attendanceLogs).some(log =>
+    String(log.userId) === String(userId) &&
+    !log.leaveTime &&
+    String(log.status || '').toLowerCase() !== 'absent'
+  );
+}
+
+function isUserAlreadyAdmitted(meeting, userId, options = {}) {
+  if (!meeting || userId == null) return false;
+  return Boolean(
+    options.hasRoomConfig ||
+    options.joined ||
+    options.waitStatus === 'approved' ||
+    hasActiveAttendance(meeting, userId)
+  );
+}
+
+function requiresLateApproval(meeting, user, alreadyAdmitted) {
+  if (!meeting || !user || alreadyAdmitted) return false;
+  if (meeting.type === 'interview') return false;
+  if (String(meeting.hostId) === String(user.id)) return false;
+  if (user.role === 'admin') return false;
+
+  const meetingTime = getMeetingDateTime(meeting);
+  const minutesLate = (new Date() - meetingTime) / 60000;
+
+  if (['employee', 'hr', 'manager'].includes(user.role)) {
+    return minutesLate > 5;
+  }
+  if (user.role === 'intern') {
+    return minutesLate > 2;
+  }
+  return true;
+}
+
+function createMeetingAudio(src) {
+  const audio = new Audio(src);
+  audio.preload = 'auto';
+  audio.load();
+  return audio;
+}
+
+function playMeetingAudio(audioRef, label) {
+  const audio = audioRef.current;
+  if (!audio) return;
+
+  audio.currentTime = 0;
+  audio.play().catch(error => {
+    console.warn(`${label} audio blocked`, error);
+  });
+}
+
+function getMentionSuggestions(query, presentParticipants, currentUserId) {
   const normalizedQuery = (query || '').replace(/\s+/g, '').toLowerCase();
   const suggestions = [];
 
@@ -1265,6 +1330,7 @@ function getMentionSuggestions(query, presentParticipants) {
   return [
     ...suggestions,
     ...presentParticipants.filter(user =>
+      String(user.id) !== String(currentUserId) &&
       user.name.replace(/\s+/g, '').toLowerCase().includes(normalizedQuery)
     )
   ];
